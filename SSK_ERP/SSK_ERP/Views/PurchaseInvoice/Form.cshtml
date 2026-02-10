@@ -1,0 +1,960 @@
+@model SSK_ERP.Models.TransactionMaster
+
+@{
+    ViewBag.Title = "Purchase Invoice";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    .main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .req {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 12px 15px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .msg {
+        background: linear-gradient(135deg, #00b894, #00cec9);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+
+    .so-detail-table {
+        min-width: 1400px;
+    }
+
+    .so-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 10px;
+    }
+
+    .so-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    .so-detail-table .form-control-sm {
+        padding: 5px;
+        height: 32px;
+    }
+
+    /* Keep Material select2 dropdowns with a fixed one-line height so each row stays even */
+    .so-detail-table .select2-container {
+        width: 100% !important;
+    }
+
+    .so-detail-table .select2-container .select2-selection--single {
+        height: 32px;
+    }
+
+    .so-detail-table .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 30px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding-left: 8px;
+    }
+
+    .so-detail-table .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 30px;
+    }
+
+    .so-totals-table th {
+        text-align: right;
+        width: 40%;
+        font-weight: 600;
+    }
+
+    .so-totals-table td {
+        width: 60%;
+    }
+
+    .so-tax-table {
+        margin-bottom: 0;
+    }
+
+    .so-tax-table th,
+    .so-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 140px;
+        white-space: nowrap;
+    }
+
+    .so-tax-costfactor {
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        padding: 10px 12px 12px 12px;
+        background-color: #f8fafc;
+    }
+
+    .so-tax-cf-table thead th {
+        background-color: #f1f3f5;
+        font-size: 12px;
+    }
+
+    .so-tax-cf-table tbody td {
+        vertical-align: middle;
+    }
+
+    .so-address-row {
+        margin-bottom: 8px;
+    }
+
+    .so-address-row > [class*="col-"]:first-child {
+        padding-right: 20px;
+    }
+
+    .so-address-row > [class*="col-"]:last-child {
+        padding-left: 20px;
+    }
+
+    /* Address Box styling to match screenshot */
+    .address-box input {
+        background-color: #f0f4f8; /* Light blue/gray background */
+        border: 1px solid #dcdfe6;
+        color: #333;
+    }
+
+    /* TAX modal styling */
+    .modal-dialog.modal-xl {
+        width: 90%;
+        max-width: 1100px;
+        margin: 30px auto;
+    }
+
+    .so-tax-modal .modal-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #fff;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .so-tax-modal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .so-tax-modal .modal-header .close {
+        padding: 0.4rem 0.7rem;
+        margin: 0;
+        opacity: 1;
+        font-size: 1.4rem;
+        font-weight: 300;
+        line-height: 1;
+        color: #fff;
+        text-shadow: none;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .so-tax-modal .modal-header .close:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(90deg);
+    }
+
+    .so-tax-modal .modal-body {
+        background: #f9fafb;
+        padding: 20px 24px;
+    }
+
+    .so-tax-modal .modal-footer {
+        border-top: 1px solid #e5e7eb;
+        padding: 12px 24px 18px 24px;
+    }
+
+    .so-tax-modal .modal-footer .btn {
+        border-radius: 24px;
+        padding: 8px 22px;
+        font-weight: 600;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.25s ease;
+    }
+
+    .so-tax-modal .modal-footer .btn-success {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        border: none;
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(34, 197, 94, 0.4);
+    }
+
+    .so-tax-modal .modal-footer .btn-success:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 12px rgba(34, 197, 94, 0.5);
+    }
+
+    .so-tax-modal .modal-footer .btn-secondary {
+        background: #ffffff;
+        border: 2px solid #d1d5db;
+        color: #4b5563;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+    }
+
+    .so-tax-modal .modal-footer .btn-secondary:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+        transform: translateY(-1px);
+    }
+
+    .so-tax-modal .modal-footer .btn-primary {
+        background: linear-gradient(135deg, #00bcd4, #00acc1);
+        border: none;
+        color: #fff;
+        box-shadow: 0 3px 10px rgba(0, 188, 212, 0.45);
+    }
+
+    .so-tax-modal .modal-footer .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(0, 188, 212, 0.55);
+    }
+
+    .so-tax-modal .modal-footer .btn i {
+        font-size: 13px;
+    }
+
+    .so-tax-cf-table thead th {
+        background-color: #e5e7eb;
+        font-size: 12px;
+        text-align: center;
+        border-bottom: 2px solid #d1d5db;
+    }
+
+    .so-tax-cf-table tbody td {
+        background-color: #f9fafb;
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-row-delete {
+        background-color: #ef4444;
+        border-color: #ef4444;
+        padding: 0;
+        border-radius: 4px;
+        width: 6px;
+        height: 28px;
+        display: inline-block;
+    }
+
+    .so-tax-row-delete i {
+        display: none;
+    }
+
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220,53,69,0.15);
+    }
+</style>
+
+<div class="main-container">
+    <div class="form-container">
+        <div class="form-header">
+            <h1 class="form-title">
+                <i class="fa fa-file-invoice"></i>
+                Purchase Invoice
+                <span style="font-size: 0.6em; opacity: 0.8; margin-left: 10px;">
+                    #@(string.IsNullOrEmpty(Model.TRANDNO) ? "New" : Model.TRANDNO)
+                </span>
+            </h1>
+        </div>
+
+        <div class="form-body">
+            @using (Html.BeginForm("savedata", "PurchaseInvoice", FormMethod.Post, new { id = "purchaseInvoiceForm" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.TRANMID)
+                
+                <div class="section-title">
+                    <i class="fa fa-info-circle"></i> Invoice Details
+                </div>
+
+                <!-- Row 1: No / Date / Status (Status moved here) -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">No</label>
+                            @Html.HiddenFor(m => m.TRANDNO)
+                            @Html.TextBoxFor(m => m.TRANNO, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Date</label>
+                            @Html.TextBoxFor(m => m.TRANDATE, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                         <div class="form-group">
+                            <label class="control-label">Status</label>
+                            @Html.DropDownListFor(m => m.DISPSTATUS, ViewBag.StatusList as SelectList, new { @class = "form-control", id = "statusDropdown" })
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Supplier / PO -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Supplier Name <span class="req">*</span></label>
+                            @Html.DropDownListFor(m => m.TRANREFID,
+                                ViewBag.SupplierList as SelectList,
+                                "-- Select Supplier --",
+                                new { @class = "form-control", id = "supplierDropdown" })
+                             @Html.HiddenFor(m => m.TRANREFNAME)
+                        </div>
+                        @Html.HiddenFor(m => m.TRANSTATETYPE, new { id = "stateTypeDropdown" })
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">PO Number</label>
+                            @if (ViewBag.IsEditMode == true && !string.IsNullOrEmpty(ViewBag.PoNumberForDisplay))
+                            {
+                                <input type="text" class="form-control" value="@ViewBag.PoNumberForDisplay" readonly="readonly" style="background-color: #f5f5f5;" />
+                            }
+                            else
+                            {
+                                <input type="text" class="form-control" placeholder="PO Number (from upload)" readonly="readonly" style="background-color: #f5f5f5;" />
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Section (Re-styled based on screenshot: 2 Col grid) -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                             <label class="control-label">Supplier Address</label>
+                             <div class="row mb-2">
+                                 <div class="col-md-6">
+                                     <input type="text" id="suppNameOrAddr" class="form-control" placeholder="Supplier Name" readonly="readonly" />
+                                 </div>
+                                 <div class="col-md-6">
+                                     <input type="text" id="suppAddress1" class="form-control" placeholder="Address" readonly="readonly" />
+                                 </div>
+                             </div>
+                             <div class="row mb-2">
+                                 <div class="col-md-6">
+                                     <input type="text" id="suppCity" class="form-control" placeholder="City" readonly="readonly" />
+                                 </div>
+                                 <div class="col-md-6">
+                                     <input type="text" id="suppState" class="form-control" placeholder="State" readonly="readonly" />
+                                 </div>
+                             </div>
+                             <div class="row">
+                                 <div class="col-md-6">
+                                     <input type="text" id="suppPincode" class="form-control" placeholder="Pincode" readonly="readonly" />
+                                 </div>
+                                 <div class="col-md-6">
+                                     <input type="text" id="suppCountry" class="form-control" placeholder="Country" readonly="readonly" />
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">Item Details</div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle so-detail-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">S.No</th>
+                                <th style="width: 200px;">Material</th>
+                                <th style="width: 150px;">HSN Code</th> <!-- Replaced Material Group -->
+                                <th style="width: 100px;">Batch No</th>
+                                <th style="width: 120px;">Exp Date</th>
+                                <th style="width: 120px;">Packing</th> <!-- Added Packing -->
+
+                                <th style="width: 80px;">No of Boxes</th>
+                                <th style="width: 80px;">Qty</th>
+                                <th style="width: 100px;">Price Unit</th>
+                                <th style="width: 100px;">PTR</th>
+                                <th style="width: 100px;">MRP</th>
+                                <th style="width: 120px;">Amount</th>
+                                <th style="width: 100px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoiceDetailsBody">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary & Tax Section -->
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered so-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="btnCalculateTax">
+                                        <i class="fa fa-calculator"></i> Calculate Tax
+                                    </button>
+                                </td>
+                                <td class="so-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    @Html.TextBoxFor(m => m.TRANGAMT, new { @class = "form-control text-end", id = "lblTotalGross", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">CGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANCGSTAMT, new { @class = "form-control text-end", id = "lblTotalCGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">SGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANSGSTAMT, new { @class = "form-control text-end", id = "lblTotalSGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">IGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANIGSTAMT, new { @class = "form-control text-end", id = "lblTotalIGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Net Amount</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANNAMT, new { @class = "form-control text-end", id = "lblTotalNet", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="section-title">Remarks</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        @Html.TextAreaFor(m => m.TRANRMKS, new { @class = "form-control", rows = 3 })
+                    </div>
+                </div>
+
+                <div class="form-actions mt-3">
+                    <a href="@Url.Action("Index", "PurchaseInvoice")" class="btn btn-secondary">Back</a>
+                    <input type="hidden" id="detailRowsJson" name="detailRowsJson" />
+                    <button type="button" id="btnSave" class="btn btn-primary">Save</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        var materialList = [];
+        var materialGroupList = [];
+        var packingList = @Html.Raw(ViewBag.PackingListJson ?? "[]");
+        var existingDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
+        
+        $(document).ready(function () {
+             // 1. Initial Data Loading
+             loadMaterials();
+             
+             // 2. Select2 Init
+             $('#supplierDropdown').select2({ width: '100%' });
+             $('#poDropdown').select2({ width: '100%' });
+
+             // 3. Supplier Change
+             $('#supplierDropdown').on('change', function() {
+                var id = $(this).val();
+                if(id) {
+                    $.get('@Url.Action("GetSupplierDetails", "PurchaseInvoice")', { id: id }, function(res) {
+                        if(res.success) {
+                            var d = res.data;
+                            
+                            // Map incoming address data to new layout
+                            // d.Name might be useful for 1st block if not using address
+                            $('#suppNameOrAddr').val(d.Name || d.Address1);
+                            $('#suppAddress1').val(d.Address1); 
+                            // Using Address1 and Address2 or splitting differently logic?
+                            // Assuming Address1 for block 2, or Address2. 
+                            // Let's use d.Address1 and d.Address2 logic as user requested screenshot style
+                            
+                            // Screenshot implies specific chunks: Name+Addr / Full Addr?
+                            // Let's just follow the fields:
+                            $('#suppNameOrAddr').val(d.Name); // Top Left
+                            $('#suppAddress1').val(d.Address1); // Top Right
+                            
+                            $('#suppCity').val(d.City); // Mid Left
+                            $('#suppState').val(d.State); // Mid Right
+                            
+                            $('#suppPincode').val(d.Pincode); // Bot Left
+                            $('#suppCountry').val(d.Country || 'India'); // Bot Right
+
+                            $('#stateTypeDropdown').val(d.StateType);
+                            
+                            // Recalculate Tax as State Type might have changed
+                            calculateRemoteTax();
+                        }
+                    });
+                } else {
+                     // Clear details if no supplier or 'Select Supplier' is chosen
+                     $('#suppNameOrAddr').val('');
+                     $('#suppAddress1').val('');
+                     $('#suppCity').val('');
+                     $('#suppState').val('');
+                     $('#suppPincode').val('');
+                     $('#suppCountry').val('');
+                     $('#stateTypeDropdown').val('0'); // Default to Local
+                     
+                     calculateRemoteTax();
+                }
+             });
+             
+             // Trigger change on edit
+             if ($('#supplierDropdown').val()) {
+                 $('#supplierDropdown').trigger('change');
+             }
+
+             // 4. Add Rows Logic
+             if (existingDetails.length === 0) {
+                 addRow(); 
+             } else {
+                 existingDetails.forEach(function(row) {
+                    addRow(row);
+                 });
+                 // Re-calcs happen inside addRow typically via values, but let's just trigger simple totals
+                 calculateLocalTotals();
+             }
+             
+             // 5. Save Button
+             $('#btnSave').click(function() {
+                 if(!$('#invoiceDetailsBody tr').length) {
+                    alert('Please add at least one item.');
+                    return;
+                 }
+
+                 // Validation: All entered values are required
+                 var isValid = true;
+                 $('#invoiceDetailsBody tr').each(function() {
+                     var tr = $(this);
+                     if(!tr.find('.pi-material').val()) isValid = false;
+                     if(!tr.find('.pi-batch').val()) isValid = false;
+                     if(!tr.find('.pi-exp').val()) isValid = false;
+                     if(!tr.find('.pi-boxqty').val()) isValid = false;
+                     if(!tr.find('.pi-qty').val()) isValid = false;
+                     if(!tr.find('.pi-rate').val()) isValid = false;
+                     if(!tr.find('.pi-ptr').val()) isValid = false;
+                     if(!tr.find('.pi-mrp').val()) isValid = false;
+                 });
+                 
+                 if(!isValid) {
+                     alert('All fields are required in the item details.');
+                     return;
+                 }
+                 
+                 // Collect Data
+                 var rows = collectDetailRows();
+                 if(rows.length === 0) {
+                      alert('Please complete at least one item row (Material + Qty).');
+                      return;
+                 }
+                 
+                 $('#detailRowsJson').val(JSON.stringify(rows));
+                 $('#purchaseInvoiceForm').submit();
+             });
+             
+             // 6. Calculate Tax Button
+             $('#btnCalculateTax').click(function() {
+                 calculateRemoteTax();
+             });
+        });
+
+        function loadMaterials() {
+             $.get('@Url.Action("GetPurchaseMaterials", "PurchaseInvoice")', function(res) {
+                if(res.success) {
+                    materialList = res.materials;
+                    materialGroupList = res.groups;
+                    
+                    // Populate existing dropdowns that might have been created before data loaded
+                    $('.pi-material').each(function() {
+                         var $sel = $(this);
+                         if($sel.find('option').length <= 1) { // Only default option exists
+                             var selectedId = $sel.data('selected-id');
+                             fillMaterialSelect($sel, selectedId);
+                         }
+                    });
+                }
+            });
+        }
+        
+        function fillMaterialSelect($el, selectedId) {
+             $el.empty().append('<option value="">Select Material</option>');
+             if(materialList) {
+                materialList.forEach(function(m) {
+                    // Update data attributes to include HSN
+                    var opt = $('<option>').val(m.id).text(m.name).data('rate', m.rate).data('group', m.groupId).data('hsn', m.hsnCode);
+                    if(selectedId && selectedId == m.id) opt.prop('selected', true);
+                    $el.append(opt);
+                });
+             }
+             // Trigger change to update dependent fields if a value was selected
+             if(selectedId) $el.trigger('change');
+        }
+        
+        function addRow(data) {
+            var tbody = $('#invoiceDetailsBody');
+            var idx = tbody.find('tr').length + 1;
+            
+            var tr = $('<tr>');
+            
+            // S.No
+            tr.append($('<td class="text-center row-index">').text(idx));
+
+            // Material Select
+            var matTd = $('<td>');
+            var matSelect = $('<select class="form-control form-control-sm pi-material mb-0">');
+            
+            // Store selected ID for later if data isn't ready
+            if(data && data.MaterialId) {
+                matSelect.data('selected-id', data.MaterialId);
+            }
+            
+            fillMaterialSelect(matSelect, data ? data.MaterialId : null);
+            
+            matTd.append(matSelect);
+            tr.append(matTd);
+            
+            // HSN Code Input (Replaced Group)
+            // Function to get HSN from materialID if loaded
+            var hsn = GetHSNCode(data ? data.MaterialId : null);
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm pi-hsn" readonly>').val(hsn)));
+            
+            // Batch
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm pi-batch">').val(data ? data.BatchNo : '')));
+            
+            // Exp Date
+            var expVal = '';
+            if(data && data.ExpiryDate) {
+                 var dateStr = data.ExpiryDate;
+                 // Handle ASP.NET /Date(...)/ format
+                 if (typeof dateStr === 'string' && dateStr.indexOf('/Date(') >= 0) {
+                     var dt = new Date(parseInt(dateStr.replace(/\/Date\((.*?)\)\//, '$1')));
+                     if(!isNaN(dt)) {
+                         var d = ("0" + dt.getDate()).slice(-2);
+                         var m = ("0" + (dt.getMonth() + 1)).slice(-2);
+                         var y = dt.getFullYear();
+                         expVal = y + "-" + m + "-" + d;
+                     }
+                 }
+                 // Handle ISO string or MM/yy or other
+                 else {
+                     var dt = new Date(dateStr);
+                     if(isNaN(dt.getTime()) && typeof dateStr === 'string') {
+                          // Try MM/YY or M/YY
+                          var parts = dateStr.includes('/') ? dateStr.split('/') : (dateStr.includes('-') ? dateStr.split('-') : []);
+                          if(parts.length === 2) {
+                              var m = parseInt(parts[0]);
+                              var y = parseInt(parts[1]);
+                              if(y < 100) y += 2000;
+                              dt = new Date(y, m - 1, 1);
+                          }
+                     }
+                     
+                     if(!isNaN(dt.getTime())) {
+                         var d = ("0" + dt.getDate()).slice(-2);
+                         var m = ("0" + (dt.getMonth() + 1)).slice(-2);
+                         var y = dt.getFullYear();
+                         expVal = y + "-" + m + "-" + d;
+                     }
+                 }
+            }
+            tr.append($('<td>').append($('<input type="date" class="form-control form-control-sm pi-exp">').val(expVal)));
+            
+            // Packing
+            var packTd = $('<td>');
+            var packSelect = $('<select class="form-control form-control-sm pi-packing">');
+            packSelect.append('<option value="">Select</option>');
+            if(packingList && packingList.length) {
+                packingList.forEach(function(p) {
+                    var opt = $('<option>').val(p.PACKMID).text(p.PACKMDESC);
+                     if(data && data.PackingId && data.PackingId == p.PACKMID) {
+                         opt.prop('selected', true);
+                     }
+                    packSelect.append(opt);
+                });
+            }
+            packTd.append(packSelect);
+            tr.append(packTd);
+            
+
+
+            // No of Boxes
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pi-boxqty text-end">').val(data ? data.BoxQty : '')));
+
+            // Qty
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pi-qty text-end">').val(data ? data.Qty : '')));
+
+            // Price (Rate)
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pi-rate text-end">').val(data ? data.Rate : '')));
+            
+            // PTR
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pi-ptr text-end">').val(data ? data.Ptr : '')));
+            
+            // MRP
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pi-mrp text-end">').val(data ? data.Mrp : '')));
+            
+            // Amount
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pi-amount text-end" readonly>').val(data ? data.Amount : '')));
+            
+            // Actions
+            var actionTd = $('<td>');
+            var btnAdd = $('<button type="button" class="btn btn-success btn-sm me-1"><i class="fa fa-plus"></i></button>').click(function() { addRow(); });
+            var btnDel = $('<button type="button" class="btn btn-danger btn-sm"><i class="fa fa-minus"></i></button>').click(function() { 
+                if($('#invoiceDetailsBody tr').length > 1) {
+                    $(this).closest('tr').remove();
+                    updateIndices();
+                    calculateLocalTotals(); // Helper 
+                }
+            });
+            actionTd.append(btnAdd).append(btnDel);
+            tr.append(actionTd);
+            
+            tbody.append(tr);
+            
+            // Init Select2 for this row
+            matSelect.select2({ width: '100%' }); 
+            
+            // Event Handlers
+            matSelect.on('change', function() {
+                var sel = $(this).find('option:selected');
+                var hsnCode = sel.data('hsn'); // Get HSN from data
+                var defRate = sel.data('rate');
+                
+                tr.find('.pi-hsn').val(hsnCode || "");
+                
+                if(!tr.find('.pi-rate').val() && defRate) {
+                     tr.find('.pi-rate').val(defRate);
+                }
+                calcRow(tr);
+            });
+            
+            tr.find('input').on('change input', function() {
+                calcRow(tr);
+            });
+        }
+        
+        // Debounce timer
+        var taxCalcTimeout;
+
+        function calcRow(tr) {
+            var q = parseFloat(tr.find('.pi-qty').val()) || 0;
+            var r = parseFloat(tr.find('.pi-rate').val()) || 0;
+            var amt = q * r;
+            tr.find('.pi-amount').val(amt.toFixed(2));
+            calculateLocalTotals();
+            
+            // Debounce Tax Calculation
+            clearTimeout(taxCalcTimeout);
+            taxCalcTimeout = setTimeout(function() {
+                calculateRemoteTax();
+            }, 800); // 800ms delay
+        }
+        
+        function calculateLocalTotals() {
+            var tot = 0;
+            $('.pi-amount').each(function() {
+                tot += parseFloat($(this).val()) || 0;
+            });
+            $('#lblTotalGross').val(tot.toFixed(2));
+        }
+
+        function updateIndices() {
+            $('#invoiceDetailsBody tr').each(function(i) {
+                $(this).find('.row-index').text(i + 1);
+            });
+        }
+        
+        // Helper to get HSN synchronously if list loaded
+        function GetHSNCode(matId) {
+             if(!matId || !materialList) return "";
+             var m = materialList.find(x => x.id == matId);
+             if(!m) return "";
+             return m.hsnCode || "";
+        }
+
+        function collectDetailRows() {
+            var rows = [];
+            $('#invoiceDetailsBody tr').each(function() {
+                var tr = $(this);
+                var matId = tr.find('.pi-material').val();
+                var qty = tr.find('.pi-qty').val();
+                
+                if(matId && qty) {
+                    var q = parseFloat(qty) || 0;
+                    var bq = parseFloat(tr.find('.pi-boxqty').val()) || 0;
+                    var calcPack = (bq > 0) ? (q / bq) : 0;
+
+                    rows.push({
+                         MaterialId: parseInt(matId),
+                         Qty: q,
+                         Rate: parseFloat(tr.find('.pi-rate').val()) || 0,
+                         Amount: parseFloat(tr.find('.pi-amount').val()) || 0,
+                         ActualRate: 0, 
+                         BatchNo: tr.find('.pi-batch').val(),
+                         ExpiryDate: tr.find('.pi-exp').val(),
+                         PackingId: parseInt(tr.find('.pi-packing').val()) || 0,
+                         BoxQty: bq,
+                         Ptr: parseFloat(tr.find('.pi-ptr').val()) || 0,
+                         Mrp: parseFloat(tr.find('.pi-mrp').val()) || 0
+                    });
+                }
+            });
+            return rows;
+        }
+
+        function calculateRemoteTax() {
+             var rows = collectDetailRows();
+             var stType = $('#stateTypeDropdown').val() || 0;
+             
+             $.ajax({
+                 url: '@Url.Action("CalculatePurchaseInvoiceTax", "PurchaseInvoice")',
+                 type: 'POST',
+                 data: { stateType: stType, detailRowsJson: JSON.stringify(rows) },
+                 success: function(res) {
+                      if(res.success) {
+                         $('#lblTotalGross').val(res.gross.toFixed(2));
+                         $('#lblTotalCGST').val(res.cgst.toFixed(2));
+                         $('#lblTotalSGST').val(res.sgst.toFixed(2));
+                         $('#lblTotalIGST').val(res.igst.toFixed(2));
+                         $('#lblTotalNet').val(res.net.toFixed(2));
+                      }
+                 }
+             });
+        }
+    </script>
+}

@@ -1,0 +1,1575 @@
+@model SSK_ERP.Models.TransactionMaster
+
+@{
+    ViewBag.Title = "Sales Order";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    bool isPoFromSalesOrder = ViewBag.IsPoFromSalesOrder != null && (bool)ViewBag.IsPoFromSalesOrder;
+    string formControllerValue = ViewBag.FormController as string;
+    bool isPurchaseOrderForm = (formControllerValue ?? "SalesOrder") == "PurchaseOrder";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    .main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .req {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 12px 15px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .msg {
+        background: linear-gradient(135deg, #00b894, #00cec9);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+
+    .so-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+    }
+
+    .so-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+    }
+
+    /* Keep Material select2 dropdowns with a fixed one-line height so each row stays even */
+    .so-detail-table .select2-container {
+        width: 100% !important;
+    }
+
+    .so-detail-table .select2-container .select2-selection--single {
+        height: 30px;
+    }
+
+    .so-detail-table .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 30px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .so-detail-table .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 30px;
+    }
+
+    .so-totals-table th {
+        text-align: right;
+        width: 40%;
+        font-weight: 600;
+    }
+
+    .so-totals-table td {
+        width: 60%;
+    }
+
+    .so-tax-table {
+        margin-bottom: 0;
+    }
+
+    .so-tax-table th,
+    .so-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 140px;
+        white-space: nowrap;
+    }
+
+    .so-tax-costfactor {
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        padding: 10px 12px 12px 12px;
+        background-color: #f8fafc;
+    }
+
+    .so-tax-cf-table thead th {
+        background-color: #f1f3f5;
+        font-size: 12px;
+    }
+
+    .so-tax-cf-table tbody td {
+        vertical-align: middle;
+    }
+
+    .so-address-row {
+        margin-bottom: 8px;
+    }
+
+    .so-address-row > [class*="col-"]:first-child {
+        padding-right: 20px;
+    }
+
+    .so-address-row > [class*="col-"]:last-child {
+        padding-left: 20px;
+    }
+
+    /* TAX modal styling - aligned with Raw Material Invoice design */
+    .modal-dialog.modal-xl {
+        width: 90%;
+        max-width: 1100px;
+        margin: 30px auto;
+    }
+
+    .so-tax-modal .modal-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #fff;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .so-tax-modal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .so-tax-modal .modal-header .close {
+        padding: 0.4rem 0.7rem;
+        margin: 0;
+        opacity: 1;
+        font-size: 1.4rem;
+        font-weight: 300;
+        line-height: 1;
+        color: #fff;
+        text-shadow: none;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .so-tax-modal .modal-header .close:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(90deg);
+    }
+
+    .so-tax-modal .modal-body {
+        background: #f9fafb;
+        padding: 20px 24px;
+    }
+
+    .so-tax-modal .modal-footer {
+        border-top: 1px solid #e5e7eb;
+        padding: 12px 24px 18px 24px;
+    }
+
+    .so-tax-modal .modal-footer .btn {
+        border-radius: 24px;
+        padding: 8px 22px;
+        font-weight: 600;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.25s ease;
+    }
+
+    .so-tax-modal .modal-footer .btn-success {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        border: none;
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(34, 197, 94, 0.4);
+    }
+
+    .so-tax-modal .modal-footer .btn-success:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 12px rgba(34, 197, 94, 0.5);
+    }
+
+    .so-tax-modal .modal-footer .btn-secondary {
+        background: #ffffff;
+        border: 2px solid #d1d5db;
+        color: #4b5563;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+    }
+
+    .so-tax-modal .modal-footer .btn-secondary:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+        transform: translateY(-1px);
+    }
+
+    .so-tax-modal .modal-footer .btn-primary {
+        background: linear-gradient(135deg, #00bcd4, #00acc1);
+        border: none;
+        color: #fff;
+        box-shadow: 0 3px 10px rgba(0, 188, 212, 0.45);
+    }
+
+    .so-tax-modal .modal-footer .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(0, 188, 212, 0.55);
+    }
+
+    .so-tax-modal .modal-footer .btn i {
+        font-size: 13px;
+    }
+
+    .so-tax-cf-table thead th {
+        background-color: #e5e7eb;
+        font-size: 12px;
+        text-align: center;
+        border-bottom: 2px solid #d1d5db;
+    }
+
+    .so-tax-cf-table tbody td {
+        background-color: #f9fafb;
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-row-delete {
+        background-color: #ef4444;
+        border-color: #ef4444;
+        padding: 0;
+        border-radius: 4px;
+        width: 6px;
+        height: 28px;
+        display: inline-block;
+    }
+
+    .so-tax-row-delete i {
+        display: none;
+    }
+
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220,53,69,0.15);
+    }
+    
+    /* Fix for SweetAlert2 icon being cut off */
+    .swal2-icon {
+        width: 5em !important;
+        height: 5em !important;
+        border-width: 0.25em !important;
+        box-sizing: content-box !important; /* Keep box-sizing fix */
+        font-size: 16px !important; /* Reset base font size to prevent scaling issues */
+    }
+    .swal2-popup {
+        overflow: visible !important;
+    }
+</style>
+
+<div class="main-container">
+    <div class="form-container">
+        <div class="form-header">
+            <h1 class="form-title">
+                <i class="bi bi-receipt-cutoff"></i>
+                @(isPoFromSalesOrder ? "Purchase Order (From Sales Order)" : "Sales Order")
+            </h1>
+        </div>
+
+        <div class="form-body">
+            @{
+                var formAction = ViewBag.FormAction as string ?? "savedata";
+                var formController = ViewBag.FormController as string ?? "SalesOrder";
+            }
+            @using (Html.BeginForm(formAction, formController, FormMethod.Post, new { id = "salesOrderForm" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.TRANMID)
+                @Html.HiddenFor(m => m.TRANLMID)
+
+                <div class="section-title">
+                    <i class="fa fa-info-circle"></i> @(isPoFromSalesOrder ? "Purchase Order" : "Sales Order")
+                </div>
+
+                <!-- Row 1: No / Date / Bill No (3-column layout) -->
+                <div class="row">
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>No</label>
+                            @Html.HiddenFor(m => m.TRANDNO)
+                            @Html.TextBoxFor(m => m.TRANNO, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label>Date</label>
+                            @Html.TextBoxFor(m => m.TRANDATE, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label>Bill No <span class="req">*</span></label>
+                            @if (Model != null && Model.TRANMID > 0)
+                            {
+                                @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control", @readonly = "readonly" })
+                            }
+                            else
+                            {
+                                @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control" })
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Customer/Supplier / Status (2-column layout) -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>@(isPoFromSalesOrder ? "Supplier Name" : "Customer Name")</label>
+                            @if (isPoFromSalesOrder)
+                            {
+                                @Html.DropDownListFor(m => m.TRANREFID,
+                                    ViewBag.CustomerList as SelectList,
+                                    "-- Select Supplier --",
+                                    new { @class = "form-control", id = "customerDropdown" })
+                            }
+                            else
+                            {
+                                @Html.DropDownListFor(m => m.TRANREFID,
+                                    ViewBag.CustomerList as SelectList,
+                                    "-- Select Customer --",
+                                    new { @class = "form-control", id = "customerDropdown" })
+                            }
+                        </div>
+                        @Html.HiddenFor(m => m.TRANSTATETYPE, new { id = "stateTypeDropdown" })
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Status</label>
+                            @Html.DropDownListFor(m => m.DISPSTATUS, ViewBag.StatusList as SelectList, new { @class = "form-control", id = "statusDropdown" })
+                        </div>
+                    </div>
+                </div>
+
+                <!-- From Row 3: Location blocks -->
+                <div class="row">
+                    @if (isPoFromSalesOrder)
+                    {
+                        <!-- Purchase Order: Billing only, full width -->
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Billing Location</label>
+                                <input type="text" id="billingLocation" class="form-control" placeholder="Billing Location" readonly="readonly" />
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingAddr1" class="form-control" placeholder="Address Line 1" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingAddr2" class="form-control" placeholder="Address Line 2" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingCity" class="form-control" placeholder="City" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingState" class="form-control" placeholder="State" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingPincode" class="form-control" placeholder="Post code" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingCountry" class="form-control" placeholder="Country" readonly="readonly" />
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Sales Order: Billing and Despatch, 2-column layout -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Billing Location</label>
+                                <input type="text" id="billingLocation" class="form-control" placeholder="Billing Location" readonly="readonly" />
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingAddr1" class="form-control" placeholder="Address Line 1" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingAddr2" class="form-control" placeholder="Address Line 2" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingCity" class="form-control" placeholder="City" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingState" class="form-control" placeholder="State" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingPincode" class="form-control" placeholder="Post code" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="billingCountry" class="form-control" placeholder="Country" readonly="readonly" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Despatch Location</label>
+                                <input type="text" id="dispatchLocation" class="form-control" placeholder="Despatch Location" readonly="readonly" />
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="dispatchAddr1" class="form-control" placeholder="Address Line 1" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="dispatchAddr2" class="form-control" placeholder="Address Line 2" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="dispatchCity" class="form-control" placeholder="City" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="dispatchState" class="form-control" placeholder="State" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row so-address-row">
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="dispatchPincode" class="form-control" placeholder="Post code" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6 col-sm-6 col-6">
+                                    <input type="text" id="dispatchCountry" class="form-control" placeholder="Country" readonly="readonly" />
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="section-title">@(isPoFromSalesOrder ? "Purchase Order Details" : "Customer Order Details")</div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle so-detail-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">S.No</th>
+                                <th style="width: 220px;">Material</th>
+                                <th style="width: 200px;">Material Group</th>
+                                <th style="width: 100px;">Profit %</th>
+                                <th style="width: 100px;">Qty</th>
+                                <th style="width: 120px;">Rate</th>
+                                <th style="width: 120px;">Actual Rate</th>
+                                <th style="width: 180px;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="soDetailsBody">
+                            <tr>
+                                <td class="text-center so-row-index">1</td>
+                                <td>
+                                    <select class="form-control form-control-sm so-material select2" @(isPoFromSalesOrder ? "disabled=\"disabled\"" : "")>
+                                        <option value="">Select Material</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-control form-control-sm so-material-group" disabled="disabled">
+                                        <option value="">Select Material Group</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm so-profit text-end" readonly="readonly" />
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm so-qty text-end" />
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm so-rate text-end" readonly="readonly" />
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm so-actual-rate text-end" />
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input type="text" class="form-control form-control-sm so-amount text-end" readonly="readonly" />
+                                        @if (!isPurchaseOrderForm)
+                                        {
+                                            <button type="button" class="btn btn-success btn-sm btn-add-row"><i class="fa fa-plus"></i></button>
+                                            <button type="button" class="btn btn-danger btn-sm btn-remove-row"><i class="fa fa-minus"></i></button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered so-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="soTaxToggle">
+                                        <i class="fa fa-plus-square"></i> TAX
+                                    </button>
+                                </td>
+                                <td class="so-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    @Html.TextBoxFor(m => m.TRANGAMT, new { @class = "form-control text-end", id = "soGrossAmount", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">CGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANCGSTAMT, new { @class = "form-control text-end", id = "soCgstAmount", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">SGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANSGSTAMT, new { @class = "form-control text-end", id = "soSgstAmount", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">IGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANIGSTAMT, new { @class = "form-control text-end", id = "soIgstAmount", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Net Amount</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANNAMT, new { @class = "form-control text-end", id = "soNetAmount", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                        </table>
+
+                        <div class="modal fade" id="soTaxModal" tabindex="-1" role="dialog" aria-labelledby="soTaxModalLabel">
+                            <div class="modal-dialog modal-xl" role="document">
+                                <div class="modal-content so-tax-modal">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                        <h4 class="modal-title" id="soTaxModalLabel">
+                                            <i class="fa fa-calculator"></i> Tax / Cost Factor
+                                        </h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="so-tax-costfactor">
+                                            <table class="table table-bordered so-tax-cf-table" id="soTaxFactorTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 40px;"></th>
+                                                        <th>Cost Factor</th>
+                                                        <th style="width: 260px;">Expression</th>
+                                                        <th style="width: 100px;">Mode</th>
+                                                        <th style="width: 140px;">Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="text-center">
+                                                            <button type="button" class="btn btn-danger btn-sm so-tax-row-delete" title="Remove row">
+                                                                <i class="fa fa-trash-o"></i>
+                                                            </button>
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-control so-cost-factor">
+                                                                <option value="">Select Cost Factor</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <div class="input-group input-group-sm">
+                                                                <select class="form-control so-tax-type">
+                                                                    <option value="%">%</option>
+                                                                    <option value="Value">Value</option>
+                                                                </select>
+                                                                <input type="text" class="form-control text-end so-tax-value" value="0.000" />
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-control so-tax-mode">
+                                                                <option value="+">+</option>
+                                                                <option value="-">-</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" class="form-control text-end so-tax-amount" value="0.00" />
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="bg-light">
+                                                        <td colspan="4" class="text-end"><strong>Total Tax Amount:</strong></td>
+                                                        <td><strong id="soTotalTaxAmount">0.00</strong></td>
+                                                    </tr>
+                                                    <tr class="bg-success text-white">
+                                                        <td colspan="4" class="text-end"><strong>Gross + Tax:</strong></td>
+                                                        <td><strong id="soGrossWithTax">0.00</strong></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-success btn-sm" id="soAddCostFactorRow">
+                                            <i class="fa fa-plus"></i> Add Row
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-primary btn-sm" id="soApplyTax">
+                                            <i class="fa fa-check"></i> Apply
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">Remarks</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        @Html.TextAreaFor(m => m.TRANRMKS, new { @class = "form-control", rows = 3 })
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="@Url.Action("Index", "SalesOrder")" class="btn btn-secondary">Back</a>
+                    <input type="hidden" id="detailRowsJson" name="detailRowsJson" />
+                    <button type="button" id="btnSoSave" class="btn btn-primary">Save</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script type="text/javascript">
+        (function ($) {
+            var soMaterialGroupMap = {};
+            var soMaterialRateMap = {};
+            var soMaterialProfitMap = {};
+            var soMaterialOptionsHtml = '<option value="">Select Material</option>';
+            var soGroupOptionsHtml = '<option value="">Select Material Group</option>';
+            var soCostFactorOptionsHtml = '<option value="">Select Cost Factor</option>';
+            var soMaterialList = [];
+            var initialSoDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
+            var soDetailsInitialized = false;
+            var soDetailRowTemplate = null;
+            var soTaxRefreshInProgress = false;
+            var isPoFromSalesOrder = @(isPoFromSalesOrder.ToString().ToLower());
+            var isPurchaseOrderForm = @(isPurchaseOrderForm.ToString().ToLower());
+
+            function initCustomerSelect() {
+                if (!$.fn.select2) {
+                    return;
+                }
+
+                var $ddl = $('#customerDropdown');
+                if ($ddl.length) {
+                    $ddl.select2({ width: '100%' });
+
+                    var currentId = $ddl.val();
+                    if (currentId && parseInt(currentId, 10) > 0) {
+                        if (isPoFromSalesOrder) {
+                            // PO from Sales Order: treat dropdown as Supplier and load supplier address details
+                            fetchSupplierDetails(currentId);
+                        } else {
+                            // Normal Sales Order: load customer address details
+                            fetchCustomerDetails(currentId);
+                        }
+                    }
+                }
+            }
+
+            function initMaterialSelect2($context) {
+                if (!$.fn.select2) {
+                    return;
+                }
+
+                var $scope = $context && $context.length ? $context : $('#soDetailsBody');
+                $scope.find('.so-material').each(function () {
+                    var $el = $(this);
+                    if ($el.hasClass('select2-hidden-accessible')) {
+                        $el.select2('destroy');
+                    }
+                    $el.select2({ width: 'resolve' });
+                });
+            }
+
+            function clearCustomerDetails() {
+                // Billing block
+                $('#billingLocation, #billingAddr1, #billingAddr2, #billingCity, #billingState, #billingPincode, #billingCountry').val('');
+
+                // Despatch block (Sales Order only)
+                $('#dispatchLocation, #dispatchAddr1, #dispatchAddr2, #dispatchCity, #dispatchState, #dispatchPincode, #dispatchCountry').val('');
+
+                $('#stateTypeDropdown').val('0');
+            }
+
+            function applyCustomerDetails(data) {
+                if (!data) return;
+
+                // Billing block (used in both Sales Order and Purchase Order forms)
+                $('#billingLocation').val(data.City || '');
+                $('#billingAddr1').val(data.Address1 || '');
+                $('#billingAddr2').val(data.Address2 || '');
+                $('#billingCity').val(data.City || '');
+                $('#billingState').val(data.State || '');
+                $('#billingPincode').val(data.Pincode || '');
+                $('#billingCountry').val(data.Country || '');
+
+                // Despatch block (Sales Order only)
+                $('#dispatchLocation').val(data.City || '');
+                $('#dispatchAddr1').val(data.Address1 || '');
+                $('#dispatchAddr2').val(data.Address2 || '');
+                $('#dispatchCity').val(data.City || '');
+                $('#dispatchState').val(data.State || '');
+                $('#dispatchPincode').val(data.Pincode || '');
+                $('#dispatchCountry').val(data.Country || '');
+
+                if (typeof data.StateType !== 'undefined') {
+                    $('#stateTypeDropdown').val(String(data.StateType));
+                }
+            }
+
+            function fetchCustomerDetails(customerId) {
+                if (!customerId) {
+                    clearCustomerDetails();
+                    return;
+                }
+
+                $.getJSON('@Url.Action("GetCustomerDetails", "SalesOrder")', { id: customerId })
+                    .done(function (resp) {
+                        if (!resp || resp.success === false) {
+                            clearCustomerDetails();
+                            return;
+                        }
+
+                        applyCustomerDetails(resp.data);
+                    })
+                    .fail(function () {
+                        clearCustomerDetails();
+                    });
+            }
+
+            function fetchSupplierDetails(supplierId) {
+                if (!supplierId) {
+                    clearCustomerDetails();
+                    return;
+                }
+
+                $.getJSON('@Url.Action("GetSupplierDetailsForPo", "PurchaseOrder")', { id: supplierId })
+                    .done(function (resp) {
+                        if (!resp || resp.success === false) {
+                            clearCustomerDetails();
+                            return;
+                        }
+
+                        applyCustomerDetails(resp.data);
+                    })
+                    .fail(function () {
+                        clearCustomerDetails();
+                    });
+            }
+
+            function updateSoRowNumbers() {
+                $('#soDetailsBody tr').each(function (index) {
+                    $(this).find('.so-row-index').text(index + 1);
+                });
+            }
+
+            function loadMaterialAndGroupData() {
+                $.getJSON('@Url.Action("GetMaterialAndGroups", "SalesOrder")')
+                    .done(function (resp) {
+                        if (!resp || resp.success === false) {
+                            console.error('Failed to load material/group data for Sales Order.', resp && resp.error);
+                            return;
+                        }
+
+                        soMaterialGroupMap = {};
+                        soMaterialRateMap = {};
+                        soMaterialProfitMap = {};
+                        soMaterialOptionsHtml = '<option value="">Select Material</option>';
+                        soMaterialList = resp.materials || [];
+
+                        $.each(soMaterialList, function (idx, item) {
+                            if (!item) return;
+                            soMaterialGroupMap[item.id] = item.groupId;
+                            soMaterialRateMap[item.id] = item.rate || 0;
+                            soMaterialProfitMap[item.id] = item.profitPercent || 0;
+                            var name = item.name || '';
+                            soMaterialOptionsHtml += '<option value="' + item.id + '">' + name + '</option>';
+                        });
+
+                        soGroupOptionsHtml = '<option value="">Select Material Group</option>';
+                        $.each(resp.groups || [], function (idx, g) {
+                            if (!g) return;
+                            var gName = g.name || '';
+                            soGroupOptionsHtml += '<option value="' + g.id + '">' + gName + '</option>';
+                        });
+
+                        $('#soDetailsBody .so-material').each(function () {
+                            $(this).html(soMaterialOptionsHtml);
+                        });
+
+                        $('#soDetailsBody .so-material-group').each(function () {
+                            $(this).html(soGroupOptionsHtml);
+                        });
+
+                        if (!soDetailsInitialized && initialSoDetails && initialSoDetails.length) {
+                            initSoDetailRows();
+                        } else {
+                            updateSoRowNumbers();
+                        }
+
+                        initMaterialSelect2();
+                        refreshMaterialDropdowns();
+                    })
+                    .fail(function (xhr, status, error) {
+                        console.error('Error loading material/group data:', status, error, xhr && xhr.responseText);
+                    });
+            }
+
+            // Ensure each material can only be selected in one row at a time (for normal Sales Orders).
+            function refreshMaterialDropdowns() {
+                if (isPoFromSalesOrder) {
+                    // For PO from Sales Order the materials are fixed and disabled; do not alter behaviour.
+                    return;
+                }
+
+                if (!soMaterialList || !soMaterialList.length) {
+                    return;
+                }
+
+                // Build a map of how many times each material id is currently selected.
+                var usedMap = {};
+                $('#soDetailsBody .so-material').each(function () {
+                    var v = parseInt($(this).val() || '0', 10);
+                    if (v > 0) {
+                        usedMap[v] = (usedMap[v] || 0) + 1;
+                    }
+                });
+
+                $('#soDetailsBody .so-material').each(function () {
+                    var $sel = $(this);
+                    var currentVal = parseInt($sel.val() || '0', 10);
+
+                    var wasSelect2 = $sel.hasClass('select2-hidden-accessible');
+                    if (wasSelect2) {
+                        $sel.select2('destroy');
+                    }
+
+                    var optionsHtml = '<option value="">Select Material</option>';
+                    $.each(soMaterialList, function (idx, item) {
+                        if (!item) return;
+                        var id = item.id;
+                        if (!id) return;
+
+                        // Always allow the material already chosen in this row.
+                        // For other rows, hide materials that are already selected somewhere.
+                        if (id === currentVal || !usedMap[id]) {
+                            var name = item.name || '';
+                            optionsHtml += '<option value="' + id + '">' + name + '</option>';
+                        }
+                    });
+
+                    $sel.html(optionsHtml);
+
+                    if (currentVal > 0) {
+                        $sel.val(String(currentVal));
+                    } else {
+                        $sel.val('');
+                    }
+
+                    if (wasSelect2) {
+                        $sel.select2({ width: 'resolve' });
+                    }
+                });
+            }
+
+            function initSoDetailRows() {
+                if (soDetailsInitialized) {
+                    return;
+                }
+
+                if (!initialSoDetails || !initialSoDetails.length) {
+                    updateSoRowNumbers();
+                    soDetailsInitialized = true;
+                    return;
+                }
+
+                var $tbody = $('#soDetailsBody');
+                var $template = $tbody.find('tr:first').clone();
+                $tbody.empty();
+
+                $.each(initialSoDetails, function (index, item) {
+                    if (!item) return;
+                    var $row = $template.clone();
+                    $row.find('.so-material').val(String(item.MaterialId || ''));
+
+                    var groupId = soMaterialGroupMap[item.MaterialId];
+                    if (groupId) {
+                        $row.find('.so-material-group').val(String(groupId));
+                    } else {
+                        $row.find('.so-material-group').val('');
+                    }
+
+                    if (typeof item.Qty !== 'undefined') {
+                        $row.find('.so-qty').val(item.Qty);
+                    }
+                    if (typeof item.Rate !== 'undefined') {
+                        $row.find('.so-rate').val(item.Rate);
+                    }
+                    if (typeof item.ProfitPercent !== 'undefined') {
+                        $row.find('.so-profit').val(item.ProfitPercent);
+                    } else {
+                        var prof = soMaterialProfitMap[item.MaterialId] || 0;
+                        if (prof) {
+                            $row.find('.so-profit').val(prof);
+                        }
+                    }
+                    if (typeof item.ActualRate !== 'undefined') {
+                        $row.find('.so-actual-rate').val(item.ActualRate);
+                    }
+                    if (typeof item.Amount !== 'undefined') {
+                        $row.find('.so-amount').val(item.Amount);
+                    }
+
+                    $tbody.append($row);
+                });
+
+                updateSoRowNumbers();
+                recalcSoGross();
+                soDetailsInitialized = true;
+            }
+
+            function loadCostFactors() {
+                $.getJSON('@Url.Action("GetCostFactorsForSales", "SalesOrder")')
+                    .done(function (resp) {
+                        if (!resp || resp.success === false) {
+                            console.error('Failed to load cost factors for Sales Order.', resp && resp.error);
+                            return;
+                        }
+
+                        soCostFactorOptionsHtml = '<option value="">Select Cost Factor</option>';
+                        $.each(resp.items || [], function (idx, item) {
+                            if (!item) return;
+                            var name = item.name || '';
+                            soCostFactorOptionsHtml += '<option value="' + item.id + '">' + name + '</option>';
+                        });
+
+                        $('#soTaxFactorTable .so-cost-factor').each(function () {
+                            $(this).html(soCostFactorOptionsHtml);
+                        });
+                    })
+                    .fail(function (xhr, status, error) {
+                        console.error('Error loading cost factors:', status, error, xhr && xhr.responseText);
+                    });
+            }
+
+            $(document).on('click', '.btn-add-row', function () {
+                if (isPurchaseOrderForm) {
+                    // Do not allow adding new material rows on any Purchase Order form
+                    return;
+                }
+                var $newRow;
+                if (soDetailRowTemplate) {
+                    $newRow = soDetailRowTemplate.clone();
+                } else {
+                    $newRow = $('#soDetailsBody tr:first').clone();
+                }
+
+                $newRow.find('input').val('');
+                $newRow.find('select').prop('selectedIndex', 0);
+
+                // ensure material and group dropdowns have options
+                $newRow.find('.so-material').each(function () {
+                    $(this).html(soMaterialOptionsHtml);
+                });
+                $newRow.find('.so-material-group').each(function () {
+                    $(this).html(soGroupOptionsHtml);
+                });
+
+                $('#soDetailsBody').append($newRow);
+                initMaterialSelect2($newRow);
+                updateSoRowNumbers();
+                recalcSoGross();
+                refreshMaterialDropdowns();
+            });
+
+            $(document).on('click', '.btn-remove-row', function () {
+                if (isPurchaseOrderForm) {
+                    // Do not allow removing material rows on any Purchase Order form
+                    return;
+                }
+                var $rows = $('#soDetailsBody tr');
+                if ($rows.length > 1) {
+                    $(this).closest('tr').remove();
+                    updateSoRowNumbers();
+                } else {
+                    $(this).closest('tr').find('input').val('');
+                    $(this).closest('tr').find('select').prop('selectedIndex', 0);
+                }
+                recalcSoGross();
+                refreshMaterialDropdowns();
+            });
+
+            // Auto-fill material group, profit %, rate and actual rate when material changes
+            $(document).on('change', '.so-material', function () {
+                if (isPoFromSalesOrder) {
+                    // For PO from Sales Order, material is locked; ignore change
+                    return;
+                }
+                var $row = $(this).closest('tr');
+                var matId = parseInt($(this).val() || '0', 10);
+                var groupId = soMaterialGroupMap[matId];
+
+                if (groupId) {
+                    $row.find('.so-material-group').val(String(groupId));
+                } else {
+                    $row.find('.so-material-group').val('');
+                }
+
+                var rate = soMaterialRateMap[matId] || 0;
+                var profit = soMaterialProfitMap[matId] || 0;
+
+                var rateNum = parseFloat(rate);
+                var profitNum = parseFloat(profit);
+
+                if (!isNaN(rateNum)) {
+                    $row.find('.so-rate').val(rateNum.toFixed(2));
+                } else {
+                    $row.find('.so-rate').val('');
+                }
+
+                if (!isNaN(profitNum)) {
+                    $row.find('.so-profit').val(profitNum.toFixed(2));
+                } else {
+                    $row.find('.so-profit').val('');
+                }
+
+                var actualRate = rateNum;
+                if (!isNaN(rateNum) && !isNaN(profitNum) && rateNum > 0 && profitNum !== 0) {
+                    actualRate = rateNum + ((rateNum * profitNum) / 100.0);
+                }
+
+                if (!isNaN(actualRate)) {
+                    $row.find('.so-actual-rate').val(actualRate.toFixed(2));
+                } else {
+                    $row.find('.so-actual-rate').val('');
+                }
+
+                // Recalculate amount using the (base) rate without changing any other logic
+                $row.find('.so-rate').trigger('change');
+
+                // After a material is chosen/changed, refresh dropdowns so the same material
+                // is not offered again in other rows.
+                refreshMaterialDropdowns();
+            });
+
+            // ---------- TAX / Cost Factor modal behaviour (UI-only) ----------
+
+            function getSoGrossAmount() {
+                var val = $.trim($('#soGrossAmount').val());
+                var num = parseFloat(val);
+                return isNaN(num) ? 0 : num;
+            }
+
+            function recalcSoTaxTotals() {
+                var gross = getSoGrossAmount();
+                var totalTax = 0;
+
+                $('#soTaxFactorTable tbody tr').each(function () {
+                    var $row = $(this);
+                    var type = $row.find('.so-tax-type').val(); // % or Value
+                    var mode = $row.find('.so-tax-mode').val(); // + or -
+                    var rawVal = $.trim($row.find('.so-tax-value').val());
+                    var expr = parseFloat(rawVal);
+                    if (isNaN(expr)) expr = 0;
+
+                    var amount = 0;
+                    if (type === 'Value') {
+                        amount = expr;
+                    } else {
+                        amount = (gross * expr) / 100.0;
+                    }
+
+                    if (mode === '-') {
+                        amount = -amount;
+                    }
+
+                    $row.find('.so-tax-amount').val(amount.toFixed(2));
+                    totalTax += amount;
+                });
+
+                $('#soTotalTaxAmount').text(totalTax.toFixed(2));
+                $('#soGrossWithTax').text((gross + totalTax).toFixed(2));
+            }
+
+            function recalcSoGross() {
+                var gross = 0;
+                $('#soDetailsBody .so-amount').each(function () {
+                    var v = parseFloat($(this).val());
+                    if (!isNaN(v)) gross += v;
+                });
+
+                $('#soGrossAmount').val(gross.toFixed(2));
+
+                var cgst = parseFloat($('#soCgstAmount').val()) || 0;
+                var sgst = parseFloat($('#soSgstAmount').val()) || 0;
+                var igst = parseFloat($('#soIgstAmount').val()) || 0;
+
+                $('#soNetAmount').val((gross + cgst + sgst + igst).toFixed(2));
+
+                refreshServerTaxTotals();
+            }
+
+            function refreshServerTaxTotals() {
+                if (soTaxRefreshInProgress) {
+                    return;
+                }
+
+                var rows = collectSoDetailRows();
+                if (!rows.length) {
+                    $('#soCgstAmount').val('0.00');
+                    $('#soSgstAmount').val('0.00');
+                    $('#soIgstAmount').val('0.00');
+                    $('#soNetAmount').val($('#soGrossAmount').val() || '0.00');
+                    return;
+                }
+
+                var stateType = parseInt($('#stateTypeDropdown').val() || '0', 10);
+
+                soTaxRefreshInProgress = true;
+                $.ajax({
+                    url: '@Url.Action("CalculateSalesOrderTax", "SalesOrder")',
+                    type: 'POST',
+                    data: {
+                        stateType: stateType,
+                        detailRowsJson: JSON.stringify(rows)
+                    }
+                }).done(function (resp) {
+                    if (!resp || resp.success === false) {
+                        return;
+                    }
+
+                    var gross = parseFloat(resp.gross || 0);
+                    var cgst = parseFloat(resp.cgst || 0);
+                    var sgst = parseFloat(resp.sgst || 0);
+                    var igst = parseFloat(resp.igst || 0);
+                    var net = parseFloat(resp.net || 0);
+
+                    $('#soGrossAmount').val(gross.toFixed(2));
+                    $('#soCgstAmount').val(cgst.toFixed(2));
+                    $('#soSgstAmount').val(sgst.toFixed(2));
+                    $('#soIgstAmount').val(igst.toFixed(2));
+                    $('#soNetAmount').val(net.toFixed(2));
+                }).always(function () {
+                    soTaxRefreshInProgress = false;
+                });
+            }
+
+            // Open TAX / Cost Factor modal
+            $('#soTaxToggle').on('click', function () {
+                $('#soTaxModal').modal('show');
+                // Default gross from details, if empty, try to sum Amount column once
+                if (!$('#soGrossAmount').val()) {
+                    var sum = 0;
+                    $('.so-amount').each(function () {
+                        var v = parseFloat($(this).val());
+                        if (!isNaN(v)) sum += v;
+                    });
+                    if (sum > 0) {
+                        $('#soGrossAmount').val(sum.toFixed(2));
+                    }
+                }
+                recalcSoTaxTotals();
+            });
+
+            $(document).on('keyup change', '.so-qty, .so-rate, .so-actual-rate', function () {
+                var $row = $(this).closest('tr');
+                var qty = parseFloat($row.find('.so-qty').val() || '0');
+                var baseRate = parseFloat($row.find('.so-rate').val() || '0');
+                var actualRate = parseFloat($row.find('.so-actual-rate').val() || '0');
+
+                var effectiveRate = !isNaN(actualRate) && actualRate > 0 ? actualRate : baseRate;
+                if (isNaN(effectiveRate)) {
+                    effectiveRate = 0;
+                }
+
+                var amount = qty * effectiveRate;
+                $row.find('.so-amount').val(amount.toFixed(2));
+                recalcSoGross();
+            });
+
+            $(document).on('change', '.so-amount', function () {
+                recalcSoGross();
+            });
+
+            // Add new cost factor row inside modal (UI only)
+            $('#soAddCostFactorRow').on('click', function () {
+                var $tbody = $('#soTaxFactorTable tbody');
+                var $lastRow = $tbody.find('tr:last');
+                var $newRow = $lastRow.clone();
+
+                $newRow.find('.so-cost-factor').prop('selectedIndex', 0);
+                $newRow.find('.so-tax-type').val('%');
+                $newRow.find('.so-tax-value').val('0.000');
+                $newRow.find('.so-tax-mode').val('+');
+                $newRow.find('.so-tax-amount').val('0.00');
+
+                $tbody.append($newRow);
+                recalcSoTaxTotals();
+            });
+
+            // Delete cost factor row (UI only)
+            $(document).on('click', '.so-tax-row-delete', function () {
+                var $rows = $('#soTaxFactorTable tbody tr');
+                var $row = $(this).closest('tr');
+
+                if ($rows.length > 1) {
+                    $row.remove();
+                } else {
+                    $row.find('.so-cost-factor').prop('selectedIndex', 0);
+                    $row.find('.so-tax-type').val('%');
+                    $row.find('.so-tax-value').val('0.000');
+                    $row.find('.so-tax-mode').val('+');
+                    $row.find('.so-tax-amount').val('0.00');
+                }
+
+                recalcSoTaxTotals();
+            });
+
+            // Recalculate when expression fields change
+            $(document).on('change keyup', '.so-tax-type, .so-tax-value, .so-tax-mode', function () {
+                recalcSoTaxTotals();
+            });
+
+            // Apply button: push totals back to summary inputs
+            $('#soApplyTax').on('click', function () {
+                var gross = getSoGrossAmount();
+                var totalTax = 0;
+
+                $('#soTaxFactorTable tbody tr').each(function () {
+                    var v = parseFloat($(this).find('.so-tax-amount').val());
+                    if (!isNaN(v)) totalTax += v;
+                });
+
+                // For simplicity, put all tax into CGST field and compute Net = Gross + totalTax
+                $('#soCgstAmount').val(totalTax.toFixed(2));
+                $('#soSgstAmount').val('0.00');
+                $('#soIgstAmount').val('0.00');
+                $('#soNetAmount').val((gross + totalTax).toFixed(2));
+
+                $('#soTaxModal').modal('hide');
+            });
+
+            function collectSoDetailRows() {
+                var rows = [];
+                $('#soDetailsBody tr').each(function () {
+                    var $row = $(this);
+                    var materialId = parseInt($row.find('.so-material').val() || '0', 10);
+                    var qty = parseFloat($row.find('.so-qty').val() || '0');
+                    var rate = parseFloat($row.find('.so-rate').val() || '0');
+                    var actualRate = parseFloat($row.find('.so-actual-rate').val() || '0');
+                    var profitPercent = parseFloat($row.find('.so-profit').val() || '0');
+                    var amount = parseFloat($row.find('.so-amount').val() || '0');
+
+                    if (materialId > 0 && qty > 0) {
+                        var effectiveRate = !isNaN(actualRate) && actualRate > 0 ? actualRate : rate;
+                        if (isNaN(effectiveRate)) {
+                            effectiveRate = 0;
+                        }
+
+                        if (isNaN(amount) || amount === 0) {
+                            amount = qty * effectiveRate;
+                        }
+
+                        rows.push({
+                            MaterialId: materialId,
+                            Qty: qty,
+                            Rate: rate,
+                            Amount: amount,
+                            ProfitPercent: isNaN(profitPercent) ? 0 : profitPercent,
+                            ActualRate: isNaN(actualRate) ? 0 : actualRate
+                        });
+                    }
+                });
+
+                return rows;
+            }
+
+            function validateSalesOrderForm() {
+                var isValid = true;
+
+                $('.form-control').removeClass('is-invalid');
+
+                var dateVal = $('#TRANDATE').val();
+                var customerVal = $('#customerDropdown').val();
+                var billNoVal = $('#TRANREFNO').val();
+                var isEdit = parseInt($('#TRANMID').val() || '0', 10) > 0;
+                var missingFields = [];
+
+                if (!dateVal) {
+                    $('#TRANDATE').addClass('is-invalid');
+                    isValid = false;
+                    missingFields.push(isPoFromSalesOrder ? 'PO Date' : 'Order Date');
+                }
+
+                if (!customerVal || customerVal === '' || customerVal === '0') {
+                    $('#customerDropdown').addClass('is-invalid');
+                    isValid = false;
+                    missingFields.push(isPoFromSalesOrder ? 'Supplier Name' : 'Customer Name');
+                }
+
+                if (!isEdit && (!billNoVal || billNoVal.trim() === '')) {
+                    $('#TRANREFNO').addClass('is-invalid');
+                    isValid = false;
+                    missingFields.push('Bill No');
+                }
+
+                var hasDetail = false;
+                var hasInvalidDetail = false;
+
+                $('#soDetailsBody tr').each(function () {
+                    var $row = $(this);
+                    var materialId = parseInt($row.find('.so-material').val() || '0', 10);
+                    var qty = parseFloat($row.find('.so-qty').val() || '0');
+                    var actualRate = parseFloat($row.find('.so-actual-rate').val() || '0');
+
+                    // Ignore completely empty rows
+                    if (!(materialId > 0 || qty > 0)) {
+                        return;
+                    }
+
+                    var rowValid = true;
+
+                    if (materialId <= 0) {
+                        $row.find('.so-material').addClass('is-invalid');
+                        rowValid = false;
+                    }
+                    if (!(qty > 0)) {
+                        $row.find('.so-qty').addClass('is-invalid');
+                        rowValid = false;
+                    }
+
+                    if (rowValid) {
+                        hasDetail = true;
+                    } else {
+                        hasInvalidDetail = true;
+                        isValid = false;
+                    }
+                });
+
+                if (!hasDetail) {
+                    alert('Please enter at least one detail row with Material and Qty.');
+                    isValid = false;
+                }
+
+                if (hasInvalidDetail) {
+                    alert('Please correct the highlighted detail rows (Material and Qty).');
+                }
+
+                if (!isValid && missingFields.length) {
+                    alert('Please fill the following fields before saving:\n- ' + missingFields.join('\n- '));
+                }
+
+                return isValid;
+            }
+
+            $('#btnSoSave').on('click', function () {
+                if (!validateSalesOrderForm()) {
+                    return;
+                }
+
+                var rows = collectSoDetailRows();
+                if (!rows.length) {
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Warning',
+                            text: 'Please add at least one detail row with Material and Qty.',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        alert('Please add at least one detail row with Material and Qty.');
+                    }
+                    return;
+                }
+
+                if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                    Swal.fire({
+                        title: 'Are you sure you want to save this?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, save it!',
+                        cancelButtonText: 'No'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                             $('#detailRowsJson').val(JSON.stringify(rows));
+                             $('#salesOrderForm').submit();
+                        }
+                    });
+                } else {
+                    // Fallback if Swal is not loaded
+                    if (confirm('Are you sure you want to save this?')) {
+                        $('#detailRowsJson').val(JSON.stringify(rows));
+                        $('#salesOrderForm').submit();
+                    }
+                }
+            });
+
+            $(function () {
+                updateSoRowNumbers();
+                // capture a clean template row before select2 is applied
+                soDetailRowTemplate = $('#soDetailsBody tr:first').clone();
+
+                loadMaterialAndGroupData();
+                loadCostFactors();
+                initCustomerSelect();
+
+                $('#customerDropdown').on('change', function () {
+                    var id = $(this).val();
+                    if (!id) {
+                        clearCustomerDetails();
+                        return;
+                    }
+
+                    if (!isPoFromSalesOrder) {
+                        // Normal Sales Order: load customer address details
+                        fetchCustomerDetails(id);
+                    } else {
+                        // PO from Sales Order: load supplier address details
+                        fetchSupplierDetails(id);
+                    }
+                });
+
+                $('#TRANDATE, #customerDropdown, #TRANREFNO').on('change input', function () {
+                    $(this).removeClass('is-invalid');
+                });
+
+                $(document).on('change input', '.so-material, .so-qty, .so-actual-rate', function () {
+                    $(this).removeClass('is-invalid');
+                });
+            });
+        })(jQuery);
+    </script>
+}

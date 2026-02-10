@@ -1,0 +1,482 @@
+@{
+    ViewBag.Title = "Purchase Return";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .pr-main-container {
+        background: white;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .pr-content-wrapper {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .pr-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .pr-header-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .pr-add-btn {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        border: none;
+        padding: 12px 20px;
+        border-radius: 25px;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(238, 90, 36, 0.4);
+    }
+
+    .pr-add-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(238, 90, 36, 0.6);
+        color: white;
+    }
+
+    .pr-table-container {
+        padding: 30px;
+        background: white;
+    }
+
+    #purchaseReturnTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+    }
+
+    #purchaseReturnTable thead th {
+        background: #7f88e9;
+        color: white;
+        font-weight: 600;
+        padding: 15px 12px;
+        text-align: center;
+        border: none;
+        font-size: 14px;
+        border-right: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+    #purchaseReturnTable thead th:last-child {
+        border-right: none;
+    }
+
+    #purchaseReturnTable tbody td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    #purchaseReturnTable tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: scale(1.01);
+        transition: all 0.2s ease;
+    }
+
+    .amount-cell {
+        font-weight: 700;
+        color: #dc3545;
+    }
+
+    .pr-status-badge {
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 4px;
+        display: inline-block;
+        min-width: 90px;
+        text-align: center;
+        color: #ffffff;
+    }
+
+    .dataTables_wrapper {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .dataTables_filter.with-filter-status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .dataTables_filter.with-filter-status #filterStatus {
+        margin-bottom: 4px;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        margin: 0 2px;
+        border-radius: 20px;
+        border: none;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+        color: #2d3436;
+    }
+
+    .btn-edit:hover {
+        background: linear-gradient(135deg, #fdcb6e, #e17055);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #fd79a8, #e84393);
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: linear-gradient(135deg, #e84393, #d63031);
+        transform: translateY(-1px);
+    }
+
+    .btn-print {
+        background: linear-gradient(135deg, #43cea2, #185a9d);
+        color: #ffffff;
+    }
+
+    .btn-print:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(24, 90, 157, 0.4);
+        color: #ffffff;
+    }
+
+    .badge {
+        font-weight: 600;
+    }
+
+    .badge.bg-success {
+        background-color: #28a745;
+        color: #ffffff !important;
+        border: 1px solid #1e7e34;
+    }
+
+    .badge.bg-danger {
+        background-color: #dc3545;
+        color: #ffffff !important;
+        border: 1px solid #b21f2d;
+    }
+</style>
+
+<div class="pr-main-container">
+    <div class="pr-content-wrapper">
+        <div class="pr-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="pr-header-title">
+                    <i class="fa fa-undo"></i>
+                    Purchase Return
+                </h1>
+                <div class="btn-group">
+                    <button type="button" class="btn pr-add-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa fa-plus-circle"></i> Add Purchase Return
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="@Url.Action("Form", "PurchaseReturn", new { tranBType = 1 })">
+                                From Purchase Invoice
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="@Url.Action("Direct", "CreateDirectPurchaseReturn")">
+                                Direct
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="pr-table-container">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="fromDate" class="form-label">From Date</label>
+                    <input type="date" id="fromDate" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label for="toDate" class="form-label">To Date</label>
+                    <input type="date" id="toDate" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" id="filterBtn" class="btn btn-primary me-2">
+                        <i class="fa fa-filter"></i> Filter
+                    </button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                        <i class="fa fa-times"></i> Clear
+                    </button>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div id="filterStatus" style="display:none;">
+                        <small class="text-muted"><span id="filterText"></span></small>
+                    </div>
+                </div>
+            </div>
+
+            <table id="purchaseReturnTable" class="table table-striped table-bordered" width="100%">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Number</th>
+                        <th>Ref No.</th>
+                        <th>Supplier Name</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var errorMsg = "@(TempData["ErrorMessage"] ?? "")";
+            if (errorMsg) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: errorMsg,
+                    confirmButtonText: 'OK'
+                });
+            }
+
+            $.fn.dataTable.ext.errMode = 'console';
+
+            var table = $('#purchaseReturnTable').DataTable({
+                ajax: {
+                    url: '@Url.Action("GetAjaxData", "PurchaseReturn")',
+                    type: 'GET',
+                    data: function (d) {
+                        d.fromDate = $('#fromDate').val();
+                        d.toDate = $('#toDate').val();
+                    },
+                    dataSrc: function (json) {
+                        if (json && Array.isArray(json.data)) return json.data;
+                        if (json && Array.isArray(json.aaData)) return json.aaData;
+                        if (Array.isArray(json)) return json;
+                        if (json && json.error) {
+                            console.error('Server error while loading Purchase Returns:', json.error);
+                            return [];
+                        }
+                        return [];
+                    },
+                    error: function (xhr, status, err) {
+                        if (status === 'abort') {
+                            return;
+                        }
+                        console.error('PurchaseReturn GetAjaxData error:', status, err, xhr && xhr.responseText);
+                        alert('Failed to load Purchase Returns. Please check console for details.');
+                    }
+                },
+                columns: [
+                    {
+                        data: 'TRANDATE',
+                        render: function (data, type, row) {
+                            if (data && type === 'display') {
+                                var date;
+                                if (typeof data === 'string' && data.indexOf('/Date(') === 0) {
+                                    var timestamp = parseInt(data.substr(6));
+                                    date = new Date(timestamp);
+                                } else {
+                                    date = new Date(data);
+                                }
+                                if (!isNaN(date.getTime())) {
+                                    var day = String(date.getDate()).padStart(2, '0');
+                                    var month = String(date.getMonth() + 1).padStart(2, '0');
+                                    var year = date.getFullYear();
+                                    return day + '/' + month + '/' + year;
+                                }
+                            }
+                            return data;
+                        }
+                    },
+                    { data: 'TRANDNO' },
+                    { data: 'TRANREFNO' },
+                    { data: 'SupplierName', className: 'text-start' },
+                    {
+                        data: 'Amount',
+                        render: function (data) {
+                            var value = parseFloat(data || 0);
+                            return '<span class="amount-cell">&#8377; ' + value.toFixed(2) + '</span>';
+                        }
+                    },
+                    {
+                        data: 'StatusDescription',
+                        render: function (data) {
+                            var val = data;
+                            var text = 'N/A';
+                            if (val == '0' || val === 0) text = 'Enabled';
+                            else if (val == '1' || val === 1) text = 'Disabled';
+                            else if (data && data.length > 1) text = data;
+
+                            var cls = text === 'Enabled' ? 'badge bg-success' : 'badge bg-danger';
+                            return '<span class="' + cls + '">' + text + '</span>';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (data, type, row) {
+                            var id = row['TRANMID'];
+                            var tranBType = row['TranBType'];
+                            var editUrl;
+
+                            if (tranBType == 0 || tranBType === '0') {
+                                editUrl = '@Url.Action("Direct", "CreateDirectPurchaseReturn")' + '?id=' + id;
+                            } else {
+                                editUrl = '@Url.Action("Form", "PurchaseReturn")' + '?id=' + id;
+                            }
+                            var printUrl = '@Url.Action("Print", "PurchaseReturn")' + '?id=' + id;
+
+                            var html = '';
+                            html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
+                            html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                            html += '<button type="button" class="btn btn-action btn-delete" onclick="deletePurchaseReturn(' + id + ');"><i class="fa fa-trash"></i> Delete</button>';
+                            return html;
+                        }
+                    }
+                ],
+                order: [[0, 'desc']],
+                pageLength: 25,
+                responsive: true,
+                dom: '<"row mb-3"<"col-md-6"l><"col-md-6"f>>rt<"row mt-3"<"col-md-6"i><"col-md-6"p>>',
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search..."
+                }
+            });
+
+            function updateFilterStatus() {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+                var statusDiv = $('#filterStatus');
+                var textSpan = $('#filterText');
+
+                if (fromDate || toDate) {
+                    var filterText = 'Filtered: ';
+                    if (fromDate && toDate) {
+                        filterText += fromDate + ' to ' + toDate;
+                    } else if (fromDate) {
+                        filterText += 'From ' + fromDate;
+                    } else if (toDate) {
+                        filterText += 'Until ' + toDate;
+                    }
+                    textSpan.text(filterText);
+                    statusDiv.show();
+                } else {
+                    statusDiv.hide();
+                }
+            }
+
+            $('#filterBtn').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+
+                if (fromDate && toDate && fromDate > toDate) {
+                    alert('From Date cannot be greater than To Date');
+                    return;
+                }
+
+                var $btn = $(this);
+                $btn.html('<i class="fa fa-spinner fa-spin"></i> Filtering...');
+                $btn.prop('disabled', true);
+
+                table.ajax.reload(function () {
+                    $btn.html('<i class="fa fa-filter"></i> Filter');
+                    $btn.prop('disabled', false);
+                    updateFilterStatus();
+                });
+            });
+
+            $('#clearBtn').on('click', function () {
+                $('#fromDate').val('');
+                $('#toDate').val('');
+                updateFilterStatus();
+
+                var $btn = $(this);
+                $btn.html('<i class="fa fa-spinner fa-spin"></i> Clearing...');
+                $btn.prop('disabled', true);
+
+                table.ajax.reload(function () {
+                    $btn.html('<i class="fa fa-times"></i> Clear');
+                    $btn.prop('disabled', false);
+                });
+            });
+
+            $('#fromDate, #toDate').on('keypress', function (e) {
+                if (e.which === 13) {
+                    $('#filterBtn').click();
+                }
+            });
+
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
+            $('#fromDate').val(todayStr);
+            $('#toDate').val(todayStr);
+
+            // Move filter status above the DataTables search box, same as Purchase Invoice
+            var prFilterWrapper = $('#purchaseReturnTable').closest('.dataTables_wrapper').find('.dataTables_filter');
+            if (prFilterWrapper.length) {
+                var prFilterStatus = $('#filterStatus');
+                prFilterWrapper.prepend(prFilterStatus);
+                prFilterWrapper.addClass('with-filter-status');
+            }
+
+            updateFilterStatus();
+            table.ajax.reload();
+        });
+
+        function deletePurchaseReturn(id) {
+            if (!confirm('Are you sure you want to delete this Purchase Return?')) {
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("Del", "PurchaseReturn")',
+                type: 'POST',
+                data: { id: id },
+                success: function (response) {
+                    if (typeof response === 'string') {
+                        alert(response);
+                    } else if (response && response.message) {
+                        alert(response.message);
+                    }
+                    $('#purchaseReturnTable').DataTable().ajax.reload();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error deleting Purchase Return:', error, xhr && xhr.responseText);
+                    alert('Failed to delete Purchase Return. Please try again.');
+                }
+            });
+        }
+    </script>
+}

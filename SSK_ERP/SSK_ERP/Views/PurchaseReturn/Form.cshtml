@@ -1,0 +1,1024 @@
+@model SSK_ERP.Models.TransactionMaster
+
+@{
+    ViewBag.Title = "Purchase Return";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    .pr-main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .pr-form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .pr-form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .pr-form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .pr-form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .pr-section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .req {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .pr-detail-table {
+        /* Make grid span wider like Purchase Invoice to avoid looking congested */
+        min-width: 1400px;
+    }
+
+    .pr-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 8px;
+    }
+
+    .pr-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    .pr-detail-table .form-control-sm {
+        padding: 5px;
+        height: 32px;
+    }
+
+    .form-actions {
+        margin-top: 20px;
+    }
+
+    .pr-tax-table th,
+    .pr-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .pr-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 140px;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="pr-main-container">
+    <div class="pr-form-container">
+        <div class="pr-form-header">
+            <h1 class="pr-form-title">
+                <i class="fa fa-undo"></i>
+                Purchase Return
+                <span style="font-size: 0.6em; opacity: 0.8; margin-left: 10px;">
+                    #@(string.IsNullOrEmpty(Model.TRANDNO) ? "New" : Model.TRANDNO)
+                </span>
+            </h1>
+        </div>
+
+        <div class="pr-form-body">
+            @using (Html.BeginForm("savedata", "PurchaseReturn", FormMethod.Post, new { id = "purchaseReturnForm" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.TRANMID)
+                @Html.HiddenFor(m => m.TRANDNO)
+                @Html.HiddenFor(m => m.TRANSTATETYPE, new { id = "stateTypeHidden" })
+                @Html.HiddenFor(m => m.TRANBTYPE, new { id = "tranBTypeHidden" })
+
+                <div class="pr-section-title">
+                    <i class="fa fa-info-circle"></i> Return Details
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">No</label>
+                            @Html.TextBoxFor(m => m.TRANNO, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Date</label>
+                            @Html.TextBoxFor(m => m.TRANDATE, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Status</label>
+                            @Html.DropDownListFor(m => m.DISPSTATUS, ViewBag.StatusList as SelectList, new { @class = "form-control", id = "statusDropdown" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Supplier Name <span class="req">*</span></label>
+                            @Html.DropDownListFor(m => m.TRANREFID,
+                                ViewBag.SupplierList as SelectList,
+                                "-- Select Supplier --",
+                                new { @class = "form-control", id = "supplierDropdown" })
+                            @Html.HiddenFor(m => m.TRANREFNAME)
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Ref No</label>
+                            @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control", id = "refNoInput" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Narration</label>
+                            @Html.TextAreaFor(m => m.TRANNARTN, new { @class = "form-control", rows = 2 })
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Supplier Address laid out like Purchase Invoice: 2-column grid -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Supplier Address</label>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" id="suppNameOrAddr" class="form-control" placeholder="Supplier Name" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="suppAddress1" class="form-control" placeholder="Address" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" id="suppCity" class="form-control" placeholder="City" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="suppState" class="form-control" placeholder="State" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="text" id="suppPincode" class="form-control" placeholder="Pincode" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="suppCountry" class="form-control" placeholder="Country" readonly="readonly" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pr-section-title">Item Details</div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle pr-detail-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">S.No</th>
+                                <th style="width: 220px;">Material</th>
+                                <th style="width: 100px;">HSN Code</th>
+                                <th style="width: 120px;">Bill No</th>
+                                <th style="width: 120px;">Batch No</th>
+                                <th style="width: 140px;">Expiry Date</th>
+                                <th style="width: 120px;">Packing</th>
+                                <th style="width: 80px;">Actual Qty</th>
+                                <th style="width: 80px;">No. of Boxes</th>
+                                <th style="width: 80px;">Qty</th>
+                                <th style="width: 100px;">Rate</th>
+                                <th style="width: 120px;">Amount</th>
+                                <th style="width: 80px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="returnDetailsBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-2 mb-3" style="display:none;">
+                    <button type="button" id="btnAddRow" class="btn btn-sm btn-success">
+                        <i class="fa fa-plus"></i> Add Row
+                    </button>
+                </div>
+
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered pr-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="btnCalculateTax">
+                                        <i class="fa fa-calculator"></i> Calculate Tax
+                                    </button>
+                                </td>
+                                <td class="pr-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    @Html.TextBoxFor(m => m.TRANGAMT, new { @class = "form-control text-end", id = "lblTotalGross", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">CGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANCGSTAMT, new { @class = "form-control text-end", id = "lblTotalCGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">SGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANSGSTAMT, new { @class = "form-control text-end", id = "lblTotalSGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">IGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANIGSTAMT, new { @class = "form-control text-end", id = "lblTotalIGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">Net Amount</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANNAMT, new { @class = "form-control text-end", id = "lblTotalNet", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="pr-section-title">Remarks</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        @Html.TextAreaFor(m => m.TRANRMKS, new { @class = "form-control", rows = 3 })
+                    </div>
+                </div>
+
+                <div class="form-actions mt-3">
+                    <a href="@Url.Action("Index", "PurchaseReturn")" class="btn btn-secondary">Back</a>
+                    <input type="hidden" id="detailRowsJson" name="detailRowsJson" />
+                    <button type="button" id="btnSave" class="btn btn-primary">Save</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        var materialList = [];
+        var existingDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
+        var billNoList = @Html.Raw(ViewBag.BillNoListJson ?? "[]");
+
+        $(document).ready(function () {
+
+            $('#supplierDropdown').select2({ width: '100%' });
+
+            $('#supplierDropdown').on('change', function () {
+                var id = parseInt($(this).val() || '0', 10);
+                if (id) {
+                    $.get('@Url.Action("GetSupplierDetails", "PurchaseInvoice")', { id: id }, function (res) {
+                        if (res.success) {
+                            var d = res.data;
+
+                            // Map supplier details to 2-column address layout
+                            $('#suppNameOrAddr').val(d.Name || d.Address1);
+                            $('#suppAddress1').val(d.Address1);
+                            $('#suppCity').val(d.City);
+                            $('#suppState').val(d.State);
+                            $('#suppPincode').val(d.Pincode);
+                            $('#suppCountry').val(d.Country || 'India');
+                            $('#stateTypeHidden').val(d.StateType);
+                            $('input[name="TRANREFNAME"]').val(d.Name);
+
+                            // Refresh Bill No dropdowns for this supplier
+                            refreshBillNoDropdowns(id);
+
+                            // Load supplier-specific materials using stored procedure PR_GET_MATERIALDETAILS_CRDBN
+                            loadMaterialsForSupplier(id);
+                        }
+                    });
+                } else {
+                    $('#suppNameOrAddr').val('');
+                    $('#suppAddress1').val('');
+                    $('#suppCity').val('');
+                    $('#suppState').val('');
+                    $('#suppPincode').val('');
+                    $('#suppCountry').val('');
+                    $('#stateTypeHidden').val('0');
+                    $('input[name="TRANREFNAME"]').val('');
+
+                    refreshBillNoDropdowns(0);
+
+                    loadMaterials();
+
+                    $('#returnDetailsBody').find('tr').each(function () {
+                        var tr = $(this);
+                        tr.find('.pr-material').val('');
+                        tr.find('.pr-material').empty().append('<option value="">Select Material</option>');
+                        tr.find('.pr-hsn').val('');
+                        tr.find('.pr-billno').empty().append($('<option>').val('').text('-- Select --'));
+                        tr.find('.pr-batchno').val('');
+                        tr.find('.pr-expdate').val('');
+                        tr.find('.pr-pack').val('');
+                        tr.find('.pr-qty').val('');
+                        tr.find('.pr-rate').val('');
+                        tr.find('.pr-amount').val('');
+                    });
+                }
+            });
+
+            // Trigger change on load if supplier already selected (edit mode)
+            if ($('#supplierDropdown').val()) {
+                $('#supplierDropdown').trigger('change');
+            }
+
+            if (existingDetails.length === 0) {
+                addRow();
+            } else {
+                existingDetails.forEach(function (row) {
+                    addRow(row);
+                });
+                calculateTotals();
+            }
+
+            $('#btnAddRow').click(function () {
+                addRow();
+            });
+
+            $('#btnCalculateTax').click(function () {
+                // For Purchase Return we keep taxes as 0, but recompute Gross/Net
+                calculateTotals();
+            });
+
+            $('#btnSave').click(function () {
+                if (!$('#returnDetailsBody tr').length) {
+                    alert('Please add at least one item.');
+                    return;
+                }
+
+                var isValid = true;
+                $('#returnDetailsBody tr').each(function () {
+                    var tr = $(this);
+                    if (!tr.find('.pr-material').val()) isValid = false;
+                    if (!tr.find('.pr-qty').val()) isValid = false;
+                    if (!tr.find('.pr-rate').val()) isValid = false;
+                });
+
+                if (!isValid) {
+                    alert('All item rows must have Material, Qty and Rate.');
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to save this?')) {
+                    return;
+                }
+
+                var rows = collectDetailRows();
+                if (rows.length === 0) {
+                    alert('Please complete at least one item row.');
+                    return;
+                }
+
+                $('#detailRowsJson').val(JSON.stringify(rows));
+                $('#purchaseReturnForm').submit();
+            });
+        });
+
+        function loadMaterials() {
+            $.get('@Url.Action("GetPurchaseMaterials", "PurchaseInvoice")', function (res) {
+                if (res.success) {
+                    materialList = res.materials;
+
+                    var supplierId = parseInt($('#supplierDropdown').val() || '0', 10);
+                    if (!supplierId) {
+                        return;
+                    }
+
+                    $('.pr-material').each(function () {
+                        var $sel = $(this);
+                        if ($sel.find('option').length <= 1) {
+                            var selectedId = $sel.data('selected-id');
+                            fillMaterialSelect($sel, selectedId);
+                        }
+                    });
+                }
+            });
+        }
+
+        function loadMaterialsForSupplier(supplierId) {
+            if (!supplierId) {
+                return;
+            }
+
+            $.get('@Url.Action("GetMaterialsBySupplier", "PurchaseReturn")', { tranRefId: supplierId }, function (res) {
+                if (res && res.success) {
+                    materialList = res.materials || [];
+
+                    console.log('PR: loadMaterialsForSupplier result', supplierId, materialList);
+
+                    $('#returnDetailsBody').find('.pr-material').each(function () {
+                        var $sel = $(this);
+                        var selectedId = $sel.data('selected-id') || $sel.val();
+                        fillMaterialSelect($sel, selectedId);
+
+                        var tr = $sel.closest('tr');
+                        var currentHsn = tr.find('.pr-hsn').val();
+                        if (!currentHsn) {
+                            var hsn = getHsnCode(selectedId);
+                            tr.find('.pr-hsn').val(hsn);
+                        }
+
+                        var opt = $sel.find('option:selected');
+                        var rate = opt.data('rate') || 0;
+                        if (!tr.find('.pr-rate').val()) {
+                            tr.find('.pr-rate').val(rate);
+                        }
+
+                        // Do not disturb existing Qty/Amount in edit mode; just ensure amount is consistent
+                        recalcRow(tr);
+
+                        var supplierIdForRow = parseInt($('#supplierDropdown').val() || '0', 10);
+                        if (supplierIdForRow && selectedId) {
+                            var billDdl = tr.find('.pr-billno');
+                            loadBillNosForSupplierAndMaterial(supplierIdForRow, parseInt(selectedId || '0', 10), billDdl);
+                        }
+                    });
+                }
+            });
+        }
+
+        function fillMaterialSelect($el, selectedId) {
+            $el.empty().append('<option value="">Select Material</option>');
+            if (materialList) {
+                materialList.forEach(function (m) {
+                    var opt = $('<option>').val(m.id).text(m.name).data('rate', m.rate).data('hsn', m.hsnCode);
+                    if (selectedId && selectedId == m.id) opt.prop('selected', true);
+                    $el.append(opt);
+                });
+            }
+            if (selectedId) {
+                $el.val(String(selectedId));
+            }
+        }
+
+        function getHsnCode(materialId) {
+            if (!materialList) return '';
+            var m = materialList.find(function (x) { return x.id == materialId; });
+            return m && m.hsnCode ? m.hsnCode : '';
+        }
+
+        function refreshBillNoDropdowns(supplierId) {
+            $('#returnDetailsBody').find('.pr-billno').each(function () {
+                var $ddl = $(this);
+                $ddl.empty();
+                $ddl.append($('<option>').val('').text('-- Select --'));
+            });
+        }
+
+        function loadBillNosForSupplierAndMaterial(supplierId, materialId, $ddl) {
+            if (!supplierId || !materialId) {
+                $ddl.empty();
+                $ddl.append($('<option>').val('').text('-- Select --'));
+                return;
+            }
+
+            $.get('@Url.Action("GetBillNosBySupplierAndMaterial", "PurchaseReturn")', {
+                supplierId: supplierId,
+                materialId: materialId
+            }, function (res) {
+                $ddl.empty();
+                $ddl.append($('<option>').val('').text('-- Select --'));
+                if (res && res.success && res.billNos && res.billNos.length) {
+                    $.each(res.billNos, function (idx, b) {
+                        $ddl.append($('<option>').val(b).text(b));
+                    });
+                }
+
+                var existingBillNo = $ddl.closest('tr').data('billno');
+                if (existingBillNo) {
+                    $ddl.val(existingBillNo);
+                }
+            });
+        }
+
+        function addRow(data) {
+            var tbody = $('#returnDetailsBody');
+            var idx = tbody.find('tr').length + 1;
+
+            var tr = $('<tr>');
+            tr.append($('<td class="text-center row-index">').text(idx));
+
+            var matTd = $('<td>');
+            var matSelect = $('<select class="form-control form-control-sm pr-material mb-0">');
+            if (data && data.MaterialId) {
+                matSelect.data('selected-id', data.MaterialId);
+            }
+            fillMaterialSelect(matSelect, data ? data.MaterialId : null);
+            matTd.append(matSelect);
+            tr.append(matTd);
+
+            var hsnVal = data && data.HsnCode ? data.HsnCode : getHsnCode(data ? data.MaterialId : null);
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm pr-hsn" readonly>').val(hsnVal)));
+
+            // Bill No as dropdown (display only, not posted)
+            var billTd = $('<td>');
+            var billSelect = $('<select class="form-control form-control-sm pr-billno"></select>');
+            billTd.append(billSelect);
+            tr.append(billTd);
+
+            // Batch No, Expiry Date, Packing (non-editable, filled from Purchase Invoice SP)
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm pr-batchno" readonly>').val(data ? data.BatchNo : '')));
+            tr.append($('<td>').append($('<input type="date" class="form-control form-control-sm pr-expdate" readonly>').val('')));
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm pr-pack" readonly>').val(data ? data.Packing : '')));
+
+            // Actual Qty (from source Purchase Invoice, read-only) and No. of Boxes (TRANBQTY, read-only)
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pr-actualqty text-end" readonly>').val('')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pr-boxes text-end" readonly>').val(data ? data.BoxQty : '')));
+
+            // Return Qty (editable), Rate and Amount
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pr-qty text-end" min="0">').val(data ? data.Qty : '')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pr-rate text-end" min="0" step="0.01" readonly>').val(data ? data.Rate : '')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pr-amount text-end" readonly>').val(data ? data.Amount : '')));
+
+            var actionTd = $('<td class="text-center">');
+            var btnAdd = $('<button type="button" class="btn btn-sm btn-success me-1"><i class="fa fa-plus"></i></button>').click(function () {
+                addRow();
+            });
+            var btnDel = $('<button type="button" class="btn btn-sm btn-danger"><i class="fa fa-minus"></i></button>').click(function () {
+                var rowCount = $('#returnDetailsBody tr').length;
+                if (rowCount <= 1) {
+                    alert('At least one row must be present.');
+                    return;
+                }
+                tr.remove();
+                renumberRows();
+                calculateTotals();
+            });
+            actionTd.append(btnAdd).append(btnDel);
+            tr.append(actionTd);
+
+            tbody.append(tr);
+
+            if (data) {
+                tr.data('packmid', parseInt(data.PackingId || 0, 10) || 0);
+                tr.data('ptr', parseFloat(data.Ptr || 0) || 0);
+                tr.data('mrp', parseFloat(data.Mrp || 0) || 0);
+                tr.data('boxqty', parseFloat(data.BoxQty || 0) || 0);
+                if (data.BillNo) {
+                    tr.data('billno', data.BillNo);
+                }
+                if (data.SourceBatchId) {
+                    tr.data('srcTranBid', parseInt(data.SourceBatchId || 0, 10) || 0);
+                }
+                if (data.SourceDetailId) {
+                    tr.data('srcTranDid', parseInt(data.SourceDetailId || 0, 10) || 0);
+                }
+                if (data.SourceRefId) {
+                    tr.data('srcTranRefId', parseInt(data.SourceRefId || 0, 10) || 0);
+                }
+
+                // Populate Actual Qty (original invoice quantity) when editing existing Purchase Return
+                if (typeof data.ActualQty !== 'undefined' && data.ActualQty !== null) {
+                    tr.find('.pr-actualqty').val(data.ActualQty);
+                }
+
+                if (data.ExpiryDate) {
+                    var expVal = data.ExpiryDate;
+                    if (typeof expVal === 'string') {
+                        if (expVal.indexOf('Date(') !== -1) {
+                            var m = /Date\((\d+)\)/.exec(expVal);
+                            if (m) {
+                                var dt = new Date(parseInt(m[1], 10));
+                                expVal = dt.toISOString().slice(0, 10);
+                            }
+                        } else if (expVal.indexOf('T') > -1) {
+                            expVal = expVal.split('T')[0];
+                        }
+                    }
+                    tr.find('.pr-expdate').val(expVal);
+                }
+            }
+
+            // Populate Bill No dropdown for current supplier
+            var supplierId = parseInt($('#supplierDropdown').val() || '0', 10);
+            billSelect.empty();
+            billSelect.append($('<option>').val('').text('-- Select --'));
+
+            matSelect.change(function () {
+                var id = $(this).val();
+                console.log('PR: matSelect changed, raw value =', id, 'typeof =', (typeof id));
+                var supplierIdForRow = parseInt($('#supplierDropdown').val() || '0', 10);
+
+                tr.removeData('billno');
+                tr.removeData('srcTranBid');
+                tr.removeData('srcTranDid');
+                tr.removeData('srcTranRefId');
+
+                tr.find('.pr-batchno').val('');
+                tr.find('.pr-expdate').val('');
+                tr.find('.pr-pack').val('');
+                tr.find('.pr-actualqty').val('');
+                tr.find('.pr-boxes').val('');
+                tr.find('.pr-qty').val('');
+                tr.find('.pr-amount').val('');
+                billSelect.empty();
+                billSelect.append($('<option>').val('').text('-- Select --'));
+
+                if (!id) {
+                    tr.find('.pr-hsn').val('');
+                    tr.find('.pr-rate').val('');
+                    recalcRow(tr);
+                    return;
+                }
+
+                var hsn = getHsnCode(id);
+                tr.find('.pr-hsn').val(hsn);
+                var opt = $(this).find('option:selected');
+                var rate = opt.data('rate') || 0;
+                tr.find('.pr-rate').val(rate);
+                recalcRow(tr);
+
+                if (supplierIdForRow) {
+                    loadBillNosForSupplierAndMaterial(supplierIdForRow, parseInt(id || '0', 10), billSelect);
+                }
+            });
+
+            tr.find('.pr-qty, .pr-rate').on('input', function () {
+                recalcRow(tr);
+            });
+
+            billSelect.change(function () {
+                var billNoVal = $(this).val();
+                var matVal = tr.find('.pr-material').val();
+                if (!matVal) {
+                    alert('Please select a Material for this row before using the Bill No.');
+                    $(this).val('');
+                    return;
+                }
+
+                if (!billNoVal) {
+                    tr.find('.pr-batchno').val('');
+                    tr.find('.pr-expdate').val('');
+                    tr.find('.pr-pack').val('');
+                    tr.find('.pr-actualqty').val('');
+                    tr.find('.pr-boxes').val('');
+                    tr.find('.pr-qty').val('');
+                    tr.find('.pr-amount').val('');
+                    // Clear any batch-related data stored on the row
+                    tr.removeData('packmid');
+                    tr.removeData('ptr');
+                    tr.removeData('mrp');
+                    tr.removeData('boxqty');
+                    tr.removeData('billno');
+                    tr.removeData('srcTranBid');
+                    tr.removeData('srcTranDid');
+                    tr.removeData('srcTranRefId');
+                    recalcRow(tr);
+                    return;
+                }
+
+                tr.data('billno', billNoVal);
+                tryFetchPurchaseInvoiceDetail(tr);
+            });
+        }
+
+        function recalcRow(tr) {
+            var qty = parseFloat(tr.find('.pr-qty').val() || 0);
+            var actual = parseFloat(tr.find('.pr-actualqty').val() || 0);
+
+            if (actual > 0 && qty > actual) {
+                alert('Qty cannot be greater than Actual Qty (' + actual + ').');
+                qty = actual;
+                tr.find('.pr-qty').val(actual);
+            }
+
+            var rate = parseFloat(tr.find('.pr-rate').val() || 0);
+            var amt = qty * rate;
+            tr.find('.pr-amount').val(amt.toFixed(2));
+
+            // Update the visible Packing text based on Qty and No. of Boxes (box quantity)
+            updatePackingForRow(tr);
+
+            calculateTotals();
+        }
+
+        function updatePackingForRow(tr) {
+            var boxes = parseFloat(tr.find('.pr-boxes').val() || 0);
+            var qty = parseFloat(tr.find('.pr-qty').val() || 0);
+
+            if (boxes <= 0 || qty <= 0) {
+                return;
+            }
+
+            var perBox = qty / boxes;
+            if (!isFinite(perBox) || perBox <= 0) {
+                return;
+            }
+
+            var rounded = Math.round(perBox);
+            // Only update when we have a clean integer pack size (e.g. 2 packs, 5 packs)
+            if (Math.abs(perBox - rounded) > 0.0001) {
+                return;
+            }
+
+            var unitsPerPack = rounded;
+            var text = unitsPerPack + ' Packs';
+            tr.find('.pr-pack').val(text);
+
+            // Store the derived per-box quantity on the row for potential diagnostics
+            tr.data('derivedPackQty', unitsPerPack);
+        }
+
+        function renumberRows() {
+            $('#returnDetailsBody tr').each(function (index) {
+                $(this).find('.row-index').text(index + 1);
+            });
+        }
+
+        function calculateTotals() {
+            var rows = collectDetailRows();
+            var stType = $('#stateTypeHidden').val() || 0;
+
+            // If no valid material/qty rows yet (e.g., edit mode before material dropdowns are bound),
+            // fall back to summing the existing row amounts so totals are not shown as 0.00.
+            if (!rows || rows.length === 0) {
+                applyLocalTotalsFallback();
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("CalculatePurchaseInvoiceTax", "PurchaseInvoice")',
+                type: 'POST',
+                data: { stateType: stType, detailRowsJson: JSON.stringify(rows) },
+                success: function (res) {
+                    if (res && res.success) {
+                        $('#lblTotalGross').val(parseFloat(res.gross || 0).toFixed(2));
+                        $('#lblTotalCGST').val(parseFloat(res.cgst || 0).toFixed(2));
+                        $('#lblTotalSGST').val(parseFloat(res.sgst || 0).toFixed(2));
+                        $('#lblTotalIGST').val(parseFloat(res.igst || 0).toFixed(2));
+                        $('#lblTotalNet').val(parseFloat(res.net || 0).toFixed(2));
+                    } else {
+                        applyLocalTotalsFallback();
+                    }
+                },
+                error: function () {
+                    applyLocalTotalsFallback();
+                }
+            });
+        }
+
+        function applyLocalTotalsFallback() {
+            var gross = 0;
+            $('#returnDetailsBody tr').each(function () {
+                var amt = parseFloat($(this).find('.pr-amount').val() || 0);
+                gross += amt;
+            });
+
+            $('#lblTotalGross').val(gross.toFixed(2));
+            $('#lblTotalCGST').val('0.00');
+            $('#lblTotalSGST').val('0.00');
+            $('#lblTotalIGST').val('0.00');
+            $('#lblTotalNet').val(gross.toFixed(2));
+        }
+
+        function tryFetchPurchaseInvoiceDetail(tr) {
+            console.log('PR: tryFetchPurchaseInvoiceDetail invoked');
+
+            var supplierId = parseInt($('#supplierDropdown').val() || '0', 10);
+            if (!supplierId) {
+                console.log('PR: abort - no supplierId');
+                return;
+            }
+
+            var billNo = tr.find('.pr-billno').val();
+            var materialId = parseInt(tr.find('.pr-material').val() || '0', 10);
+
+            if (!billNo || !materialId) {
+                console.log('PR: abort - missing billNo or materialId', { billNo: billNo, materialId: materialId });
+                return;
+            }
+
+            console.log('PR: calling GetPurchaseInvoiceDetail with', {
+                supplierId: supplierId,
+                billNo: billNo,
+                materialId: materialId
+            });
+
+            $.get('@Url.Action("GetPurchaseInvoiceDetail", "PurchaseReturn")', {
+                supplierId: supplierId,
+                billNo: billNo,
+                materialId: materialId
+            }, function (res) {
+                console.log('PR: GetPurchaseInvoiceDetail response', res);
+                if (!res || !res.success || !res.data) {
+                    return;
+                }
+
+                var d = res.data;
+
+                // These field names depend on the SP result set PR_GET_PURCHASEINV_DET_CRDBN.
+                // qty here represents the original invoice quantity (Actual Qty for this batch)
+                var qty = d.TRANDQTY || d.QTY || d.Qty || 0;
+                var rate = d.TRANDRATE || d.RATE || d.Rate || 0;
+                var amount = d.TRANDGAMT || d.AMOUNT || d.Amount || 0;
+                var batchNo = d.TRANBDNO || d.BATCHNO || d.BatchNo || '';
+                var expDate = d.TRANBEXPDATE || d.EXPDATE || d.ExpiryDate || null;
+                var packing = d.PACKING || d.PACKMDESC || '';
+                var hsnCode = d.HSNCODE || d.HsnCode || d.hsnCode || '';
+
+                // Additional batch-related values for TransactionBatchDetail
+                var packMid = d.PACKMID || 0;
+                var ptr = d.TRANBPTRRATE || d.PTR || d.Ptr || 0;
+                var mrp = d.TRANBMRP || d.MRP || d.Mrp || 0;
+                var boxQty = d.TRANBQTY || d.BoxQty || d.BOXQTY || 0;
+
+                // Source Purchase Invoice identifiers
+                var srcTranBid = d.TRANBID || d.TranBid || d.tranBid || 0;
+                var srcTranDid = d.TRANDID || d.TrandId || d.trandId || 0;
+                var srcTranRefId = d.TRANREFID || d.TranRefId || d.tranRefId || 0;
+
+                var actualQty = parseFloat(qty || 0) || 0;
+                if (actualQty) {
+                    // Show original invoice quantity as read-only Actual Qty
+                    tr.find('.pr-actualqty').val(actualQty);
+                    // If user has not yet entered a return quantity, default to full actual qty
+                    if (!tr.find('.pr-qty').val()) {
+                        tr.find('.pr-qty').val(actualQty);
+                    }
+                }
+
+                if (rate) {
+                    tr.find('.pr-rate').val(rate);
+                }
+
+                if (batchNo) {
+                    tr.find('.pr-batchno').val(batchNo);
+                }
+
+                if (expDate) {
+                    var expVal = expDate;
+
+                    if (typeof expDate === 'string') {
+                        // Handle ASP.NET JSON date: "/Date(1622505600000)/"
+                        if (expDate.indexOf('Date(') !== -1) {
+                            var m = /Date\((\d+)\)/.exec(expDate);
+                            if (m) {
+                                var dt = new Date(parseInt(m[1], 10));
+                                expVal = dt.toISOString().slice(0, 10); // yyyy-MM-dd
+                            }
+                        }
+                        // Handle ISO-like string: "2027-07-01T00:00:00"
+                        else if (expDate.indexOf('T') > -1) {
+                            expVal = expDate.split('T')[0];
+                        }
+                    }
+
+                    tr.find('.pr-expdate').val(expVal);
+                }
+
+                if (hsnCode) {
+                    // Override HSN from material list with invoice HSN if provided
+                    tr.find('.pr-hsn').val(hsnCode);
+                }
+
+                if (packing) {
+                    tr.find('.pr-pack').val(packing);
+                }
+
+                // Display No. of Boxes from TRANBQTY (read-only)
+                if (boxQty) {
+                    tr.find('.pr-boxes').val(boxQty);
+                }
+
+                // Recalculate amount from qty and rate if amount not explicitly provided
+                if (amount) {
+                    tr.find('.pr-amount').val(parseFloat(amount).toFixed(2));
+                } else {
+                    recalcRow(tr);
+                }
+
+                // Store batch-related numeric values on the row so they can be sent in JSON on save
+                tr.data('packmid', parseInt(packMid || 0, 10) || 0);
+                tr.data('ptr', parseFloat(ptr || 0) || 0);
+                tr.data('mrp', parseFloat(mrp || 0) || 0);
+                tr.data('boxqty', parseFloat(boxQty || 0) || 0);
+
+                // Store source Purchase Invoice identifiers on the row
+                tr.data('srcTranBid', parseInt(srcTranBid || 0, 10) || 0);
+                tr.data('srcTranDid', parseInt(srcTranDid || 0, 10) || 0);
+                tr.data('srcTranRefId', parseInt(srcTranRefId || 0, 10) || 0);
+
+                // Ensure row totals and tax summary are updated after auto-fill
+                recalcRow(tr);
+            });
+        }
+
+        function collectDetailRows() {
+            var rows = [];
+            $('#returnDetailsBody tr').each(function () {
+                var tr = $(this);
+                var materialId = parseInt(tr.find('.pr-material').val() || 0);
+                var qty = parseFloat(tr.find('.pr-qty').val() || 0);
+                var rate = parseFloat(tr.find('.pr-rate').val() || 0);
+                var amount = parseFloat(tr.find('.pr-amount').val() || 0);
+                var batchNo = tr.find('.pr-batchno').val() || '';
+                var expDate = tr.find('.pr-expdate').val() || null;
+                var packingId = parseInt(tr.data('packmid') || 0, 10) || 0;
+                var ptr = parseFloat(tr.data('ptr') || 0) || 0;
+                var mrp = parseFloat(tr.data('mrp') || 0) || 0;
+                var boxQty = parseFloat(tr.data('boxqty') || 0) || 0;
+                var billNo = tr.find('.pr-billno').val() || '';
+                var srcTranBid = parseInt(tr.data('srcTranBid') || 0, 10) || 0;
+                var srcTranDid = parseInt(tr.data('srcTranDid') || 0, 10) || 0;
+                var srcTranRefId = parseInt(tr.data('srcTranRefId') || 0, 10) || 0;
+
+                if (materialId > 0 && qty > 0) {
+                    rows.push({
+                        MaterialId: materialId,
+                        Qty: qty,
+                        Rate: rate,
+                        Amount: amount,
+                        BatchNo: batchNo,
+                        ExpiryDate: expDate,
+                        PackingId: packingId,
+                        Ptr: ptr,
+                        Mrp: mrp,
+                        BoxQty: boxQty,
+                        BillNo: billNo,
+                        SourceBatchId: srcTranBid,
+                        SourceDetailId: srcTranDid,
+                        SourceRefId: srcTranRefId
+                    });
+                }
+            });
+            return rows;
+        }
+    </script>
+}

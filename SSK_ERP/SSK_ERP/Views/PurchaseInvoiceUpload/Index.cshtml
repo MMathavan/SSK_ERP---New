@@ -1,0 +1,699 @@
+@using System.Linq
+@using SSK_ERP.Controllers.Purchase
+@{
+    ViewBag.Title = "Purchase Invoice Upload";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .upload-main-container {
+        background: white;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .upload-content-wrapper {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .upload-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .upload-header-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .upload-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .upload-card {
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .upload-loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .upload-loading-box {
+        background: #ffffff;
+        padding: 20px 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.25);
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .upload-loading-spinner {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 3px solid #0d6efd;
+        border-top-color: transparent;
+        animation: upload-spin 0.8s linear infinite;
+    }
+
+    @@keyframes upload-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Fix SweetAlert2 question icon clipping in confirmation dialogs */
+    .swal2-popup .swal2-icon.swal2-question {
+        margin-top: 1.25em !important;
+        margin-bottom: 1.25em !important;
+    }
+</style>
+
+<div class="upload-main-container">
+    <div class="upload-content-wrapper">
+        <div class="upload-header-section">
+            <h1 class="upload-header-title">
+                <i class="fa fa-upload"></i>
+                Purchase Invoice Upload
+            </h1>
+        </div>
+        <div id="uploadLoadingOverlay" class="upload-loading-overlay">
+            <div class="upload-loading-box">
+                <div class="upload-loading-spinner"></div>
+                <span>Processing, please wait...</span>
+            </div>
+        </div>
+        <div class="upload-body">
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+            }
+
+            <div class="upload-card">
+                <h5>Upload Purchase Invoice (Excel / CSV)</h5>
+                @using (Html.BeginForm("Index", "PurchaseInvoiceUpload", FormMethod.Post, new { enctype = "multipart/form-data", id = "purchaseInvoiceUploadForm" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="supplierDropdown" class="form-label">Supplier Name</label>
+                            @Html.DropDownList(
+                                "SupplierId",
+                                ViewBag.SupplierList as SelectList,
+                                "-- Select Supplier --",
+                                new { @class = "form-control", id = "supplierDropdown" }
+                            )
+                        </div>
+                        <div class="col-md-4">
+                            <label for="purchaseOrderDropdown" class="form-label">Purchase Order Number</label>
+                            <div class="input-group">
+                                @Html.DropDownList(
+                                    "PurchaseOrderId",
+                                    ViewBag.PurchaseOrderList as SelectList,
+                                    "-- Select PO Number --",
+                                    new { @class = "form-control", id = "purchaseOrderDropdown" }
+                                )
+                                <button type="button" class="btn btn-info" id="btnViewPO" title="View Purchase Order">
+                                    <i class="fa fa-eye"></i> View
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="file" class="form-label">Select File (Excel / CSV only)</label>
+                            <input type="file" name="file" id="file" class="form-control" accept="application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xls,.xlsx,text/csv,.csv" />
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <a href="@Url.Action("Index", "PurchaseInvoice")" class="btn btn-secondary">
+                            <i class="fa fa-arrow-left"></i> Back
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-upload"></i> Upload
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <!-- PO View Modal -->
+            <div class="modal fade" id="poViewModal" tabindex="-1" aria-labelledby="poViewModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info text-white">
+                            <h5 class="modal-title" id="poViewModalLabel"><i class="fa fa-file-invoice"></i> Purchase Order Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="poViewModalBody">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Loading details...</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @{
+                var header = ViewBag.PInvoiceMaster as PurchaseInvoiceUploadController.TransactionPInvoiceMasterRow;
+                var details = ViewBag.PInvoiceDetails as IEnumerable<PurchaseInvoiceUploadController.TransactionPInvoiceDetailRow>;
+                var detailMatches = ViewBag.PInvoiceDetailMatches as IEnumerable<PurchaseInvoiceUploadController.TransactionPInvoiceDetailMaterialRow>;
+                var detailList = details != null ? details.ToList() : null;
+                var matchList = detailMatches != null
+                    ? detailMatches.ToList()
+                    : new List<PurchaseInvoiceUploadController.TransactionPInvoiceDetailMaterialRow>();
+            }
+
+            @using (Html.BeginForm("ConfirmUploadedInvoice", "PurchaseInvoiceUpload", FormMethod.Post, new { id = "confirmPurchaseInvoiceForm" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("masterTempId", header != null ? header.Id : 0)
+
+                if (detailList != null && detailList.Any())
+                {
+                    <div class="upload-card">
+                        <h5>Extracted Purchase Invoice Details</h5>
+                        @if (header != null)
+                        {
+                            <div class="mb-3">
+                                <div><strong>PO Number:</strong> @header.PoNumber</div>
+                                <div><strong>PO Date:</strong> @(header.PoDate.HasValue ? header.PoDate.Value.ToString("dd-MM-yyyy") : "-")</div>
+                                <div><strong>Tax Invoice No:</strong> @(string.IsNullOrEmpty(header.TaxInvoiceNo) ? "-" : header.TaxInvoiceNo)</div>
+                            </div>
+                        }
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm upload-grid-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px;">S.No</th>
+                                        <th style="width: 180px;">Actual Product</th>
+                                        <th>Product Description</th>
+                                        <th style="width: 100px;">HSN Code</th>
+                                        <th style="width: 80px;">Unit UOM</th>
+                                        <th style="width: 100px;">Batch No.</th>
+                                        <th style="width: 90px;">Expiry</th>
+                                        <th style="width: 110px;">Total/No of Boxes</th>
+                                        <th style="width: 140px;">Packing</th>
+                                        <th style="width: 90px;">Total Qty</th>
+                                        <th style="width: 110px;">Price per Unit</th>
+                                        <th style="width: 90px;">P.T.R</th>
+                                        <th style="width: 90px;">M.R.P</th>
+                                        <th style="width: 120px;">Total Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        int i = 1;
+                                        foreach (var row in detailList)
+                                        {
+                                            var match = matchList
+                                                .FirstOrDefault(m => m.TransactionPInvoiceMasterId == row.TransactionPInvoiceMasterId &&
+                                                                    m.LineNo == row.LineNo);
+
+                                            <tr>
+                                                <td class="text-center">
+                                                    @i
+                                                    @Html.Hidden("lineNos", row.LineNo)
+                                                </td>
+
+                                                <td>
+                                                    <select class="form-control actual-product-select"
+                                                            data-row-index="@i"
+                                                            data-line-no="@row.LineNo"
+                                                            data-product-description="@row.ProductDescription">
+                                                        <option value="">-- Select Actual Product --</option>
+                                                        @if (match != null && match.MTRLID.HasValue)
+                                                        {
+                                                            <option value="@match.MTRLID" selected="selected">@match.MTRLDESC</option>
+                                                        }
+                                                    </select>
+                                                </td>
+
+                                                <td>@row.ProductDescription</td>
+                                                <td>@row.HsnCode</td>
+                                                <td>@row.UnitUom</td>
+                                                <td>@row.BatchNo</td>
+                                                <td>@row.ExpiryText</td>
+                                                <td class="boxes-cell" data-boxes="@row.Boxes">@row.Boxes</td>
+
+                                                <td>
+                                                    @{ var packingList = ViewBag.PackingMasters as List<SelectListItem> ?? new List<SelectListItem>(); }
+                                                    <select class="form-control packing-select" data-row-index="@i" data-line-no="@row.LineNo" data-total-qty="@row.TotalQty">
+                                                        <option value="">-- Select Packing --</option>
+                                                        @foreach (var p in packingList)
+                                                        {
+                                                            <option value="@p.Value" data-units="">@p.Text</option>
+                                                        }
+                                                    </select>
+                                                </td>
+
+                                                <td class="text-end total-qty-cell">@string.Format("{0:0.##}", row.TotalQty)</td>
+                                                <td class="text-end">@string.Format("{0:0.00}", row.PricePerUnit)</td>
+                                                <td class="text-end">@string.Format("{0:0.00}", row.Ptr)</td>
+                                                <td class="text-end">@string.Format("{0:0.00}", row.Mrp)</td>
+                                                <td class="text-end">@string.Format("{0:0.00}", row.TotalValue)</td>
+                                            </tr>
+                                            i++;
+                                        }
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr style="background-color: #f8f9fa; font-weight: bold;">
+                                        <td colspan="9" class="text-end">Totals:</td>
+                                        <td class="text-end">@string.Format("{0:0.##}", detailList.Sum(x => x.TotalQty))</td>
+                                        <td colspan="3"></td>
+                                        <td class="text-end">@string.Format("{0:0.00}", detailList.Sum(x => x.TotalValue))</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 10px;">
+                            <button type="submit" class="btn btn-success" id="btnConfirmPurchaseInvoice">
+                                <i class="fa fa-check"></i> Confirm and Save
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var $supplier = $('#supplierDropdown');
+            if ($.fn.select2 && $supplier.length) {
+                $supplier.select2({ width: '100%' });
+            }
+
+            // AJAX to fetch Purchase Orders when Supplier changes
+            $supplier.on('change', function () {
+                var supplierId = $(this).val();
+                var $poDropdown = $('#purchaseOrderDropdown');
+
+                $poDropdown.empty().append('<option value="">-- Select PO Number --</option>');
+
+                if (supplierId) {
+                    $.ajax({
+                        url: '@Url.Action("GetPurchaseOrdersBySupplier", "PurchaseInvoiceUpload")',
+                        type: 'GET',
+                        data: { supplierId: supplierId },
+                        success: function (data) {
+                            if (data && data.length > 0) {
+                                $.each(data, function (i, item) {
+                                    $poDropdown.append($('<option>', {
+                                        value: item.id,
+                                        text: item.text
+                                    }));
+                                });
+                            }
+                        },
+                        error: function () {
+                            console.error('Failed to load Purchase Orders');
+                        }
+                    });
+                }
+            });
+
+            var $overlay = $('#uploadLoadingOverlay');
+
+            // Handle PO View Click
+            $('#btnViewPO').click(function() {
+                var poId = $('#purchaseOrderDropdown').val();
+                if(!poId || poId == "") {
+                    // Alert if no PO selected
+                     if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Warning',
+                            text: 'Please select a Purchase Order first.',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        alert('Please select a Purchase Order first.');
+                    }
+                    return;
+                }
+                
+                // Open Modal
+                var poModal = new bootstrap.Modal(document.getElementById('poViewModal'), {
+                  keyboard: false
+                });
+                poModal.show();
+                
+                // Fetch Content
+                $('#poViewModalBody').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading details...</p></div>');
+                
+                $.ajax({
+                    url: '@Url.Action("GetPoDetails", "PurchaseInvoiceUpload")', 
+                    type: 'GET',
+                    data: { id: poId },
+                    success: function(response) {
+                        $('#poViewModalBody').html(response);
+                    },
+                    error: function() {
+                        $('#poViewModalBody').html('<div class="alert alert-danger">Failed to load purchase order details.</div>');
+                    }
+                });
+            });
+
+            var purchaseSuccessMessage = "@(TempData["SuccessMessage"] ?? "")";
+            /*
+            // Commented out as requested - no success popup for upload
+            if (purchaseSuccessMessage && typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                Swal.fire({
+                    icon: 'success',
+                    title: purchaseSuccessMessage,
+                    confirmButtonText: 'OK'
+                });
+            }
+            */
+
+            var purchaseErrorMessage = "@(TempData["ErrorMessage"] ?? "")";
+            if (purchaseErrorMessage && typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: purchaseErrorMessage,
+                    confirmButtonText: 'OK'
+                });
+            }
+
+            if ($.fn.select2) {
+                $('.actual-product-select').each(function () {
+                    var $select = $(this);
+                    var initialTerm = $select.data('product-description') || '';
+
+                    $select.select2({
+                        width: '100%',
+                        placeholder: '-- Select Actual Product --',
+                        allowClear: true,
+                        ajax: {
+                            url: '@Url.Action("SearchActualProducts", "PurchaseInvoiceUpload")',
+                            dataType: 'json',
+                            delay: 250,
+                            data: function (params) {
+                                var term = params.term;
+                                if (!term || !term.length) {
+                                    term = initialTerm;
+                                }
+                                return { term: term };
+                            },
+                            processResults: function (data) {
+                                return { results: data };
+                            }
+                        },
+                        minimumInputLength: 0
+                    });
+                });
+
+                $('.packing-select').select2({
+                    width: '100%',
+                    placeholder: '-- Select Packing --',
+                    allowClear: true
+                });
+
+                // Auto-fill packing based on Total Qty / Boxes calculation
+                function autoFillPacking() {
+                    $('.packing-select').each(function () {
+                        var $select = $(this);
+                        var rowIndex = $select.data('row-index');
+                        var totalQty = parseFloat($select.data('total-qty')) || 0;
+                        var $row = $select.closest('tr');
+                        var boxesText = $row.find('.boxes-cell').data('boxes') || '';
+                        
+                        // Extract numeric value from boxes (e.g., "09" -> 9, "15 Packs" -> 15, "3/0" -> 3)
+                        var boxesMatch = boxesText.toString().match(/^(\d+)/);
+                        if (!boxesMatch || totalQty <= 0) {
+                            return;
+                        }
+                        
+                        var boxes = parseFloat(boxesMatch[1]);
+                        if (boxes <= 0) {
+                            return;
+                        }
+                        
+                        // Calculate units per box
+                        var unitsPerBox = Math.round(totalQty / boxes);
+                        
+                        // Fetch all packing options and find matching one
+                        $.ajax({
+                            url: '@Url.Action("GetAllPackingMasters", "PurchaseInvoiceUpload")',
+                            type: 'GET',
+                            success: function (packingData) {
+                                if (packingData && packingData.length > 0) {
+                                    // Find packing with matching units
+                                    var matchingPacking = packingData.find(function(p) {
+                                        return p.units == unitsPerBox;
+                                    });
+                                    
+                                    if (matchingPacking) {
+                                        // Set the packing dropdown to the matching value
+                                        $select.val(matchingPacking.id).trigger('change');
+                                    }
+                                }
+                            }
+                        });
+                    });
+                }
+                
+                // Call auto-fill after page loads
+                setTimeout(autoFillPacking, 500);
+            }
+
+            $('#confirmPurchaseInvoiceForm').on('submit', function (e) {
+                var $form = $(this);
+                var allMaterialSelected = true;
+                var allPackingSelected = true;
+
+                // Remove any previously appended hidden fields for materials/packings
+                $form.find('input[name="actualMaterialIds"]').remove();
+                $form.find('input[name="packingIds"]').remove();
+
+                $('.actual-product-select').each(function () {
+                    var $rowSelect = $(this);
+                    var val = $rowSelect.val();
+                    if (!val || parseInt(val, 10) <= 0) {
+                        allMaterialSelected = false;
+                    }
+
+                    $('<input/>', {
+                        type: 'hidden',
+                        name: 'actualMaterialIds',
+                        value: val || '0'
+                    }).appendTo($form);
+
+                    var lineNo = $rowSelect.data('line-no') || 0;
+                });
+
+                $('.packing-select').each(function () {
+                    var $rowSelect = $(this);
+                    var packVal = $rowSelect.val();
+                    if (!packVal || parseInt(packVal, 10) <= 0) {
+                        allPackingSelected = false;
+                    }
+
+                    $('<input/>', {
+                        type: 'hidden',
+                        name: 'packingIds',
+                        value: packVal || '0'
+                    }).appendTo($form);
+                });
+
+                if (!allMaterialSelected) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Actual Product required',
+                            text: 'Please select an Actual Product for all rows before saving.'
+                        });
+                    } else {
+                        alert('Please select an Actual Product for all rows before saving.');
+                    }
+                    return;
+                }
+
+                if (!allPackingSelected) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Packing selection required',
+                            text: 'Please select Packing for all rows before saving.'
+                        });
+                    } else {
+                        alert('Please select Packing for all rows before saving.');
+                    }
+                    return;
+                }
+
+                e.preventDefault();
+
+                try {
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: 'You are about to confirm and save this purchase invoice.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, save it!'
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            $form.off('submit').submit();
+                        }
+                    });
+                } catch (ex) {
+                    $form.off('submit').submit();
+                }
+            });
+
+            // Auto-hide alerts (like SalesOrderUpload) after 2 seconds
+            var $alerts = $('.upload-body .alert');
+            if ($alerts.length) {
+                setTimeout(function () {
+                    $alerts.fadeOut(400, function () {
+                        $(this).remove();
+                    });
+                }, 2000);
+            }
+
+            $('#purchaseInvoiceUploadForm').on('submit', function (e) {
+                var supplierVal = $supplier.val();
+                var poVal = $('#purchaseOrderDropdown').val();
+                var filePath = $.trim($('#file').val());
+
+                if (!supplierVal) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Supplier required',
+                            text: 'Please select a supplier.'
+                        });
+                    } else {
+                        alert('Please select a supplier.');
+                    }
+                    return;
+                }
+
+                if (!poVal) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'PO number required',
+                            text: 'Please select a Purchase Order Number.'
+                        });
+                    } else {
+                        alert('Please select a Purchase Order Number.');
+                    }
+                    return;
+                }
+
+                if (!filePath) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'File required',
+                            text: 'Please select a file to upload.'
+                        });
+                    } else {
+                        alert('Please select a file to upload.');
+                    }
+                    return;
+                }
+
+                var lower = filePath.toLowerCase();
+                var allowedExts = ['.xls', '.xlsx', '.csv'];
+                var isValidExt = false;
+                for (var iExt = 0; iExt < allowedExts.length; iExt++) {
+                    if (lower.endsWith(allowedExts[iExt])) {
+                        isValidExt = true;
+                        break;
+                    }
+                }
+
+                if (!isValidExt) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid file type',
+                            text: 'Please select an Excel (.xls, .xlsx) or CSV (.csv) file.'
+                        });
+                    } else {
+                        alert('Please select an Excel (.xls, .xlsx) or CSV (.csv) file.');
+                    }
+                    return;
+                }
+
+                // All validations passed: show SweetAlert confirmation like SalesOrderUpload
+                e.preventDefault();
+
+                try {
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: 'You are about to upload and process this file.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, upload it!'
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            if ($overlay.length) {
+                                // Use flex so the overlay centers its content correctly
+                                $overlay.css('display', 'flex');
+                            }
+                            $('#purchaseInvoiceUploadForm').off('submit').submit();
+                        }
+                    });
+                } catch (ex) {
+                    // Fallback: SweetAlert not available; just show overlay (if present) and submit
+                    if ($overlay.length) {
+                        $overlay.css('display', 'flex');
+                    }
+                    $('#purchaseInvoiceUploadForm').off('submit').submit();
+                }
+            });
+        });
+    </script>
+}

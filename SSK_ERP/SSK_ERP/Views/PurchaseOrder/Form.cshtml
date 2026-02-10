@@ -1,0 +1,871 @@
+@{
+    ViewBag.Title = "Purchase Order";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .req {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 12px 15px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .msg {
+        background: linear-gradient(135deg, #00b894, #00cec9);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+
+    .so-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+    }
+
+    .so-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+    }
+
+    .so-totals-table th {
+        text-align: right;
+        width: 40%;
+        font-weight: 600;
+    }
+
+    .so-totals-table td {
+        width: 60%;
+    }
+
+    .so-tax-table {
+        margin-bottom: 0;
+    }
+
+    .so-tax-table th,
+    .so-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 140px;
+        white-space: nowrap;
+    }
+
+    .so-tax-costfactor {
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        padding: 10px 12px 12px 12px;
+        background-color: #f8fafc;
+    }
+
+    .so-tax-cf-table thead th {
+        background-color: #f1f3f5;
+        font-size: 12px;
+    }
+
+    .so-tax-cf-table tbody td {
+        vertical-align: middle;
+    }
+
+    .so-address-row {
+        margin-bottom: 8px;
+    }
+
+    .so-address-row > [class*="col-"]:first-child {
+        padding-right: 20px;
+    }
+
+    .so-address-row > [class*="col-"]:last-child {
+        padding-left: 20px;
+    }
+
+    /* TAX modal styling - aligned with Raw Material Invoice design */
+    .modal-dialog.modal-xl {
+        width: 90%;
+        max-width: 1100px;
+        margin: 30px auto;
+    }
+
+    .so-tax-modal .modal-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #fff;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .so-tax-modal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .so-tax-modal .modal-header .close {
+        padding: 0.4rem 0.7rem;
+        margin: 0;
+        opacity: 1;
+        font-size: 1.4rem;
+        font-weight: 300;
+        line-height: 1;
+        color: #fff;
+        text-shadow: none;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .so-tax-modal .modal-header .close:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(90deg);
+    }
+
+    .so-tax-modal .modal-body {
+        background: #f9fafb;
+        padding: 20px 24px;
+    }
+
+    .so-tax-modal .modal-footer {
+        border-top: 1px solid #e5e7eb;
+        padding: 12px 24px 18px 24px;
+    }
+
+    .so-tax-modal .modal-footer .btn {
+        border-radius: 24px;
+        padding: 8px 22px;
+        font-weight: 600;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.25s ease;
+    }
+
+    .so-tax-modal .modal-footer .btn-success {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        border: none;
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(34, 197, 94, 0.4);
+    }
+
+    .so-tax-modal .modal-footer .btn-success:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 12px rgba(34, 197, 94, 0.5);
+    }
+
+    .so-tax-modal .modal-footer .btn-secondary {
+        background: #ffffff;
+        border: 2px solid #d1d5db;
+        color: #4b5563;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+    }
+
+    .so-tax-modal .modal-footer .btn-secondary:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+        transform: translateY(-1px);
+    }
+
+    .so-tax-modal .modal-footer .btn-primary {
+        background: linear-gradient(135deg, #00bcd4, #00acc1);
+        border: none;
+        color: #fff;
+        box-shadow: 0 3px 10px rgba(0, 188, 212, 0.45);
+    }
+
+    .so-tax-modal .modal-footer .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(0, 188, 212, 0.55);
+    }
+
+    .so-tax-modal .modal-footer .btn i {
+        font-size: 13px;
+    }
+
+    .so-tax-cf-table thead th {
+        background-color: #e5e7eb;
+        font-size: 12px;
+        text-align: center;
+        border-bottom: 2px solid #d1d5db;
+    }
+
+    .so-tax-cf-table tbody td {
+        background-color: #f9fafb;
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-row-delete {
+        background-color: #ef4444;
+        border-color: #ef4444;
+        padding: 0;
+        border-radius: 4px;
+        width: 6px;
+        height: 28px;
+        display: inline-block;
+    }
+
+    .so-tax-row-delete i {
+        display: none;
+    }
+</style>
+
+<div class="main-container">
+    <div class="form-container">
+        <div class="form-header">
+            <h1 class="form-title">
+                <i class="bi bi-receipt-cutoff"></i>
+                Purchase Order
+            </h1>
+        </div>
+
+        <div class="form-body">
+            <div class="section-title">
+                <i class="fa fa-info-circle"></i> Purchase Order
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>No</label>
+                        <input type="text" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="text" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>PO No</label>
+                        <input type="text" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>PO Date</label>
+                        <input type="text" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Supplier Name</label>
+                        <input type="text" class="form-control" />
+                    </div>
+                    <div class="row so-address-row">
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Address Line 1" />
+                        </div>
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Address Line 2" />
+                        </div>
+                    </div>
+                    <div class="row so-address-row">
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="City" />
+                        </div>
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="State" />
+                        </div>
+                    </div>
+                    <div class="row so-address-row">
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Post code" />
+                        </div>
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Country" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Billing Location</label>
+                        <select class="form-control">
+                            <option>Select Billing Location</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Address Line 1" />
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="City" />
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Post code" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Despatch Location</label>
+                        <input type="text" class="form-control" placeholder="Despatch Location" />
+                    </div>
+                    <div class="row so-address-row">
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Address Line 1" />
+                        </div>
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Address Line 2" />
+                        </div>
+                    </div>
+                    <div class="row so-address-row">
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="City" />
+                        </div>
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <select class="form-control">
+                                <option>Select Despatch State</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row so-address-row">
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Post code" />
+                        </div>
+                        <div class="col-md-6 col-sm-6 col-6">
+                            <input type="text" class="form-control" placeholder="Country" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">Item Details</div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle so-detail-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">S.No</th>
+                            <th style="width: 220px;">Material</th>
+                            <th style="width: 200px;">Material Group</th>
+                            <th style="width: 100px;">Qty</th>
+                            <th style="width: 120px;">Rate</th>
+                            <th style="width: 180px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="soDetailsBody">
+                        <tr>
+                            <td class="text-center so-row-index">1</td>
+                            <td>
+                                <select class="form-control form-control-sm so-material">
+                                    <option value="">Select Material</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-control form-control-sm so-material-group">
+                                    <option value="">Select Material Group</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm so-qty text-end" />
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm so-rate text-end" />
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-1">
+                                    <input type="text" class="form-control form-control-sm so-amount text-end" />
+                                    <button type="button" class="btn btn-success btn-sm btn-add-row"><i class="fa fa-plus"></i></button>
+                                    <button type="button" class="btn btn-danger btn-sm btn-remove-row"><i class="fa fa-minus"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row" style="margin-top: 10px;">
+                <div class="col-md-12">
+                    <table class="table table-bordered so-tax-table">
+                        <tr>
+                            <td class="col-md-4">
+                                <button type="button" class="btn btn-success btn-sm" id="soTaxToggle">
+                                    <i class="fa fa-plus-square"></i> TAX
+                                </button>
+                            </td>
+                            <td class="so-tax-summary-label">Gross Amount</td>
+                            <td class="col-md-2">
+                                <input type="text" class="form-control text-end" id="soGrossAmount" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td class="so-tax-summary-label">CGST</td>
+                            <td>
+                                <input type="text" class="form-control text-end" id="soCgstAmount" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td class="so-tax-summary-label">SGST</td>
+                            <td>
+                                <input type="text" class="form-control text-end" id="soSgstAmount" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td class="so-tax-summary-label">IGST</td>
+                            <td>
+                                <input type="text" class="form-control text-end" id="soIgstAmount" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td class="so-tax-summary-label">Net Amount</td>
+                            <td>
+                                <input type="text" class="form-control text-end" id="soNetAmount" />
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="modal fade" id="soTaxModal" tabindex="-1" role="dialog" aria-labelledby="soTaxModalLabel">
+                        <div class="modal-dialog modal-xl" role="document">
+                            <div class="modal-content so-tax-modal">
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                    <h4 class="modal-title" id="soTaxModalLabel">
+                                        <i class="fa fa-calculator"></i> Tax / Cost Factor
+                                    </h4>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="so-tax-costfactor">
+                                        <table class="table table-bordered so-tax-cf-table" id="soTaxFactorTable">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 40px;"></th>
+                                                    <th>Cost Factor</th>
+                                                    <th style="width: 260px;">Expression</th>
+                                                    <th style="width: 100px;">Mode</th>
+                                                    <th style="width: 140px;">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="text-center">
+                                                        <button type="button" class="btn btn-danger btn-sm so-tax-row-delete" title="Remove row">
+                                                            <i class="fa fa-trash-o"></i>
+                                                        </button>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-control so-cost-factor">
+                                                            <option value="">Select Cost Factor</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <div class="input-group input-group-sm">
+                                                            <select class="form-control so-tax-type">
+                                                                <option value="%">%</option>
+                                                                <option value="Value">Value</option>
+                                                            </select>
+                                                            <input type="text" class="form-control text-end so-tax-value" value="0.000" />
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-control so-tax-mode">
+                                                            <option value="+">+</option>
+                                                            <option value="-">-</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" class="form-control text-end so-tax-amount" value="0.00" />
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="bg-light">
+                                                    <td colspan="4" class="text-end"><strong>Total Tax Amount:</strong></td>
+                                                    <td><strong id="soTotalTaxAmount">0.00</strong></td>
+                                                </tr>
+                                                <tr class="bg-success text-white">
+                                                    <td colspan="4" class="text-end"><strong>Gross + Tax:</strong></td>
+                                                    <td><strong id="soGrossWithTax">0.00</strong></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-success btn-sm" id="soAddCostFactorRow">
+                                        <i class="fa fa-plus"></i> Add Row
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-primary btn-sm" id="soApplyTax">
+                                        <i class="fa fa-check"></i> Apply
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">Remarks</div>
+            <div class="row">
+                <div class="col-md-12">
+                    <textarea class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="@Url.Action("Index", "PurchaseOrder")" class="btn btn-secondary">Back</a>
+                <button type="button" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script type="text/javascript">
+        (function ($) {
+            var soMaterialGroupMap = {};
+            var soMaterialOptionsHtml = '<option value="">Select Material</option>';
+            var soGroupOptionsHtml = '<option value="">Select Material Group</option>';
+            var soCostFactorOptionsHtml = '<option value="">Select Cost Factor</option>';
+
+            function updateSoRowNumbers() {
+                $('#soDetailsBody tr').each(function (index) {
+                    $(this).find('.so-row-index').text(index + 1);
+                });
+            }
+
+            function loadMaterialAndGroupData() {
+                $.getJSON('@Url.Action("GetMaterialAndGroups", "PurchaseOrder", new { area = "" })')
+                    .done(function (resp) {
+                        if (!resp || resp.success === false) {
+                            console.error('Failed to load material/group data for Purchase Order.', resp && resp.error);
+                            return;
+                        }
+
+                        soMaterialGroupMap = {};
+                        soMaterialOptionsHtml = '<option value="">Select Material</option>';
+                        $.each(resp.materials || [], function (idx, item) {
+                            if (!item) return;
+                            soMaterialGroupMap[item.id] = item.groupId;
+                            var name = item.name || '';
+                            soMaterialOptionsHtml += '<option value="' + item.id + '">' + name + '</option>';
+                        });
+
+                        soGroupOptionsHtml = '<option value="">Select Material Group</option>';
+                        $.each(resp.groups || [], function (idx, g) {
+                            if (!g) return;
+                            var gName = g.name || '';
+                            soGroupOptionsHtml += '<option value="' + g.id + '">' + gName + '</option>';
+                        });
+
+                        $('#soDetailsBody .so-material').each(function () {
+                            $(this).html(soMaterialOptionsHtml);
+                        });
+
+                        $('#soDetailsBody .so-material-group').each(function () {
+                            $(this).html(soGroupOptionsHtml);
+                        });
+                    })
+                    .fail(function (xhr, status, error) {
+                        console.error('Error loading material/group data:', status, error, xhr && xhr.responseText);
+                    });
+            }
+
+            function loadCostFactors() {
+                $.getJSON('@Url.Action("GetCostFactorsForPurchase", "PurchaseOrder", new { area = "" })')
+                    .done(function (resp) {
+                        if (!resp || resp.success === false) {
+                            console.error('Failed to load cost factors for Purchase Order.', resp && resp.error);
+                            return;
+                        }
+
+                        soCostFactorOptionsHtml = '<option value="">Select Cost Factor</option>';
+                        $.each(resp.items || [], function (idx, item) {
+                            if (!item) return;
+                            var name = item.name || '';
+                            soCostFactorOptionsHtml += '<option value="' + item.id + '">' + name + '</option>';
+                        });
+
+                        $('#soTaxFactorTable .so-cost-factor').each(function () {
+                            $(this).html(soCostFactorOptionsHtml);
+                        });
+                    })
+                    .fail(function (xhr, status, error) {
+                        console.error('Error loading cost factors:', status, error, xhr && xhr.responseText);
+                    });
+            }
+
+            $(document).on('click', '.btn-add-row', function () {
+                var $currentRow = $(this).closest('tr');
+                var $newRow = $currentRow.clone();
+
+                $newRow.find('input').val('');
+                $newRow.find('select').prop('selectedIndex', 0);
+
+                $('#soDetailsBody').append($newRow);
+                updateSoRowNumbers();
+            });
+
+            $(document).on('click', '.btn-remove-row', function () {
+                var $rows = $('#soDetailsBody tr');
+                if ($rows.length > 1) {
+                    $(this).closest('tr').remove();
+                    updateSoRowNumbers();
+                } else {
+                    $(this).closest('tr').find('input').val('');
+                    $(this).closest('tr').find('select').prop('selectedIndex', 0);
+                }
+            });
+
+            // Auto-fill material group when material changes
+            $(document).on('change', '.so-material', function () {
+                var $row = $(this).closest('tr');
+                var matId = parseInt($(this).val() || '0', 10);
+                var groupId = soMaterialGroupMap[matId];
+
+                if (groupId) {
+                    $row.find('.so-material-group').val(String(groupId));
+                } else {
+                    $row.find('.so-material-group').val('');
+                }
+            });
+
+            // ---------- TAX / Cost Factor modal behaviour (UI-only) ----------
+
+            function getSoGrossAmount() {
+                var val = $.trim($('#soGrossAmount').val());
+                var num = parseFloat(val);
+                return isNaN(num) ? 0 : num;
+            }
+
+            function recalcSoTaxTotals() {
+                var gross = getSoGrossAmount();
+                var totalTax = 0;
+
+                $('#soTaxFactorTable tbody tr').each(function () {
+                    var $row = $(this);
+                    var type = $row.find('.so-tax-type').val(); // % or Value
+                    var mode = $row.find('.so-tax-mode').val(); // + or -
+                    var rawVal = $.trim($row.find('.so-tax-value').val());
+                    var expr = parseFloat(rawVal);
+                    if (isNaN(expr)) expr = 0;
+
+                    var amount = 0;
+                    if (type === 'Value') {
+                        amount = expr;
+                    } else {
+                        amount = (gross * expr) / 100.0;
+                    }
+
+                    if (mode === '-') {
+                        amount = -amount;
+                    }
+
+                    $row.find('.so-tax-amount').val(amount.toFixed(2));
+                    totalTax += amount;
+                });
+
+                $('#soTotalTaxAmount').text(totalTax.toFixed(2));
+                $('#soGrossWithTax').text((gross + totalTax).toFixed(2));
+            }
+
+            // Open TAX / Cost Factor modal
+            $('#soTaxToggle').on('click', function () {
+                $('#soTaxModal').modal('show');
+                // Default gross from details, if empty, try to sum Amount column once
+                if (!$('#soGrossAmount').val()) {
+                    var sum = 0;
+                    $('.so-amount').each(function () {
+                        var v = parseFloat($(this).val());
+                        if (!isNaN(v)) sum += v;
+                    });
+                    if (sum > 0) {
+                        $('#soGrossAmount').val(sum.toFixed(2));
+                    }
+                }
+                recalcSoTaxTotals();
+            });
+
+            // Add new cost factor row inside modal (UI only)
+            $('#soAddCostFactorRow').on('click', function () {
+                var $tbody = $('#soTaxFactorTable tbody');
+                var $lastRow = $tbody.find('tr:last');
+                var $newRow = $lastRow.clone();
+
+                $newRow.find('.so-cost-factor').prop('selectedIndex', 0);
+                $newRow.find('.so-tax-type').val('%');
+                $newRow.find('.so-tax-value').val('0.000');
+                $newRow.find('.so-tax-mode').val('+');
+                $newRow.find('.so-tax-amount').val('0.00');
+
+                $tbody.append($newRow);
+                recalcSoTaxTotals();
+            });
+
+            // Delete cost factor row (UI only)
+            $(document).on('click', '.so-tax-row-delete', function () {
+                var $rows = $('#soTaxFactorTable tbody tr');
+                var $row = $(this).closest('tr');
+
+                if ($rows.length > 1) {
+                    $row.remove();
+                } else {
+                    $row.find('.so-cost-factor').prop('selectedIndex', 0);
+                    $row.find('.so-tax-type').val('%');
+                    $row.find('.so-tax-value').val('0.000');
+                    $row.find('.so-tax-mode').val('+');
+                    $row.find('.so-tax-amount').val('0.00');
+                }
+
+                recalcSoTaxTotals();
+            });
+
+            // Recalculate when expression fields change
+            $(document).on('change keyup', '.so-tax-type, .so-tax-value, .so-tax-mode', function () {
+                recalcSoTaxTotals();
+            });
+
+            // Apply button: push totals back to summary inputs
+            $('#soApplyTax').on('click', function () {
+                var gross = getSoGrossAmount();
+                var totalTax = 0;
+
+                $('#soTaxFactorTable tbody tr').each(function () {
+                    var v = parseFloat($(this).find('.so-tax-amount').val());
+                    if (!isNaN(v)) totalTax += v;
+                });
+
+                // For simplicity, put all tax into CGST field and compute Net = Gross + totalTax
+                $('#soCgstAmount').val(totalTax.toFixed(2));
+                $('#soSgstAmount').val('0.00');
+                $('#soIgstAmount').val('0.00');
+                $('#soNetAmount').val((gross + totalTax).toFixed(2));
+
+                $('#soTaxModal').modal('hide');
+            });
+
+            $(function () {
+                updateSoRowNumbers();
+                loadMaterialAndGroupData();
+                loadCostFactors();
+            });
+        })(jQuery);
+    </script>
+}
+

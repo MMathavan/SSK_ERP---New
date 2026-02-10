@@ -1,0 +1,471 @@
+@{
+    ViewBag.Title = "Purchase Order";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .so-main-container {
+        background: white;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .so-content-wrapper {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .so-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .so-header-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .so-table-container {
+        padding: 30px;
+        background: white;
+    }
+
+    .dataTables_wrapper {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .dataTables_filter.with-filter-status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .dataTables_filter.with-filter-status #filterStatus {
+        margin-bottom: 4px;
+    }
+
+    #purchaseOrderTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #purchaseOrderTable thead th {
+        background: #7f88e9;
+        color: white;
+        font-weight: 600;
+        padding: 15px 12px;
+        text-align: center;
+        border: none;
+        font-size: 14px;
+        border-right: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+    #purchaseOrderTable thead th:last-child {
+        border-right: none;
+    }
+
+    #purchaseOrderTable tbody td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    #purchaseOrderTable tbody tr:hover {
+        background-color: #f8f9ff;
+        transform: scale(1.01);
+        transition: all 0.2s ease;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        margin: 0 2px;
+        border-radius: 20px;
+        border: none;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+        color: #2d3436;
+    }
+
+    .btn-edit:hover {
+        background: linear-gradient(135deg, #fdcb6e, #e17055);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #fd79a8, #e84393);
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: linear-gradient(135deg, #e84393, #d63031);
+        transform: translateY(-1px);
+    }
+
+    .btn-print {
+        background: linear-gradient(135deg, #43cea2, #185a9d);
+        color: #ffffff;
+    }
+
+    .btn-print:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(24, 90, 157, 0.4);
+        color: #ffffff;
+    }
+
+    .badge {
+        font-weight: 600;
+    }
+
+    .badge.bg-success {
+        background-color: #28a745;
+        color: #ffffff !important;
+        border: 1px solid #1e7e34;
+    }
+
+    .badge.bg-danger {
+        background-color: #dc3545;
+        color: #ffffff !important;
+        border: 1px solid #b21f2d;
+    }
+
+    .so-text-left {
+        text-align: left !important;
+    }
+</style>
+
+<div class="so-main-container">
+    <div class="so-content-wrapper">
+        <div class="so-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="so-header-title">
+                    <i class="bi bi-receipt-cutoff"></i>
+                    Purchase Order
+                </h1>
+            </div>
+        </div>
+
+        <div class="so-table-container">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="fromDate" class="form-label">From Date</label>
+                    <input type="date" id="fromDate" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label for="toDate" class="form-label">To Date</label>
+                    <input type="date" id="toDate" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" id="filterBtn" class="btn btn-primary me-2">
+                        <i class="fa fa-filter"></i> Filter
+                    </button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                        <i class="fa fa-times"></i> Clear
+                    </button>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div id="filterStatus" style="display:none;">
+                        <small class="text-muted"><span id="filterText"></span></small>
+                    </div>
+                </div>
+            </div>
+
+            <table id="purchaseOrderTable" class="table table-striped table-bordered" width="100%">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Number</th>
+                        <th>PO No.</th>
+                        <th>PO Date</th>
+                        <th>Supplier Name</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // Check for success/error messages from TempData
+            var successMsg = "@(TempData["SuccessMessage"] ?? "")";
+            /* 
+            // Commented out to prevent popup on index load as requested
+            if (successMsg) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: successMsg,
+                    confirmButtonText: 'OK'
+                });
+            }
+
+            var errorMsg = "@(TempData["ErrorMessage"] ?? "")";
+            if (errorMsg) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: errorMsg,
+                    confirmButtonText: 'OK'
+                });
+            }
+            */
+
+
+            $.fn.dataTable.ext.errMode = 'console';
+
+            var canEditPo = @User.IsInRole("PurchaseOrderEdit").ToString().ToLower();
+            var canDeletePo = @User.IsInRole("PurchaseOrderDelete").ToString().ToLower();
+            var canPrintPo = @User.IsInRole("PurchaseOrderPrint").ToString().ToLower();
+
+            var table = $('#purchaseOrderTable').DataTable({
+                ajax: {
+                    url: '@Url.Action("GetAjaxData", "PurchaseOrder")',
+                    type: 'GET',
+                    data: function (d) {
+                        d.fromDate = $('#fromDate').val();
+                        d.toDate = $('#toDate').val();
+                    },
+                    error: function (xhr, status, err) {
+                        // Ignore aborted requests (for example when a reload cancels a previous call)
+                        if (status === 'abort') {
+                            return;
+                        }
+                        console.error('PurchaseOrder GetAjaxData error:', status, err, xhr && xhr.responseText);
+                        alert('Failed to load Purchase Orders. Please check console for details.');
+                    }
+                },
+                columns: [
+                    {
+                        data: 'TRANDATE',
+                        render: function (data, type, row) {
+                            if (data && type === 'display') {
+                                var date;
+                                if (typeof data === 'string' && data.indexOf('/Date(') === 0) {
+                                    var timestamp = parseInt(data.substr(6));
+                                    date = new Date(timestamp);
+                                } else {
+                                    date = new Date(data);
+                                }
+
+                                if (!isNaN(date.getTime())) {
+                                    var day = String(date.getDate()).padStart(2, '0');
+                                    var month = String(date.getMonth() + 1).padStart(2, '0');
+                                    var year = date.getFullYear();
+                                    return day + '/' + month + '/' + year;
+                                }
+                            }
+                            return data;
+                        }
+                    },
+                    { data: 'TRANNO' },
+                    { data: 'TRANREFNO' },
+                    {
+                        data: 'PODate',
+                        render: function (data, type, row) {
+                            if (data && type === 'display') {
+                                var date;
+                                if (typeof data === 'string' && data.indexOf('/Date(') === 0) {
+                                    var timestamp = parseInt(data.substr(6));
+                                    date = new Date(timestamp);
+                                } else {
+                                    date = new Date(data);
+                                }
+
+                                if (!isNaN(date.getTime())) {
+                                    var day = String(date.getDate()).padStart(2, '0');
+                                    var month = String(date.getMonth() + 1).padStart(2, '0');
+                                    var year = date.getFullYear();
+                                    return day + '/' + month + '/' + year;
+                                }
+                            }
+                            return data;
+                        }
+                    },
+                    { data: 'SupplierName', className: 'so-text-left' },
+                    {
+                        data: 'Amount',
+                        render: function (data) {
+                            var value = parseFloat(data || 0);
+                            return '<span class="amount-cell">&#8377; ' + value.toFixed(2) + '</span>';
+                        }
+                    },
+                    {
+                        data: 'Status',
+                        render: function (data) {
+                            var text = data || 'N/A';
+                            var cls = text === 'Enabled' ? 'badge bg-success' : 'badge bg-danger';
+                            return '<span class="' + cls + '">' + text + '</span>';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (data, type, row) {
+                            var id = row['TRANMID'];
+                            var html = '';
+
+                            var editUrl = '@Url.Action("PoEdit", "PurchaseOrder")' + '?id=' + id;
+                            var printUrl = '@Url.Action("Print", "PurchaseOrder")' + '?id=' + id;
+
+                            if (canEditPo) {
+                                html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>&nbsp;';
+                            }
+
+                            if (canPrintPo) {
+                                html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>&nbsp;';
+                            }
+
+                            if (canDeletePo) {
+                                html += '<a href="#" class="btn btn-action btn-delete po_delete" data-id="' + id + '"><i class="fa fa-trash"></i> Delete</a>';
+                            }
+
+                            return html;
+                        }
+                    }
+                ],
+                dom: '<"row mb-3"<"col-md-6"l><"col-md-6"f>>rt<"row mt-3"<"col-md-6"i><"col-md-6"p>>',
+                responsive: true,
+                pageLength: 25,
+                order: [[0, 'desc']],
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search..."
+                }
+            });
+
+            function updateFilterStatus() {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+                var statusDiv = $('#filterStatus');
+                var textSpan = $('#filterText');
+
+                if (fromDate || toDate) {
+                    var filterText = 'Filtered: ';
+                    if (fromDate && toDate) {
+                        filterText += fromDate + ' to ' + toDate;
+                    } else if (fromDate) {
+                        filterText += 'From ' + fromDate;
+                    } else if (toDate) {
+                        filterText += 'Until ' + toDate;
+                    }
+                    textSpan.text(filterText);
+                    statusDiv.show();
+                } else {
+                    statusDiv.hide();
+                }
+            }
+
+            $('#filterBtn').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+
+                if (fromDate && toDate && fromDate > toDate) {
+                    alert('From Date cannot be greater than To Date');
+                    return;
+                }
+
+                var $btn = $(this);
+                $btn.html('<i class="fa fa-spinner fa-spin"></i> Filtering...');
+                $btn.prop('disabled', true);
+
+                table.ajax.reload(function () {
+                    $btn.html('<i class="fa fa-filter"></i> Filter');
+                    $btn.prop('disabled', false);
+                    updateFilterStatus();
+                });
+            });
+
+            $('#clearBtn').on('click', function () {
+                $('#fromDate').val('');
+                $('#toDate').val('');
+                updateFilterStatus();
+
+                var $btn = $(this);
+                $btn.html('<i class="fa fa-spinner fa-spin"></i> Clearing...');
+                $btn.prop('disabled', true);
+
+                table.ajax.reload(function () {
+                    $btn.html('<i class="fa fa-times"></i> Clear');
+                    $btn.prop('disabled', false);
+                });
+            });
+
+            $('#fromDate, #toDate').on('keypress', function (e) {
+                if (e.which === 13) {
+                    $('#filterBtn').click();
+                }
+            });
+
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
+
+            // Default both From and To dates to today
+            $('#fromDate').val(todayStr);
+            $('#toDate').val(todayStr);
+
+            // Move filter status above the DataTables search box
+            var poFilterWrapper = $('#purchaseOrderTable').closest('.dataTables_wrapper').find('.dataTables_filter');
+            if (poFilterWrapper.length) {
+                var poFilterStatus = $('#filterStatus');
+                poFilterWrapper.prepend(poFilterStatus);
+                poFilterWrapper.addClass('with-filter-status');
+            }
+
+            updateFilterStatus();
+
+            // Apply the default date filter immediately
+            table.ajax.reload();
+
+            $(document).on('click', 'a.po_delete', function (e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                if (!id) return false;
+                if (!confirm('Are you sure you want to delete this Purchase Order?')) {
+                    return false;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("Del", "PurchaseOrder")',
+                    type: 'POST',
+                    data: { id: id },
+                    success: function (response) {
+                        alert(response);
+                        table.ajax.reload();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error deleting Purchase Order:', error, xhr && xhr.responseText);
+                        alert('Failed to delete Purchase Order. Please try again.');
+                    }
+                });
+            });
+        });
+    </script>
+}
+

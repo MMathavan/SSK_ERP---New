@@ -1,0 +1,938 @@
+@model SSK_ERP.Models.TransactionMaster
+
+@{
+    ViewBag.Title = "Sales Return";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    .sr-main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .sr-form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .sr-form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .sr-form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .sr-form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .sr-section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .req {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .sr-detail-table {
+        min-width: 1400px;
+    }
+
+    .sr-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 8px;
+    }
+
+    .sr-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    .sr-detail-table .form-control-sm {
+        padding: 5px;
+        height: 32px;
+    }
+
+    .form-actions {
+        margin-top: 20px;
+    }
+
+    .sr-tax-table th,
+    .sr-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .sr-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 140px;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="sr-main-container">
+    <div class="sr-form-container">
+        <div class="sr-form-header">
+            <h1 class="sr-form-title">
+                <i class="bi bi-repeat"></i>
+                Sales Return
+                <span style="font-size: 0.6em; opacity: 0.8; margin-left: 10px;">
+                    #@(string.IsNullOrEmpty(Model.TRANDNO) ? "New" : Model.TRANDNO)
+                </span>
+            </h1>
+        </div>
+
+        <div class="sr-form-body">
+            @using (Html.BeginForm("savedata", "SalesReturn", FormMethod.Post, new { id = "salesReturnForm" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.TRANMID)
+                @Html.HiddenFor(m => m.TRANDNO)
+                @Html.HiddenFor(m => m.TRANSTATETYPE, new { id = "srStateTypeHidden" })
+                @Html.HiddenFor(m => m.TRANBTYPE, new { id = "srTranBTypeHidden" })
+
+                <div class="sr-section-title">
+                    <i class="fa fa-info-circle"></i> Return Details
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">No</label>
+                            @Html.TextBoxFor(m => m.TRANNO, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Date</label>
+                            @Html.TextBoxFor(m => m.TRANDATE, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Status</label>
+                            @Html.DropDownListFor(m => m.DISPSTATUS, ViewBag.StatusList as SelectList, new { @class = "form-control", id = "statusDropdown" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Customer Name <span class="req">*</span></label>
+                            @Html.DropDownListFor(m => m.TRANREFID,
+                                ViewBag.CustomerList as SelectList,
+                                "-- Select Customer --",
+                                new { @class = "form-control", id = "customerDropdown" })
+                            @Html.HiddenFor(m => m.TRANREFNAME)
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Ref No</label>
+                            @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Narration</label>
+                            @Html.TextAreaFor(m => m.TRANNARTN, new { @class = "form-control", rows = 2 })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Customer Address</label>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" id="srCustNameOrAddr" class="form-control" placeholder="Customer Name" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="srCustAddress1" class="form-control" placeholder="Address" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" id="srCustCity" class="form-control" placeholder="City" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="srCustState" class="form-control" placeholder="State" readonly="readonly" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="text" id="srCustPincode" class="form-control" placeholder="Pincode" readonly="readonly" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="srCustCountry" class="form-control" placeholder="Country" readonly="readonly" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sr-section-title">Item Details</div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle sr-detail-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">S.No</th>
+                                <th style="width: 220px;">Material</th>
+                                <th style="width: 100px;">HSN Code</th>
+                                <th style="width: 120px;">Bill No</th>
+                                <th style="width: 120px;">Batch No</th>
+                                <th style="width: 140px;">Expiry Date</th>
+                                <th style="width: 120px;">Packing</th>
+                                <th style="width: 80px;">Actual Qty</th>
+                                <th style="width: 80px;">No. of Boxes</th>
+                                <th style="width: 80px;">Qty</th>
+                                <th style="width: 100px;">Rate</th>
+                                <th style="width: 120px;">Amount</th>
+                                <th style="width: 80px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="srDetailsBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-2 mb-3" style="display:none;">
+                    <button type="button" id="btnAddRow" class="btn btn-sm btn-success">
+                        <i class="fa fa-plus"></i> Add Row
+                    </button>
+                </div>
+
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered sr-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="btnCalculateTax">
+                                        <i class="fa fa-calculator"></i> Calculate Tax
+                                    </button>
+                                </td>
+                                <td class="sr-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    @Html.TextBoxFor(m => m.TRANGAMT, new { @class = "form-control text-end", id = "lblTotalGross", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="sr-tax-summary-label">CGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANCGSTAMT, new { @class = "form-control text-end", id = "lblTotalCGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="sr-tax-summary-label">SGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANSGSTAMT, new { @class = "form-control text-end", id = "lblTotalSGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="sr-tax-summary-label">IGST</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANIGSTAMT, new { @class = "form-control text-end", id = "lblTotalIGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="sr-tax-summary-label">Net Amount</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANNAMT, new { @class = "form-control text-end", id = "lblTotalNet", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="sr-section-title">Remarks</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        @Html.TextAreaFor(m => m.TRANRMKS, new { @class = "form-control", rows = 3 })
+                    </div>
+                </div>
+
+                <div class="form-actions mt-3">
+                    <a href="@Url.Action("Index", "SalesReturn")" class="btn btn-secondary">Back</a>
+                    <input type="hidden" id="srDetailRowsJson" name="detailRowsJson" />
+                    <button type="button" id="btnSave" class="btn btn-primary">Save</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        var srMaterialList = [];
+        var srExistingDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
+
+        $(document).ready(function () {
+            $('#customerDropdown').select2({ width: '100%' });
+
+            $('#customerDropdown').on('change', function () {
+                var id = $(this).val();
+                if (id) {
+                    $.get('@Url.Action("GetCustomerDetails", "SalesOrder")', { id: id }, function (res) {
+                        if (res.success) {
+                            var d = res.data;
+
+                            $('#srCustNameOrAddr').val(d.Name || d.Address1);
+                            $('#srCustAddress1').val(d.Address1);
+                            $('#srCustCity').val(d.City);
+                            $('#srCustState').val(d.State);
+                            $('#srCustPincode').val(d.Pincode);
+                            $('#srCustCountry').val(d.Country || 'India');
+                            $('#srStateTypeHidden').val(d.StateType);
+                            $('input[name="TRANREFNAME"]').val(d.Name);
+
+                            loadMaterialsForCustomer(parseInt(id || '0', 10));
+                        }
+                    });
+                } else {
+                    $('#srCustNameOrAddr').val('');
+                    $('#srCustAddress1').val('');
+                    $('#srCustCity').val('');
+                    $('#srCustState').val('');
+                    $('#srCustPincode').val('');
+                    $('#srCustCountry').val('');
+                    $('#srStateTypeHidden').val('0');
+                    $('input[name="TRANREFNAME"]').val('');
+                }
+            });
+
+            if ($('#customerDropdown').val()) {
+                $('#customerDropdown').trigger('change');
+            }
+
+            if (srExistingDetails.length === 0) {
+                addRow();
+            } else {
+                srExistingDetails.forEach(function (row) {
+                    addRow(row);
+                });
+                calculateTotals();
+            }
+
+            $('#btnAddRow').click(function () {
+                addRow();
+            });
+
+            $('#btnCalculateTax').click(function () {
+                calculateTotals();
+            });
+
+            $('#btnSave').click(function () {
+                var dateVal = $('#TRANDATE').val();
+                if (!dateVal) {
+                    alert('Please select Date.');
+                    return;
+                }
+
+                var customerVal = $('#customerDropdown').val();
+                if (!customerVal) {
+                    alert('Please select Customer.');
+                    return;
+                }
+
+                if (!$('#srDetailsBody tr').length) {
+                    alert('Please add at least one item.');
+                    return;
+                }
+
+                var isValid = true;
+                $('#srDetailsBody tr').each(function () {
+                    var tr = $(this);
+                    if (!tr.find('.sr-material').val()) isValid = false;
+                    if (!tr.find('.sr-qty').val()) isValid = false;
+                    if (!tr.find('.sr-rate').val()) isValid = false;
+                });
+
+                if (!isValid) {
+                    alert('All item rows must have Material, Qty and Rate.');
+                    return;
+                }
+
+                var rows = collectDetailRows();
+                if (rows.length === 0) {
+                    alert('Please complete at least one item row.');
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to save this file?')) {
+                    return;
+                }
+
+                $('#srDetailRowsJson').val(JSON.stringify(rows));
+                $('#salesReturnForm').submit();
+            });
+        });
+
+        function loadMaterialsForCustomer(customerId) {
+            if (!customerId) {
+                srMaterialList = [];
+                $('#srDetailsBody').find('.sr-material').each(function () {
+                    var $sel = $(this);
+                    $sel.empty().append('<option value="">Select Material</option>');
+                });
+                return;
+            }
+
+            $.get('@Url.Action("GetMaterialsByCustomer", "SalesReturn")', { tranRefId: customerId }, function (res) {
+                if (res && res.success) {
+                    srMaterialList = res.materials || [];
+
+                    $('#srDetailsBody').find('.sr-material').each(function () {
+                        var $sel = $(this);
+                        var selectedId = $sel.data('selected-id') || $sel.val();
+                        fillMaterialSelect($sel, selectedId);
+
+                        var tr = $sel.closest('tr');
+                        var currentHsn = tr.find('.sr-hsn').val();
+                        if (!currentHsn) {
+                            var hsn = getHsnCode(selectedId);
+                            tr.find('.sr-hsn').val(hsn);
+                        }
+
+                        var opt = $sel.find('option:selected');
+                        var rate = opt.data('rate') || 0;
+                        if (!tr.find('.sr-rate').val()) {
+                            tr.find('.sr-rate').val(rate);
+                        }
+
+                        recalcRow(tr);
+
+                        var customerIdForRow = parseInt($('#customerDropdown').val() || '0', 10);
+                        var matIdForRow = parseInt(selectedId || '0', 10);
+                        if (customerIdForRow && matIdForRow) {
+                            var billDdl = tr.find('.sr-billno');
+                            loadBillNosForCustomerAndMaterial(customerIdForRow, matIdForRow, billDdl);
+                        }
+                    });
+                }
+            });
+        }
+
+        function fillMaterialSelect($el, selectedId) {
+            $el.empty().append('<option value="">Select Material</option>');
+            if (srMaterialList) {
+                srMaterialList.forEach(function (m) {
+                    var opt = $('<option>').val(m.id).text(m.name).data('rate', m.rate).data('hsn', m.hsnCode);
+                    if (selectedId && selectedId == m.id) opt.prop('selected', true);
+                    $el.append(opt);
+                });
+            }
+            if (selectedId) {
+                $el.val(String(selectedId));
+            }
+        }
+
+        function getHsnCode(materialId) {
+            if (!srMaterialList) return '';
+            var m = srMaterialList.find(function (x) { return x.id == materialId; });
+            return m && m.hsnCode ? m.hsnCode : '';
+        }
+
+        function refreshBillNoDropdowns(customerId) {
+            $('#srDetailsBody').find('.sr-billno').each(function () {
+                var $ddl = $(this);
+                $ddl.empty();
+                $ddl.append($('<option>').val('').text('-- Select --'));
+            });
+        }
+
+        function loadBillNosForCustomerAndMaterial(customerId, materialId, $ddl) {
+            if (!customerId || !materialId) {
+                $ddl.empty();
+                $ddl.append($('<option>').val('').text('-- Select --'));
+                return;
+            }
+
+            $.get('@Url.Action("GetBillNosByCustomerAndMaterial", "SalesReturn")', {
+                customerId: customerId,
+                materialId: materialId
+            }, function (res) {
+                $ddl.empty();
+                $ddl.append($('<option>').val('').text('-- Select --'));
+                if (res && res.success && res.billNos && res.billNos.length) {
+                    $.each(res.billNos, function (idx, b) {
+                        $ddl.append($('<option>').val(b).text(b));
+                    });
+                }
+
+                var existingBillNo = $ddl.closest('tr').data('billno');
+                if (existingBillNo) {
+                    $ddl.val(existingBillNo);
+                }
+            });
+        }
+
+        function addRow(data) {
+            var tbody = $('#srDetailsBody');
+            var idx = tbody.find('tr').length + 1;
+
+            var tr = $('<tr>');
+            tr.append($('<td class="text-center sr-row-index">').text(idx));
+
+            var matTd = $('<td>');
+            var matSelect = $('<select class="form-control form-control-sm sr-material mb-0">');
+            if (data && data.MaterialId) {
+                matSelect.data('selected-id', data.MaterialId);
+            }
+            fillMaterialSelect(matSelect, data ? data.MaterialId : null);
+            matTd.append(matSelect);
+            tr.append(matTd);
+
+            var hsnVal = data && data.HsnCode ? data.HsnCode : getHsnCode(data ? data.MaterialId : null);
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm sr-hsn" readonly>').val(hsnVal)));
+
+            var billTd = $('<td>');
+            var billSelect = $('<select class="form-control form-control-sm sr-billno"></select>');
+            billTd.append(billSelect);
+            tr.append(billTd);
+            // Batch / Expiry / Packing columns (read-only for now)
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm sr-batchno" readonly>').val(data ? data.BatchNo : '')));
+            tr.append($('<td>').append($('<input type="date" class="form-control form-control-sm sr-expdate" readonly>').val('')));
+            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm sr-pack" readonly>').val(data ? data.Packing : '')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm sr-actualqty text-end" readonly>').val(data && typeof data.ActualQty !== 'undefined' && data.ActualQty !== null ? data.ActualQty : '')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm sr-boxes text-end" readonly>').val(data ? data.BoxQty : '')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm sr-qty text-end" min="0">').val(data ? data.Qty : '')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm sr-rate text-end" min="0" step="0.01" readonly>').val(data ? data.Rate : '')));
+            tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm sr-amount text-end" readonly>').val(data ? data.Amount : '')));
+
+            var actionTd = $('<td class="text-center">');
+            var btnAdd = $('<button type="button" class="btn btn-sm btn-success me-1"><i class="fa fa-plus"></i></button>').click(function () {
+                addRow();
+            });
+            var btnDel = $('<button type="button" class="btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>').click(function () {
+                var rowCount = $('#srDetailsBody tr').length;
+                if (rowCount <= 1) {
+                    alert('At least one row must be present.');
+                    return;
+                }
+                tr.remove();
+                renumberRows();
+                calculateTotals();
+            });
+            actionTd.append(btnAdd).append(btnDel);
+            tr.append(actionTd);
+
+            tbody.append(tr);
+
+            if (data) {
+                tr.data('packmid', parseInt(data.PackingId || 0, 10) || 0);
+                tr.data('ptr', parseFloat(data.Ptr || 0) || 0);
+                tr.data('mrp', parseFloat(data.Mrp || 0) || 0);
+                tr.data('boxqty', parseFloat(data.BoxQty || 0) || 0);
+                if (data.BillNo) {
+                    tr.data('billno', data.BillNo);
+                }
+                if (data.SourceBatchId) {
+                    tr.data('srcTranBid', parseInt(data.SourceBatchId || 0, 10) || 0);
+                }
+                if (data.SourceDetailId) {
+                    tr.data('srcTranDid', parseInt(data.SourceDetailId || 0, 10) || 0);
+                }
+                if (data.SourceRefId) {
+                    tr.data('srcTranRefId', parseInt(data.SourceRefId || 0, 10) || 0);
+                }
+
+                if (data.ExpiryDate) {
+                    var expVal = data.ExpiryDate;
+                    if (typeof expVal === 'string') {
+                        if (expVal.indexOf('Date(') !== -1) {
+                            var m = /Date\((\d+)\)/.exec(expVal);
+                            if (m) {
+                                var dt = new Date(parseInt(m[1], 10));
+                                expVal = dt.toISOString().slice(0, 10);
+                            }
+                        } else if (expVal.indexOf('T') > -1) {
+                            expVal = expVal.split('T')[0];
+                        }
+                    }
+                    tr.find('.sr-expdate').val(expVal);
+                }
+            }
+
+            // Pre-populate Bill No dropdown for current customer
+            var customerId = parseInt($('#customerDropdown').val() || '0', 10);
+            billSelect.empty();
+            billSelect.append($('<option>').val('').text('-- Select --'));
+
+            matSelect.change(function () {
+                var id = $(this).val();
+                var customerIdForRow = parseInt($('#customerDropdown').val() || '0', 10);
+
+                tr.removeData('billno');
+                tr.removeData('srcTranBid');
+                tr.removeData('srcTranDid');
+                tr.removeData('srcTranRefId');
+
+                tr.find('.sr-batchno').val('');
+                tr.find('.sr-expdate').val('');
+                tr.find('.sr-pack').val('');
+                tr.find('.sr-qty').val('');
+                tr.find('.sr-amount').val('');
+                billSelect.empty();
+                billSelect.append($('<option>').val('').text('-- Select --'));
+
+                if (!id) {
+                    tr.find('.sr-hsn').val('');
+                    tr.find('.sr-rate').val('');
+                    recalcRow(tr);
+                    return;
+                }
+
+                var hsn = getHsnCode(id);
+                tr.find('.sr-hsn').val(hsn);
+                var opt = $(this).find('option:selected');
+                var rate = opt.data('rate') || 0;
+                tr.find('.sr-rate').val(rate);
+                recalcRow(tr);
+
+                if (customerIdForRow) {
+                    loadBillNosForCustomerAndMaterial(customerIdForRow, parseInt(id || '0', 10), billSelect);
+                }
+            });
+
+            tr.find('.sr-qty, .sr-rate').on('input', function () {
+                recalcRow(tr);
+            });
+
+            billSelect.change(function () {
+                var billNoVal = $(this).val();
+                var matVal = tr.find('.sr-material').val();
+                if (!matVal) {
+                    alert('Please select a Material for this row before using the Bill No.');
+                    $(this).val('');
+                    return;
+                }
+
+                if (!billNoVal) {
+                    tr.find('.sr-batchno').val('');
+                    tr.find('.sr-expdate').val('');
+                    tr.find('.sr-pack').val('');
+                    tr.find('.sr-qty').val('');
+                    tr.find('.sr-amount').val('');
+                    tr.removeData('packmid');
+                    tr.removeData('ptr');
+                    tr.removeData('mrp');
+                    tr.removeData('boxqty');
+                    tr.removeData('billno');
+                    tr.removeData('srcTranBid');
+                    tr.removeData('srcTranDid');
+                    tr.removeData('srcTranRefId');
+                    recalcRow(tr);
+                    return;
+                }
+
+                tr.data('billno', billNoVal);
+                tryFetchSalesInvoiceDetail(tr);
+            });
+        }
+
+        function recalcRow(tr) {
+            var qty = parseFloat(tr.find('.sr-qty').val() || 0);
+            var actual = parseFloat(tr.find('.sr-actualqty').val() || 0);
+
+            if (actual > 0 && qty > actual) {
+                alert('Qty cannot be greater than Actual Qty (' + actual + ').');
+                qty = actual;
+                tr.find('.sr-qty').val(actual);
+            }
+
+            var rate = parseFloat(tr.find('.sr-rate').val() || 0);
+            var amt = qty * rate;
+            tr.find('.sr-amount').val(amt.toFixed(2));
+
+            updatePackingForRow(tr);
+
+            calculateTotals();
+        }
+
+        function updatePackingForRow(tr) {
+            var boxes = parseFloat(tr.find('.sr-boxes').val() || 0);
+            var qty = parseFloat(tr.find('.sr-qty').val() || 0);
+
+            if (boxes <= 0 || qty <= 0) {
+                return;
+            }
+
+            var perBox = qty / boxes;
+            if (!isFinite(perBox) || perBox <= 0) {
+                return;
+            }
+
+            var rounded = Math.round(perBox);
+            if (Math.abs(perBox - rounded) > 0.0001) {
+                return;
+            }
+
+            var unitsPerPack = rounded;
+            var text = unitsPerPack + ' Packs';
+            tr.find('.sr-pack').val(text);
+
+            tr.data('derivedPackQty', unitsPerPack);
+        }
+
+        function renumberRows() {
+            $('#srDetailsBody tr').each(function (index) {
+                $(this).find('.sr-row-index').text(index + 1);
+            });
+        }
+
+        function calculateTotals() {
+            var rows = collectDetailRows();
+            var stType = $('#srStateTypeHidden').val() || 0;
+
+            if (!rows || rows.length === 0) {
+                applyLocalTotalsFallback();
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("CalculateSalesReturnTax", "SalesReturn")',
+                type: 'POST',
+                data: { stateType: stType, detailRowsJson: JSON.stringify(rows) },
+                success: function (res) {
+                    if (res && res.success) {
+                        $('#lblTotalGross').val(parseFloat(res.gross || 0).toFixed(2));
+                        $('#lblTotalCGST').val(parseFloat(res.cgst || 0).toFixed(2));
+                        $('#lblTotalSGST').val(parseFloat(res.sgst || 0).toFixed(2));
+                        $('#lblTotalIGST').val(parseFloat(res.igst || 0).toFixed(2));
+                        $('#lblTotalNet').val(parseFloat(res.net || 0).toFixed(2));
+                    } else {
+                        applyLocalTotalsFallback();
+                    }
+                },
+                error: function () {
+                    applyLocalTotalsFallback();
+                }
+            });
+        }
+
+        function applyLocalTotalsFallback() {
+            var gross = 0;
+            $('#srDetailsBody tr').each(function () {
+                var amt = parseFloat($(this).find('.sr-amount').val() || 0);
+                gross += amt;
+            });
+
+            $('#lblTotalGross').val(gross.toFixed(2));
+            $('#lblTotalCGST').val('0.00');
+            $('#lblTotalSGST').val('0.00');
+            $('#lblTotalIGST').val('0.00');
+            $('#lblTotalNet').val(gross.toFixed(2));
+        }
+
+        function collectDetailRows() {
+            var rows = [];
+            $('#srDetailsBody tr').each(function () {
+                var tr = $(this);
+                var materialId = parseInt(tr.find('.sr-material').val() || 0);
+                var qty = parseFloat(tr.find('.sr-qty').val() || 0);
+                var rate = parseFloat(tr.find('.sr-rate').val() || 0);
+                var amount = parseFloat(tr.find('.sr-amount').val() || 0);
+                var batchNo = tr.find('.sr-batchno').val() || '';
+                var expDate = tr.find('.sr-expdate').val() || null;
+                var packingId = parseInt(tr.data('packmid') || 0, 10) || 0;
+                var ptr = parseFloat(tr.data('ptr') || 0) || 0;
+                var mrp = parseFloat(tr.data('mrp') || 0) || 0;
+                var boxQty = parseFloat(tr.data('boxqty') || 0) || 0;
+                var billNo = tr.find('.sr-billno').val() || '';
+                var srcTranBid = parseInt(tr.data('srcTranBid') || 0, 10) || 0;
+                var srcTranDid = parseInt(tr.data('srcTranDid') || 0, 10) || 0;
+                var srcTranRefId = parseInt(tr.data('srcTranRefId') || 0, 10) || 0;
+
+                if (materialId > 0 && qty > 0) {
+                    rows.push({
+                        MaterialId: materialId,
+                        Qty: qty,
+                        Rate: rate,
+                        Amount: amount,
+                        BatchNo: batchNo,
+                        ExpiryDate: expDate,
+                        PackingId: packingId,
+                        Ptr: ptr,
+                        Mrp: mrp,
+                        BoxQty: boxQty,
+                        BillNo: billNo,
+                        SourceBatchId: srcTranBid,
+                        SourceDetailId: srcTranDid,
+                        SourceRefId: srcTranRefId
+                    });
+                }
+            });
+            return rows;
+        }
+
+        function tryFetchSalesInvoiceDetail(tr) {
+            var customerId = parseInt($('#customerDropdown').val() || '0', 10);
+            if (!customerId) {
+                return;
+            }
+
+            var billNo = tr.find('.sr-billno').val();
+            var materialId = parseInt(tr.find('.sr-material').val() || '0', 10);
+
+            if (!billNo || !materialId) {
+                return;
+            }
+
+            $.get('@Url.Action("GetSalesInvoiceDetail", "SalesReturn")', {
+                customerId: customerId,
+                billNo: billNo,
+                materialId: materialId
+            }, function (res) {
+                if (!res || !res.success || !res.data) {
+                    return;
+                }
+
+                var d = res.data;
+
+                var qty = d.TRANDQTY || d.QTY || d.Qty || 0;
+                var rate = d.TRANDRATE || d.RATE || d.Rate || 0;
+                var amount = d.TRANDGAMT || d.AMOUNT || d.Amount || 0;
+                var batchNo = d.TRANBDNO || d.BATCHNO || d.BatchNo || '';
+                var expDate = d.TRANBEXPDATE || d.EXPDATE || d.ExpiryDate || null;
+                var packing = d.PACKING || d.PACKMDESC || '';
+                var hsnCode = d.HSNCODE || d.HsnCode || d.hsnCode || '';
+
+                var packMid = d.PACKMID || 0;
+                var ptr = d.TRANBPTRRATE || d.PTR || d.Ptr || 0;
+                var mrp = d.TRANBMRP || d.MRP || d.Mrp || 0;
+                var boxQty = d.TRANBQTY || d.BoxQty || d.BOXQTY || 0;
+
+                var srcTranBid = d.TRANBID || d.TranBid || d.tranBid || 0;
+                var srcTranDid = d.TRANDID || d.TrandId || d.trandId || 0;
+                var srcTranRefId = d.TRANREFID || d.TranRefId || d.tranRefId || 0;
+
+                var actualQty = parseFloat(qty || 0) || 0;
+                if (actualQty) {
+                    tr.find('.sr-actualqty').val(actualQty);
+                    if (!tr.find('.sr-qty').val()) {
+                        tr.find('.sr-qty').val(actualQty);
+                    }
+                }
+                if (rate) {
+                    tr.find('.sr-rate').val(rate);
+                }
+
+                if (batchNo) {
+                    tr.find('.sr-batchno').val(batchNo);
+                }
+
+                if (expDate) {
+                    var expVal = expDate;
+                    if (typeof expDate === 'string') {
+                        if (expDate.indexOf('Date(') !== -1) {
+                            var m = /Date\((\d+)\)/.exec(expDate);
+                            if (m) {
+                                var dt = new Date(parseInt(m[1], 10));
+                                expVal = dt.toISOString().slice(0, 10);
+                            }
+                        } else if (expDate.indexOf('T') > -1) {
+                            expVal = expDate.split('T')[0];
+                        }
+                    }
+                    tr.find('.sr-expdate').val(expVal);
+                }
+
+                if (hsnCode) {
+                    tr.find('.sr-hsn').val(hsnCode);
+                }
+
+                if (packing) {
+                    tr.find('.sr-pack').val(packing);
+                }
+
+                if (boxQty) {
+                    tr.find('.sr-boxes').val(boxQty);
+                }
+
+                if (amount) {
+                    tr.find('.sr-amount').val(parseFloat(amount).toFixed(2));
+                } else {
+                    recalcRow(tr);
+                }
+
+                tr.data('packmid', parseInt(packMid || 0, 10) || 0);
+                tr.data('ptr', parseFloat(ptr || 0) || 0);
+                tr.data('mrp', parseFloat(mrp || 0) || 0);
+                tr.data('boxqty', parseFloat(boxQty || 0) || 0);
+
+                tr.data('srcTranBid', parseInt(srcTranBid || 0, 10) || 0);
+                tr.data('srcTranDid', parseInt(srcTranDid || 0, 10) || 0);
+                tr.data('srcTranRefId', parseInt(srcTranRefId || 0, 10) || 0);
+
+                recalcRow(tr);
+            });
+        }
+    </script>
+}

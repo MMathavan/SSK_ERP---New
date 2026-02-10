@@ -1,0 +1,313 @@
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\SSK_ERP.dll.config
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\SSK_ERP.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\SSK_ERP.pdb
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Antlr3.Runtime.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\ClosedXML.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\CrystalDecisions.CrystalReports.Engine.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\CrystalDecisions.ReportSource.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\CrystalDecisions.Shared.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\DocumentFormat.OpenXml.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\EntityFramework.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\EntityFramework.SqlServer.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\ExcelNumberFormat.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\log4net.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Core.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Owin.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Host.SystemWeb.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.Cookies.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.OAuth.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Web.Infrastructure.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Newtonsoft.Json.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Owin.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\PagedList.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\PagedList.Mvc.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Helpers.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Mvc.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Optimization.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Razor.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Deployment.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Razor.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\WebGrease.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\stdole.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\ClosedXML.pdb
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\ClosedXML.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\DocumentFormat.OpenXml.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\EntityFramework.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\EntityFramework.SqlServer.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\ExcelNumberFormat.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\log4net.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Core.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Owin.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Host.SystemWeb.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.Cookies.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.OAuth.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Newtonsoft.Json.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\PagedList.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\PagedList.Mvc.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Helpers.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Mvc.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Optimization.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.Razor.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Deployment.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Razor.xml
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\bin\Antlr3.Runtime.pdb
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.AssemblyReference.cache
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.Migrations.InitialCreate.resources
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.GenerateResource.cache
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.CoreCompileInputs.cache
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.Up2Date
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.dll
+C:\Users\hp\OneDrive\Desktop\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.pdb
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\SSK_ERP.dll.config
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\SSK_ERP.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\SSK_ERP.pdb
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Antlr3.Runtime.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\ClosedXML.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\CrystalDecisions.CrystalReports.Engine.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\CrystalDecisions.ReportSource.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\CrystalDecisions.Shared.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\DocumentFormat.OpenXml.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.SqlServer.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\ExcelNumberFormat.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.barcodes.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.bouncy-castle-connector.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.commons.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.forms.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.io.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.kernel.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.layout.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfa.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfua.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.sign.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.styledxmlparser.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.svg.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\log4net.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Core.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Owin.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Options.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Primitives.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Host.SystemWeb.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.Cookies.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.OAuth.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Web.Infrastructure.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Newtonsoft.Json.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Owin.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.Mvc.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Buffers.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Diagnostics.DiagnosticSource.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Memory.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Numerics.Vectors.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.AccessControl.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Cryptography.Xml.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Principal.Windows.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Threading.Tasks.Extensions.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.ValueTuple.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Helpers.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Mvc.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Optimization.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Razor.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Deployment.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Razor.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\WebGrease.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\ClosedXML.pdb
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\ClosedXML.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\DocumentFormat.OpenXml.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.SqlServer.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\ExcelNumberFormat.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.barcodes.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.bouncy-castle-connector.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.commons.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.forms.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.io.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.kernel.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.layout.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfa.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfua.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.sign.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.styledxmlparser.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.svg.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\log4net.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Core.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Owin.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Bcl.AsyncInterfaces.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.Abstractions.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.Abstractions.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Options.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Primitives.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Host.SystemWeb.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.Cookies.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.OAuth.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Newtonsoft.Json.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.Mvc.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Buffers.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Diagnostics.DiagnosticSource.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Memory.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Numerics.Vectors.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Runtime.CompilerServices.Unsafe.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.AccessControl.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Cryptography.Xml.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Principal.Windows.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Threading.Tasks.Extensions.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.ValueTuple.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Helpers.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Mvc.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Optimization.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Razor.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Deployment.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Razor.xml
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\bin\Antlr3.Runtime.pdb
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.AssemblyReference.cache
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.Migrations.InitialCreate.resources
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.GenerateResource.cache
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.CoreCompileInputs.cache
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.Up2Date
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.dll
+C:\Users\logesh\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.pdb
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\SSK_ERP.dll.config
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\SSK_ERP.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\SSK_ERP.pdb
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Antlr3.Runtime.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\ClosedXML.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\CrystalDecisions.CrystalReports.Engine.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\CrystalDecisions.ReportSource.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\CrystalDecisions.Shared.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\DocumentFormat.OpenXml.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.SqlServer.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\ExcelNumberFormat.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.barcodes.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.bouncy-castle-connector.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.commons.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.forms.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.io.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.kernel.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.layout.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfa.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfua.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.sign.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.styledxmlparser.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.svg.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\log4net.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Core.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Owin.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Bcl.AsyncInterfaces.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.Abstractions.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Options.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Primitives.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Host.SystemWeb.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.Cookies.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.OAuth.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Web.Infrastructure.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Newtonsoft.Json.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Owin.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.Mvc.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Buffers.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Diagnostics.DiagnosticSource.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Memory.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Numerics.Vectors.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Runtime.CompilerServices.Unsafe.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.AccessControl.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Cryptography.Xml.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Principal.Windows.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Threading.Tasks.Extensions.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.ValueTuple.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Helpers.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Mvc.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Optimization.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Razor.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Deployment.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Razor.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\WebGrease.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\stdole.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\ClosedXML.pdb
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\ClosedXML.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\DocumentFormat.OpenXml.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\EntityFramework.SqlServer.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\ExcelNumberFormat.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.barcodes.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.bouncy-castle-connector.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.commons.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.forms.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.io.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.kernel.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.layout.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfa.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.pdfua.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.sign.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.styledxmlparser.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\itext.svg.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\log4net.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Core.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.AspNet.Identity.Owin.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Bcl.AsyncInterfaces.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.DependencyInjection.Abstractions.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Logging.Abstractions.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Options.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Extensions.Primitives.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Host.SystemWeb.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.Cookies.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Microsoft.Owin.Security.OAuth.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Newtonsoft.Json.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\PagedList.Mvc.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Buffers.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Diagnostics.DiagnosticSource.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Memory.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Numerics.Vectors.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Runtime.CompilerServices.Unsafe.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.AccessControl.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Cryptography.Xml.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Security.Principal.Windows.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Threading.Tasks.Extensions.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.ValueTuple.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Helpers.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Mvc.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Optimization.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.Razor.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Deployment.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\System.Web.WebPages.Razor.xml
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\bin\Antlr3.Runtime.pdb
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.AssemblyReference.cache
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.Migrations.InitialCreate.resources
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.GenerateResource.cache
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.CoreCompileInputs.cache
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.csproj.Up2Date
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.dll
+D:\FUSIONTEC CLIENT COMPLETEDPROJECTS\SSK_ERP\SSK_ERP\SSK_ERP\obj\Debug\SSK_ERP.pdb

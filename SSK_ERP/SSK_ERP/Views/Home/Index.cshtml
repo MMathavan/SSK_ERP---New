@@ -1,0 +1,903 @@
+@{
+    ViewBag.Title = "Business Dashboard - SSK ERP";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    
+    var userName = User.Identity.Name;
+    var isAuthenticated = User.Identity.IsAuthenticated;
+}
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+
+    .dashboard-wrapper {
+        padding: 30px;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    /* Modern Header */
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 50px 40px;
+        border-radius: 24px;
+        margin-bottom: 40px;
+        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        animation: float 20s ease-in-out infinite;
+    }
+
+    .dashboard-header::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -10%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        animation: float 15s ease-in-out infinite reverse;
+    }
+
+    @@keyframes float {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(30px, -30px) scale(1.1); }
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .dashboard-title {
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 12px;
+        text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        letter-spacing: -1px;
+    }
+
+    .dashboard-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.95;
+        font-weight: 400;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border-top: 4px solid;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+
+    .stat-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .stat-icon-wrapper {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        color: white;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover .stat-icon-wrapper {
+        transform: scale(1.15) rotate(5deg);
+    }
+
+    .stat-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1;
+        margin-bottom: 8px;
+        letter-spacing: -2px;
+    }
+
+    .stat-description {
+        font-size: 0.9rem;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    /* Color Themes for Cards */
+    .stat-card.customers {
+        border-top-color: #10b981;
+    }
+    .stat-card.customers .stat-icon-wrapper {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .stat-card.suppliers {
+        border-top-color: #3b82f6;
+    }
+    .stat-card.suppliers .stat-icon-wrapper {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+
+    .stat-card.materials {
+        border-top-color: #f59e0b;
+    }
+    .stat-card.materials .stat-icon-wrapper {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .stat-card.raw-material {
+        border-top-color: #8b5cf6;
+    }
+    .stat-card.raw-material .stat-icon-wrapper {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    }
+
+    .stat-card.invoices {
+        border-top-color: #6366f1;
+    }
+    .stat-card.invoices .stat-icon-wrapper {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+    }
+
+    .stat-card.pending {
+        border-top-color: #f59e0b;
+    }
+    .stat-card.pending .stat-icon-wrapper {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .stat-card.approved {
+        border-top-color: #10b981;
+    }
+    .stat-card.approved .stat-icon-wrapper {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .stat-card.transactions {
+        border-top-color: #ec4899;
+    }
+    .stat-card.transactions .stat-icon-wrapper {
+        background: linear-gradient(135deg, #ec4899, #db2777);
+    }
+
+    /* Charts Section */
+    .charts-section {
+        margin-top: 50px;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 30px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-title::before {
+        content: '';
+        width: 4px;
+        height: 24px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 2px;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 30px;
+        margin-bottom: 40px;
+    }
+
+    .chart-container {
+        background: white;
+        border-radius: 24px;
+        padding: 35px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+    }
+
+    .chart-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .chart-title i {
+        font-size: 1.4rem;
+    }
+
+    /* Responsive Design */
+    @@media (max-width: 1200px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .dashboard-wrapper {
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            padding: 30px 25px;
+        }
+
+        .dashboard-title {
+            font-size: 2rem;
+        }
+
+        .dashboard-subtitle {
+            font-size: 1rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .stat-card {
+            padding: 25px;
+        }
+
+        .stat-value {
+            font-size: 2.2rem;
+        }
+
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .chart-container {
+            padding: 25px;
+        }
+    }
+
+    /* Loading Animation */
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    .stat-card:nth-child(5) { animation-delay: 0.5s; }
+    .stat-card:nth-child(6) { animation-delay: 0.6s; }
+    .stat-card:nth-child(7) { animation-delay: 0.7s; }
+    .stat-card:nth-child(8) { animation-delay: 0.8s; }
+</style>
+
+<div class="dashboard-wrapper">
+    <!-- Modern Header -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">Business Dashboard</h1>
+            <p class="dashboard-subtitle">Welcome back, @(userName ?? "User")! Here's your complete business overview.</p>
+        </div>
+    </div>
+
+    <!-- Key Business Metrics -->
+    <div class="stats-grid">
+        <div class="stat-card customers">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Active Customers</div>
+                    <div class="stat-value">@(ViewBag.CustomersCount ?? 0)</div>
+                    <div class="stat-description">Total active customers in system</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-user-tie"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card suppliers">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Active Suppliers</div>
+                    <div class="stat-value">@(ViewBag.SuppliersCount ?? 0)</div>
+                    <div class="stat-description">Total active suppliers</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-truck"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card materials">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Materials</div>
+                    <div class="stat-value">@(ViewBag.MaterialsCount ?? 0)</div>
+                    <div class="stat-description">Total material types</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-box"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card raw-material">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Raw Material Intake</div>
+                    <div class="stat-value">@(ViewBag.RawMaterialIntakeCount ?? 0)</div>
+                    <div class="stat-description">Total intake transactions</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-warehouse"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice & Transaction Status -->
+    <div class="stats-grid">
+        <div class="stat-card invoices">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Total Invoices</div>
+                    <div class="stat-value">@(ViewBag.InvoicesCount ?? 0)</div>
+                    <div class="stat-description">All generated invoices</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-file-invoice"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card pending">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Pending Approval</div>
+                    <div class="stat-value">@(ViewBag.PendingInvoicesCount ?? 0)</div>
+                    <div class="stat-description">Invoices awaiting approval</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-clock"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card approved">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Approved</div>
+                    <div class="stat-value">@(ViewBag.ApprovedInvoicesCount ?? 0)</div>
+                    <div class="stat-description">Approved invoices</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-check-circle"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card transactions">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-title">Total Transactions</div>
+                    <div class="stat-value">@(ViewBag.TransactionsCount ?? 0)</div>
+                    <div class="stat-description">All system transactions</div>
+                </div>
+                <div class="stat-icon-wrapper">
+                    <i class="fa fa-exchange-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <h2 class="section-title">Analytics & Insights</h2>
+        
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fa fa-chart-line" style="color: #667eea;"></i>
+                    Monthly Invoice Trends
+                </h3>
+                <canvas id="monthlyInvoiceChart" height="80"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fa fa-chart-pie" style="color: #f093fb;"></i>
+                    Transaction Status Distribution
+                </h3>
+                <canvas id="statusChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fa fa-chart-bar" style="color: #43e97b;"></i>
+                    Top Material Groups
+                </h3>
+                <canvas id="materialGroupChart" height="80"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 class="chart-title" style="margin: 0; padding: 0; border: none;">
+                        <i class="fa fa-chart-pie" style="color: #feca57;"></i>
+                        Transaction Types Distribution
+                    </h3>
+                    <div class="chart-toggle" style="display: flex; gap: 8px;">
+                        <button class="chart-btn active" data-chart="pie" onclick="switchTransactionChart('pie')" style="padding: 6px 12px; border: 1px solid #e2e8f0; background: #feca57; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                            <i class="fa fa-chart-pie"></i> Pie
+                        </button>
+                        <button class="chart-btn" data-chart="bar" onclick="switchTransactionChart('bar')" style="padding: 6px 12px; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                            <i class="fa fa-chart-bar"></i> Bar
+                        </button>
+                    </div>
+                </div>
+                <div style="position: relative;">
+                    <canvas id="transactionTypeChart" height="80"></canvas>
+                    <div id="transactionTypeSummary" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; display: none;">
+                        <div style="font-size: 2rem; font-weight: 800; color: #1e293b;">@(ViewBag.TransactionsCount ?? 0)</div>
+                        <div style="font-size: 0.9rem; color: #64748b; font-weight: 600;">Total Transactions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+@{
+    var monthlyLabels = ViewBag.MonthlyInvoiceLabels as List<string>;
+    var monthlyCounts = ViewBag.MonthlyInvoiceCounts as List<int>;
+    var statusLabels = ViewBag.StatusLabels as List<string>;
+    var statusCounts = ViewBag.StatusCounts as List<int>;
+    var materialGroupLabels = ViewBag.MaterialGroupLabels as List<string>;
+    var materialGroupCounts = ViewBag.MaterialGroupCounts as List<int>;
+    var transactionTypeLabels = ViewBag.TransactionTypeLabels as List<string>;
+    var transactionTypeCounts = ViewBag.TransactionTypeCounts as List<int>;
+    
+    // Ensure lists are not null
+    if (monthlyLabels == null) { monthlyLabels = new List<string>(); }
+    if (monthlyCounts == null) { monthlyCounts = new List<int>(); }
+    if (statusLabels == null) { statusLabels = new List<string>(); }
+    if (statusCounts == null) { statusCounts = new List<int>(); }
+    if (materialGroupLabels == null) { materialGroupLabels = new List<string>(); }
+    if (materialGroupCounts == null) { materialGroupCounts = new List<int>(); }
+    if (transactionTypeLabels == null) { transactionTypeLabels = new List<string>(); }
+    if (transactionTypeCounts == null) { transactionTypeCounts = new List<int>(); }
+}
+
+<script>
+    // Chart.js Configuration
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#64748b';
+
+    // Monthly Invoice Trends Chart
+    @if (monthlyLabels.Any() && monthlyCounts.Any())
+    {
+        <text>
+        const monthlyCtx = document.getElementById('monthlyInvoiceChart').getContext('2d');
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(Json.Encode(monthlyLabels)),
+                datasets: [{
+                    label: 'Invoice Count',
+                    data: @Html.Raw(Json.Encode(monthlyCounts)),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        </text>
+    }
+
+    // Transaction Status Distribution Chart
+    @if (statusLabels.Any() && statusCounts.Any())
+    {
+        <text>
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(Json.Encode(statusLabels)),
+                datasets: [{
+                    data: @Html.Raw(Json.Encode(statusCounts)),
+                    backgroundColor: [
+                        '#f59e0b',
+                        '#10b981',
+                        '#8b5cf6'
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true,
+                            font: {
+                                size: 13
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        </text>
+    }
+
+    // Material Group Distribution Chart
+    @if (materialGroupLabels.Any() && materialGroupCounts.Any())
+    {
+        <text>
+        const materialGroupCtx = document.getElementById('materialGroupChart').getContext('2d');
+        new Chart(materialGroupCtx, {
+            type: 'bar',
+            data: {
+                labels: @Html.Raw(Json.Encode(materialGroupLabels)),
+                datasets: [{
+                    label: 'Materials',
+                    data: @Html.Raw(Json.Encode(materialGroupCounts)),
+                    backgroundColor: [
+                        '#43e97b',
+                        '#4facfe',
+                        '#fa709a',
+                        '#feca57',
+                        '#ff6b6b'
+                    ],
+                    borderRadius: 10,
+                    borderSkipped: false,
+                    maxBarThickness: 60
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        </text>
+    }
+
+    // Transaction Types Distribution Chart - Enhanced with Pie/Bar toggle and percentages
+    @if (transactionTypeLabels.Any() && transactionTypeCounts.Any())
+    {
+        <text>
+        let transactionTypeChart = null;
+        const transactionTypeCtx = document.getElementById('transactionTypeChart').getContext('2d');
+        const transactionTypeLabels = @Html.Raw(Json.Encode(transactionTypeLabels));
+        const transactionTypeCounts = @Html.Raw(Json.Encode(transactionTypeCounts));
+        const totalTransactions = transactionTypeCounts.reduce((a, b) => a + b, 0);
+
+        // Calculate percentages
+        const transactionPercentages = transactionTypeCounts.map(count => 
+            totalTransactions > 0 ? ((count / totalTransactions) * 100).toFixed(1) : 0
+        );
+
+        function createTransactionChart(type) {
+            if (transactionTypeChart) {
+                transactionTypeChart.destroy();
+            }
+
+            const isPieChart = type === 'pie';
+            const summaryDiv = document.getElementById('transactionTypeSummary');
+            
+            if (isPieChart) {
+                summaryDiv.style.display = 'block';
+            } else {
+                summaryDiv.style.display = 'none';
+            }
+
+            const chartConfig = {
+                type: isPieChart ? 'doughnut' : 'bar',
+                data: {
+                    labels: transactionTypeLabels,
+                    datasets: [{
+                        label: 'Transactions',
+                        data: transactionTypeCounts,
+                        backgroundColor: [
+                            '#feca57',
+                            '#667eea',
+                            '#43e97b',
+                            '#fa709a',
+                            '#4ecdc4',
+                            '#ff6b6b',
+                            '#a29bfe'
+                        ],
+                        borderWidth: isPieChart ? 3 : 0,
+                        borderColor: '#ffffff',
+                        borderRadius: isPieChart ? 0 : 10,
+                        borderSkipped: false,
+                        maxBarThickness: isPieChart ? null : 60,
+                        hoverOffset: isPieChart ? 15 : 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: isPieChart,
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true,
+                                font: {
+                                    size: 12,
+                                    weight: '600'
+                                },
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return transactionTypeLabels.map((label, i) => {
+                                            const value = transactionTypeCounts[i];
+                                            const percentage = transactionPercentages[i];
+                                            return {
+                                                text: `${label} (${value} - ${percentage}%)`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                strokeStyle: data.datasets[0].borderColor,
+                                                lineWidth: data.datasets[0].borderWidth,
+                                                hidden: false,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = transactionTypeLabels[context.dataIndex];
+                                    const value = context.parsed || context.raw;
+                                    const percentage = transactionPercentages[context.dataIndex];
+                                    return `${label}: ${value} transactions (${percentage}%)`;
+                                }
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            displayColors: true,
+                            boxPadding: 6
+                        }
+                    },
+                    scales: isPieChart ? {} : {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            },
+                            ticks: {
+                                precision: 0,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                maxRotation: 45,
+                                minRotation: 0
+                            }
+                        }
+                    },
+                    animation: {
+                        animateRotate: isPieChart,
+                        animateScale: true,
+                        duration: 1000
+                    }
+                }
+            };
+
+            transactionTypeChart = new Chart(transactionTypeCtx, chartConfig);
+        }
+
+        // Initialize with pie chart
+        createTransactionChart('pie');
+
+        // Chart toggle function
+        function switchTransactionChart(type) {
+            const buttons = document.querySelectorAll('.chart-btn');
+            buttons.forEach(btn => {
+                if (btn.dataset.chart === type) {
+                    btn.classList.add('active');
+                    btn.style.background = '#feca57';
+                    btn.style.color = 'white';
+                } else {
+                    btn.classList.remove('active');
+                    btn.style.background = 'white';
+                    btn.style.color = '#64748b';
+                }
+            });
+            createTransactionChart(type);
+        }
+        </text>
+    }
+    else
+    {
+        <text>
+        // Show message if no data
+        const transactionTypeCtx = document.getElementById('transactionTypeChart').getContext('2d');
+        transactionTypeCtx.font = '16px Segoe UI';
+        transactionTypeCtx.fillStyle = '#94a3b8';
+        transactionTypeCtx.textAlign = 'center';
+        transactionTypeCtx.fillText('No transaction data available', transactionTypeCtx.canvas.width / 2, transactionTypeCtx.canvas.height / 2);
+        </text>
+    }
+</script>

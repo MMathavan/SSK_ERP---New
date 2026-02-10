@@ -1,0 +1,457 @@
+@{
+    ViewBag.Title = "Sales Report Itemwise";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+}
+
+<style>
+    .slr-main-container {
+        background: #ffffff;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .slr-content-wrapper {
+        background: #ffffff;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .slr-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #ffffff;
+        padding: 25px 30px;
+    }
+
+    .slr-header-title {
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .slr-header-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .slr-export-btn {
+        background: #28a745;
+        border-color: #28a745;
+        color: #ffffff;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 8px 14px;
+    }
+
+    .slr-export-btn:hover,
+    .slr-export-btn:focus {
+        background: #218838;
+        border-color: #1e7e34;
+        color: #ffffff;
+    }
+
+    .slr-body {
+        padding: 24px 30px 30px 30px;
+    }
+
+    .slr-filters {
+        background: #f8f9ff;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .slr-filters label {
+        font-weight: 600;
+        font-size: 13px;
+        color: #495057;
+        margin-bottom: 6px;
+    }
+
+    .slr-actions {
+        display: flex;
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    .slr-load-btn {
+        min-width: 140px;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    #sriTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+        width: 100%;
+    }
+
+    #sriTable thead th {
+        background: #7f88e9;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 12px 10px;
+        text-align: center;
+        border: none;
+        font-size: 13px;
+        border-right: 1px solid rgba(255, 255, 255, 0.35);
+        white-space: nowrap;
+    }
+
+    #sriTable thead th:last-child {
+        border-right: none;
+    }
+
+    #sriTable tbody td {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 13px;
+        background: #ffffff;
+    }
+
+    #sriTable tbody tr:hover {
+        background-color: #f8f9ff;
+        transition: all 0.15s ease;
+    }
+
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        padding: 6px 10px;
+        outline: none;
+    }
+
+    .dataTables_wrapper .dataTables_filter input::placeholder {
+        color: #9aa3ad;
+        opacity: 1;
+    }
+
+    .dataTables_wrapper .dataTables_length {
+        margin: 10px 0 12px 0;
+    }
+
+    .dataTables_wrapper .dataTables_filter {
+        margin: 10px 0 12px 0;
+    }
+
+    .dataTables_wrapper .dataTables_filter label,
+    .dataTables_wrapper .dataTables_length label {
+        margin-bottom: 0;
+    }
+
+    .select2-container--default .select2-selection--multiple {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        min-height: 38px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        padding: 3px 8px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background: #e9ecef;
+        border: 1px solid #dfe3e7;
+        border-radius: 14px;
+        padding: 2px 10px;
+        margin-top: 5px;
+        font-size: 12px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        margin-right: 6px;
+    }
+</style>
+
+<div class="slr-main-container">
+    <div class="slr-content-wrapper">
+        <div class="slr-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="slr-header-title">
+                    <i class="bi bi-file-bar-graph"></i>
+                    Sales Report Itemwise
+                </h1>
+                <div class="slr-header-actions">
+                    <button type="button" id="btnExport" class="btn slr-export-btn">
+                        <i class="fa fa-file-excel-o"></i> Export to Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="slr-body">
+            <div class="slr-filters">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="fromDate" class="form-label">From Date</label>
+                        <input type="date" id="fromDate" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                        <label for="toDate" class="form-label">To Date</label>
+                        <input type="date" id="toDate" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label for="materials" class="form-label">Material</label>
+                        <select id="materials" multiple="multiple" style="width:100%"></select>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="slr-actions">
+                            <button type="button" id="btnLoad" class="btn btn-primary slr-load-btn">
+                                <i class="fa fa-refresh"></i> Load Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="sriTable" class="table table-bordered table-striped mb-0">
+                    <thead>
+                        <tr id="sriHeaderRow"></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script type="text/javascript">
+        var sriDt = null;
+
+        function setToday() {
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
+            $('#fromDate').val(todayStr);
+            $('#toDate').val(todayStr);
+        }
+
+        function normalizeCellValue(val) {
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'string') {
+                var m = /\/Date\((\-?\d+)\)\//.exec(val);
+                if (!m) {
+                    m = /\/?Date\((\-?\d+)\)\/?/.exec(val);
+                }
+                if (m && m[1]) {
+                    var ms = parseInt(m[1], 10);
+                    if (!isNaN(ms)) {
+                        var d = new Date(ms);
+                        if (!isNaN(d.getTime())) {
+                            var dd = String(d.getDate()).padStart(2, '0');
+                            var mm = String(d.getMonth() + 1).padStart(2, '0');
+                            var yyyy = d.getFullYear();
+                            return dd + '-' + mm + '-' + yyyy;
+                        }
+                    }
+                }
+                return val;
+            }
+            if (typeof val === 'object') {
+                try { return JSON.stringify(val); } catch (e) { return ''; }
+            }
+            return val.toString();
+        }
+
+        function buildTable(columns, rows) {
+            if (!columns || !columns.length) {
+                columns = [];
+            }
+
+            if ($.fn.dataTable && $.fn.DataTable && $.fn.DataTable.isDataTable('#sriTable')) {
+                try {
+                    $('#sriTable').DataTable().clear().destroy();
+                } catch (e) { }
+                sriDt = null;
+            }
+
+            var headerHtml = '';
+            for (var i = 0; i < columns.length; i++) {
+                headerHtml += '<th>' + columns[i] + '</th>';
+            }
+            $('#sriHeaderRow').html(headerHtml);
+
+            var bodyHtml = '';
+            for (var r = 0; r < rows.length; r++) {
+                bodyHtml += '<tr>';
+                for (var c = 0; c < columns.length; c++) {
+                    var key = columns[c];
+                    var value = rows[r][key];
+                    bodyHtml += '<td>' + normalizeCellValue(value) + '</td>';
+                }
+                bodyHtml += '</tr>';
+            }
+            $('#sriTable tbody').html(bodyHtml);
+
+            if ($.fn.dataTable) {
+                setTimeout(function () {
+                    try {
+                        sriDt = $('#sriTable').DataTable({
+                            pageLength: 25,
+                            lengthMenu: [10, 25, 50, 100],
+                            ordering: true,
+                            searching: true,
+                            autoWidth: false
+                        });
+
+                        try {
+                            $('#sriTable_filter input').attr('placeholder', 'Search...');
+                        } catch (e) { }
+                    } catch (e) {
+                        sriDt = null;
+                    }
+                }, 0);
+            }
+        }
+
+        function initMaterialsSelect2() {
+            // _Layout renders RenderSection("scripts") before select2 JS includes.
+            // So we may need to retry until $.fn.select2 is available.
+            var tries = 0;
+            var timer = setInterval(function () {
+                tries++;
+                if ($.fn && $.fn.select2) {
+                    clearInterval(timer);
+                    try {
+                        try { $('#materials').select2('destroy'); } catch (e) { }
+                        $('#materials').select2({
+                            width: '100%',
+                            placeholder: 'Select Material',
+                            allowClear: true,
+                            closeOnSelect: false
+                        });
+                    } catch (e) { }
+                }
+
+                if (tries > 30) {
+                    clearInterval(timer);
+                }
+            }, 100);
+        }
+
+        function loadMaterials(callback) {
+            $.ajax({
+                url: '@Url.Action("GetMaterials", "SalesReportItemwise")',
+                type: 'GET',
+                success: function (res) {
+                    if (res && res.error) {
+                        if (typeof callback === 'function') callback();
+                        return;
+                    }
+                    var mats = (res && res.materials) ? res.materials : [];
+                    var html = '';
+                    for (var i = 0; i < mats.length; i++) {
+                        html += '<option value="' + $('<div/>').text(mats[i]).html() + '">' + $('<div/>').text(mats[i]).html() + '</option>';
+                    }
+                    $('#materials').html(html);
+
+                    initMaterialsSelect2();
+
+                    if (typeof callback === 'function') callback();
+                },
+                error: function () {
+                    if (typeof callback === 'function') callback();
+                }
+            });
+        }
+
+        function exportExcel() {
+            var fromDate = $('#fromDate').val() || '';
+            var toDate = $('#toDate').val() || '';
+            var materials = $('#materials').val() || [];
+
+            if (fromDate && toDate && fromDate > toDate) {
+                alert('From Date cannot be greater than To Date');
+                return;
+            }
+
+            var url = '@Url.Action("ExportToExcel", "SalesReportItemwise")'
+                + '?fromDate=' + encodeURIComponent(fromDate)
+                + '&toDate=' + encodeURIComponent(toDate);
+
+            for (var i = 0; i < materials.length; i++) {
+                url += '&materials=' + encodeURIComponent(materials[i]);
+            }
+
+            window.location = url;
+        }
+
+        function loadData() {
+            var fromDate = $('#fromDate').val() || '';
+            var toDate = $('#toDate').val() || '';
+            var materials = $('#materials').val() || [];
+
+            if (fromDate && toDate && fromDate > toDate) {
+                alert('From Date cannot be greater than To Date');
+                return;
+            }
+
+            $('#btnLoad').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+
+            $.ajax({
+                url: '@Url.Action("GetData", "SalesReportItemwise")',
+                type: 'GET',
+                traditional: true,
+                data: { fromDate: fromDate, toDate: toDate, materials: materials },
+                success: function (res) {
+                    if (res && res.error) {
+                        alert(res.error);
+                        buildTable([], []);
+                        return;
+                    }
+                    var cols = (res && res.columns) ? res.columns : [];
+                    var data = (res && res.data) ? res.data : [];
+                    buildTable(cols, data);
+                },
+                error: function () {
+                    alert('Failed to load data');
+                    buildTable([], []);
+                },
+                complete: function () {
+                    $('#btnLoad').prop('disabled', false).html('<i class="fa fa-refresh"></i> Load Data');
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            setToday();
+
+            // Ensure Select2 initializes after all scripts (including select2) are loaded.
+            $(window).on('load', function () {
+                initMaterialsSelect2();
+            });
+
+            $('#btnLoad').on('click', function () {
+                loadData();
+            });
+
+            $('#btnExport').on('click', function () {
+                exportExcel();
+            });
+
+            loadMaterials(function () {
+                loadData();
+            });
+        });
+    </script>
+}

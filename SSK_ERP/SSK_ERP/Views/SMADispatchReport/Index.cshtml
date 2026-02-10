@@ -1,0 +1,372 @@
+@{
+    ViewBag.Title = "SMA Dispatch Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .slr-main-container {
+        background: #ffffff;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .slr-content-wrapper {
+        background: #ffffff;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .slr-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #ffffff;
+        padding: 25px 30px;
+    }
+
+    .slr-header-title {
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .slr-header-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .slr-export-btn {
+        background: #28a745;
+        border-color: #28a745;
+        color: #ffffff;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 8px 14px;
+    }
+
+    .slr-export-btn:hover,
+    .slr-export-btn:focus {
+        background: #218838;
+        border-color: #1e7e34;
+        color: #ffffff;
+    }
+
+    .slr-body {
+        padding: 24px 30px 30px 30px;
+    }
+
+    .slr-filters {
+        background: #f8f9ff;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .slr-filters label {
+        font-weight: 600;
+        font-size: 13px;
+        color: #495057;
+        margin-bottom: 6px;
+    }
+
+    .slr-actions {
+        display: flex;
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    .slr-load-btn {
+        min-width: 140px;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    #slrTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+        width: 100%;
+    }
+
+    #slrTable thead th {
+        background: #7f88e9;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 12px 10px;
+        text-align: center;
+        border: none;
+        font-size: 13px;
+        border-right: 1px solid rgba(255, 255, 255, 0.35);
+        white-space: nowrap;
+    }
+
+    #slrTable thead th:last-child {
+        border-right: none;
+    }
+
+    #slrTable tbody td {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 13px;
+        background: #ffffff;
+    }
+
+    #slrTable tbody tr:hover {
+        background-color: #f8f9ff;
+        transition: all 0.15s ease;
+    }
+
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        padding: 6px 10px;
+        outline: none;
+    }
+
+    .dataTables_wrapper .dataTables_filter input::placeholder {
+        color: #9aa3ad;
+        opacity: 1;
+    }
+
+    .dataTables_wrapper .dataTables_length {
+        margin: 10px 0 12px 0;
+    }
+
+    .dataTables_wrapper .dataTables_filter {
+        margin: 10px 0 12px 0;
+    }
+
+    .dataTables_wrapper .dataTables_filter label,
+    .dataTables_wrapper .dataTables_length label {
+        margin-bottom: 0;
+    }
+</style>
+
+<div class="slr-main-container">
+    <div class="slr-content-wrapper">
+        <div class="slr-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="slr-header-title">
+                    <i class="bi bi-patch-check-fill"></i>
+                    SMA Dispatch Report
+                </h1>
+                <div class="slr-header-actions">
+                    <button type="button" id="btnExport" class="btn slr-export-btn">
+                        <i class="fa fa-file-excel-o"></i> Export to Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="slr-body">
+            <div class="slr-filters">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="fromDate" class="form-label">From Date</label>
+                        <input type="date" id="fromDate" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                        <label for="toDate" class="form-label">To Date</label>
+                        <input type="date" id="toDate" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                        <div class="slr-actions">
+                            <button type="button" id="btnLoad" class="btn btn-primary slr-load-btn">
+                                <i class="fa fa-refresh"></i> Load Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="slrTable" class="table table-bordered table-striped mb-0">
+                    <thead>
+                        <tr id="slrHeaderRow"></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script type="text/javascript">
+        var slrDt = null;
+
+        function setToday() {
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
+            $('#fromDate').val(todayStr);
+            $('#toDate').val(todayStr);
+        }
+
+        function normalizeCellValue(val) {
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'string') {
+                // Handle ASP.NET JSON date format: /Date(1770229800000)/
+                // Also sometimes comes escaped as \/Date(....)\/
+                var m = /\/Date\((\-?\d+)\)\//.exec(val);
+                if (!m) {
+                    m = /\/?Date\((\-?\d+)\)\/?/.exec(val);
+                }
+
+                if (m && m[1]) {
+                    var ms = parseInt(m[1], 10);
+                    if (!isNaN(ms)) {
+                        var d = new Date(ms);
+                        if (!isNaN(d.getTime())) {
+                            var dd = String(d.getDate()).padStart(2, '0');
+                            var mm = String(d.getMonth() + 1).padStart(2, '0');
+                            var yyyy = d.getFullYear();
+                            return dd + '-' + mm + '-' + yyyy;
+                        }
+                    }
+                }
+
+                return val;
+            }
+
+            // JSON dates might arrive as /Date(....)/ or ISO depending on SQL/client
+            if (typeof val === 'object') {
+                try { return JSON.stringify(val); } catch (e) { return ''; }
+            }
+
+            return val.toString();
+        }
+
+        function buildTable(columns, rows) {
+            if (!columns || !columns.length) {
+                columns = [];
+            }
+
+            // If DataTables is already initialized, destroy it before we rewrite header/body.
+            if ($.fn.dataTable && $.fn.DataTable && $.fn.DataTable.isDataTable('#slrTable')) {
+                try {
+                    $('#slrTable').DataTable().clear().destroy();
+                } catch (e) { }
+                slrDt = null;
+            }
+
+            // Header
+            var headerHtml = '';
+            for (var i = 0; i < columns.length; i++) {
+                headerHtml += '<th>' + columns[i] + '</th>';
+            }
+            $('#slrHeaderRow').html(headerHtml);
+
+            // Data
+            var bodyHtml = '';
+            for (var r = 0; r < rows.length; r++) {
+                bodyHtml += '<tr>';
+                for (var c = 0; c < columns.length; c++) {
+                    var key = columns[c];
+                    var value = rows[r][key];
+                    bodyHtml += '<td>' + normalizeCellValue(value) + '</td>';
+                }
+                bodyHtml += '</tr>';
+            }
+            $('#slrTable tbody').html(bodyHtml);
+
+            if ($.fn.dataTable) {
+                // Defer initialization to ensure the new DOM is fully applied.
+                setTimeout(function () {
+                    try {
+                        slrDt = $('#slrTable').DataTable({
+                            pageLength: 25,
+                            lengthMenu: [10, 25, 50, 100],
+                            ordering: true,
+                            searching: true,
+                            autoWidth: false
+                        });
+
+                        try {
+                            $('#slrTable_filter input').attr('placeholder', 'Search...');
+                        } catch (e) { }
+                    } catch (e) {
+                        slrDt = null;
+                    }
+                }, 0);
+            }
+        }
+
+        function loadData() {
+            var fromDate = $('#fromDate').val() || '';
+            var toDate = $('#toDate').val() || '';
+
+            if (fromDate && toDate && fromDate > toDate) {
+                alert('From Date cannot be greater than To Date');
+                return;
+            }
+
+            $('#btnLoad').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+
+            $.ajax({
+                url: '@Url.Action("GetData", "ServiceLevelReport")',
+                type: 'GET',
+                data: { fromDate: fromDate, toDate: toDate },
+                success: function (res) {
+                    if (res && res.error) {
+                        alert(res.error);
+                        buildTable([], []);
+                        return;
+                    }
+                    var cols = (res && res.columns) ? res.columns : [];
+                    var data = (res && res.data) ? res.data : [];
+                    buildTable(cols, data);
+                },
+                error: function (xhr) {
+                    alert('Failed to load data');
+                    buildTable([], []);
+                },
+                complete: function () {
+                    $('#btnLoad').prop('disabled', false).html('<i class="fa fa-refresh"></i> Load Data');
+                }
+            });
+        }
+
+        function exportExcel() {
+            var fromDate = $('#fromDate').val() || '';
+            var toDate = $('#toDate').val() || '';
+
+            if (fromDate && toDate && fromDate > toDate) {
+                alert('From Date cannot be greater than To Date');
+                return;
+            }
+
+            var url = '@Url.Action("ExportToExcel", "ServiceLevelReport")'
+                + '?fromDate=' + encodeURIComponent(fromDate)
+                + '&toDate=' + encodeURIComponent(toDate);
+
+            window.location = url;
+        }
+
+        $(document).ready(function () {
+            setToday();
+
+            $('#btnLoad').on('click', function () {
+                loadData();
+            });
+
+            $('#btnExport').on('click', function () {
+                exportExcel();
+            });
+
+            // auto load on first open
+            loadData();
+        });
+    </script>
+}

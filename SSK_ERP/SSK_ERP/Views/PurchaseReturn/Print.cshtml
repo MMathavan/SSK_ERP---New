@@ -1,0 +1,615 @@
+@model SSK_ERP.Controllers.Purchase.PurchaseReturnController.PurchaseReturnPrintViewModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Return - @Model.TRANDNO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+
+        .invoice-page {
+            width: 100%;
+            max-width: 1120px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #000;
+            padding: 6px 10px 10px 10px;
+        }
+
+        .inv-header-row {
+            display: flex;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+        }
+
+        .inv-header-left {
+            width: 35%;
+            border-right: 1px solid #000;
+            padding-right: 6px;
+        }
+
+        .inv-header-center {
+            width: 30%;
+            border-right: 1px solid #000;
+            padding: 0 6px;
+        }
+
+        .inv-header-right {
+            width: 35%;
+            padding-left: 6px;
+        }
+
+        .comp-name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .comp-addr {
+            font-size: 11px;
+            line-height: 1.15;
+        }
+
+        .gst-title {
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .inv-small-text {
+            font-size: 11px;
+        }
+
+        .inv-border-box {
+            border: 1px solid #000;
+            padding: 2px 4px;
+            font-size: 11px;
+        }
+
+        .party-heading {
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .party-name {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .party-addr {
+            font-size: 11px;
+            line-height: 1.15;
+        }
+
+        .party-gst {
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .inv-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 3px;
+            font-size: 10px;
+        }
+
+        .inv-info-table th,
+        .inv-info-table td {
+            border: 1px solid #000;
+            padding: 1px 3px;
+        }
+
+        .inv-items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2px;
+            font-size: 10px;
+        }
+
+        .inv-items-table th,
+        .inv-items-table td {
+            border: 1px solid #000;
+            padding: 2px 3px;
+        }
+
+        .inv-items-table th {
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .totals-row {
+            margin-top: 2px;
+            font-size: 10px;
+        }
+
+        .totals-row table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .totals-row td {
+            border: 1px solid #000;
+            padding: 2px 4px;
+        }
+
+        .footer-row {
+            margin-top: 2px;
+            font-size: 10px;
+        }
+
+        .footer-row table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .footer-row td {
+            border: 1px solid #000;
+            padding: 2px 4px;
+            vertical-align: top;
+        }
+
+        .grand-total-box {
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 6px 14px;
+            background: #444;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .print-button:hover {
+            background: #000;
+        }
+
+        @@media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+
+            .invoice-page {
+                border: none;
+                margin: 0;
+                width: 100%;
+                max-width: none;
+            }
+
+            .print-button {
+                display: none;
+            }
+
+            @@page {
+                margin: 5mm 5mm 5mm 5mm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button" onclick="window.print();">
+        Print
+    </button>
+
+    <div class="invoice-page">
+        <div class="inv-header-row">
+            <div class="inv-header-left">
+                <div class="inv-border-box">
+                    @if (string.IsNullOrWhiteSpace(Model.CompanyName) || Model.CompanyName.Trim().ToUpper() == "SSK ENTERPRISE")
+                    {
+                        <div class="comp-name">SSK ENTERPRISE</div>
+                        <div class="comp-addr">
+                            BLOCK A, BUILDING C, SOUTH FACING, FIRST FLOOR,<br />
+                            ROOM NO.B, KOTHARI WAREHOUSE, MADHAVARAM<br />
+                            REDHILLS ROAD, VADAPERUMBAKKAM,<br />
+                            PUZHAL, CHENNAI-600060, Phone : 9791007800<br />
+                            D.L.No. : Z05/00636/20B, Z05/00636/21B, Z05/0001/20G<br />
+                            D.L.No : Z05/01007/20, Z05/01007/21, Z05/00017/20F
+                        </div>
+                        <div class="inv-small-text" style="margin-top: 2px;">
+                            GSTIN : 33AOZPS5038P1ZV
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="comp-name">@Model.CompanyName</div>
+                        <div class="comp-addr">
+                            @Model.CompanyAddress
+                        </div>
+                        <div class="inv-small-text" style="margin-top: 2px;">
+                            GSTIN : @Model.CompanyGstNo
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="inv-header-center">
+                <div class="gst-title">DEBIT NOTE / GST PURCHASE RETURN</div>
+                <div style="margin-top: 4px;">
+                    <table class="inv-info-table">
+                        <tr>
+                            <th style="width: 18%;">Invoice No</th>
+                            <td style="width: 32%;">@Model.TRANDNO</td>
+                            <th style="width: 18%;">Order No</th>
+                            <td style="width: 32%;">@Model.TRANREFNO</td>
+                        </tr>
+                        <tr>
+                            <th>Invoice Date</th>
+                            <td>@Model.TRANDATE.ToString("dd/MM/yyyy")</td>
+                            <th>Order Date</th>
+                            <td>@Model.TRANDATE.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                        <tr>
+                            <th>Due Date</th>
+                            <td>@Model.TRANDATE.ToString("dd/MM/yyyy")</td>
+                            <th>Ref No</th>
+                            <td>@(!string.IsNullOrWhiteSpace(Model.Narration) ? Model.Narration : "EXPIRY STOCK RETURN")</td>
+                        </tr>
+                        <tr>
+                            <th>&nbsp;</th>
+                            <td>&nbsp;</td>
+                            <th>Ref Date</th>
+                            <td>@Model.TRANDATE.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="inv-header-right">
+                <div class="inv-border-box">
+                    <div class="party-heading">Supplier :</div>
+                    <div class="party-name">@Model.SupplierName (@Model.SupplierCode)</div>
+                    <div class="party-addr">
+                        @Model.Address1
+                        @if (!string.IsNullOrWhiteSpace(Model.Address2))
+                        {
+                            <br />@Model.Address2
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Address3))
+                        {
+                            <br />@Model.Address3
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Address4))
+                        {
+                            <br />@Model.Address4
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.City) || !string.IsNullOrWhiteSpace(Model.Pincode))
+                        {
+                            <br />@Model.City @Model.Pincode
+                        }
+                    </div>
+                    <div class="party-gst">
+                        State : @Model.State (@Model.StateCode)
+                    </div>
+                    <div class="party-gst">
+                        GSTIN : @Model.GstNo
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @{
+            var items = Model.Items ?? new List<SSK_ERP.Controllers.Purchase.PurchaseReturnController.PurchaseReturnPrintItemViewModel>();
+            int rowsPerPage = 26; // maximum item rows per logical page before breaking
+            int totalPages = items.Count > 0 ? (int)Math.Ceiling(items.Count / (double)rowsPerPage) : 1;
+        }
+
+        @if (items.Any())
+        {
+            for (int pageIndex = 0; pageIndex < totalPages; pageIndex++)
+            {
+                var pageItems = items.Skip(pageIndex * rowsPerPage).Take(rowsPerPage).ToList();
+                bool isLastPage = (pageIndex == totalPages - 1);
+                decimal pageTotalNet = pageItems.Sum(x => x.NetAmount);
+
+                <table class="inv-items-table">
+                    <thead>
+                        @if (totalPages > 1 && pageIndex > 0)
+                        {
+                            <tr>
+                                <th colspan="18" class="text-right" style="font-weight: 700;">
+                                    To be continued...
+                                </th>
+                            </tr>
+                        }
+                        <tr>
+                            <th style="width: 3%;">S.No</th>
+                            <th style="width: 5%;">Mfr</th>
+                            <th style="width: 20%;">Product Name</th>
+                            <th style="width: 7%;">Pack</th>
+                            <th style="width: 5%;">Qty.</th>
+                            <th style="width: 8%;">Batch</th>
+                            <th style="width: 6%;">Exp</th>
+                            <th style="width: 6%;">HSN</th>
+                            <th style="width: 6%;">Rate</th>
+                            <th style="width: 6%;">PTR</th>
+                            <th style="width: 6%;">M.R.P</th>
+                            <th style="width: 5%;">DIS1</th>
+                            <th style="width: 5%;">DIS%</th>
+                            <th style="width: 6%;">D_AMT</th>
+                            <th style="width: 5%;">SGST</th>
+                            <th style="width: 5%;">CGST</th>
+                            <th style="width: 7%;">Amount</th>
+                            <th style="width: 7%;">Net</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var indexStart = pageIndex * rowsPerPage + 1;
+                            var rowIndex = 0;
+                        }
+                        @foreach (var item in pageItems)
+                        {
+                            var displayIndex = indexStart + rowIndex;
+                            rowIndex++;
+
+                            <tr>
+                                <td class="text-center">@displayIndex</td>
+                                <td class="text-center">@item.Division</td>
+                                <td>@item.MaterialName</td>
+                                <td class="text-center">@item.Pack</td>
+                                <td class="text-right">@item.Qty.ToString("0.##")</td>
+                                <td class="text-center">@item.BatchNo</td>
+                                <td class="text-center">@(item.ExpiryDate.HasValue ? item.ExpiryDate.Value.ToString("MM'/'yy") : "")</td>
+                                <td class="text-center">@item.HSNCode</td>
+                                <td class="text-right">@item.Rate.ToString("0.00")</td>
+                                <td class="text-right">@item.Ptr.ToString("0.00")</td>
+                                <td class="text-right">@item.Mrp.ToString("0.00")</td>
+                                <td class="text-right">@item.Dis1.ToString("0.00")</td>
+                                <td class="text-right">@item.DisPercent.ToString("0.00")</td>
+                                <td class="text-right">@item.DiscountAmount.ToString("0.00")</td>
+                                <td class="text-right">@item.SgstRate.ToString("0.00")</td>
+                                <td class="text-right">@item.CgstRate.ToString("0.00")</td>
+                                <td class="text-right">@item.Amount.ToString("0.00")</td>
+                                <td class="text-right">@item.NetAmount.ToString("0.00")</td>
+                            </tr>
+                        }
+
+                        @if (totalPages > 1)
+                        {
+                            <tr>
+                                <td colspan="18" class="text-right" style="font-weight: 700;">
+                                    Page @(pageIndex + 1) Total: @pageTotalNet.ToString("0.00")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                if (!isLastPage)
+                {
+                    <div class="page-break"></div>
+                }
+            }
+        }
+        else
+        {
+            <table class="inv-items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 3%;">S.No</th>
+                        <th style="width: 5%;">Mfr</th>
+                        <th style="width: 20%;">Product Name</th>
+                        <th style="width: 7%;">Pack</th>
+                        <th style="width: 5%;">Qty.</th>
+                        <th style="width: 8%;">Batch</th>
+                        <th style="width: 6%;">Exp</th>
+                        <th style="width: 6%;">HSN</th>
+                        <th style="width: 6%;">Rate</th>
+                        <th style="width: 6%;">PTR</th>
+                        <th style="width: 6%;">M.R.P</th>
+                        <th style="width: 5%;">DIS1</th>
+                        <th style="width: 5%;">DIS%</th>
+                        <th style="width: 6%;">D_AMT</th>
+                        <th style="width: 5%;">SGST</th>
+                        <th style="width: 5%;">CGST</th>
+                        <th style="width: 7%;">Amount</th>
+                        <th style="width: 7%;">Net</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="18" class="text-center">No items found.</td>
+                    </tr>
+                </tbody>
+            </table>
+        }
+
+        <div class="totals-row">
+            <table>
+                <tr>
+                    <td style="width: 70%; vertical-align: top;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <thead>
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;">CLASS</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">TOTAL</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">SCHEME</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">DISCOUNT</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">SGST</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">CGST</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">TOTAL GST</td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    decimal classTotal = 0m;
+                                    decimal classSgst = 0m;
+                                    decimal classCgst = 0m;
+                                    decimal classTotalGst = 0m;
+                                    var gstClasses = new decimal[] { 0m, 5m, 12m, 18m, 28m };
+                                }
+                                @foreach (var rate in gstClasses)
+                                {
+                                    var summary = (Model.ClassSummaries ?? Enumerable.Empty<SSK_ERP.Controllers.Purchase.PurchaseReturnController.PurchaseReturnClassSummaryViewModel>())
+                                        .FirstOrDefault(x => x.GstPercent == rate);
+
+                                    decimal rowTotal = summary != null ? summary.Total : 0m;
+                                    decimal rowSgst = summary != null ? summary.Sgst : 0m;
+                                    decimal rowCgst = summary != null ? summary.Cgst : 0m;
+                                    decimal rowTotalGst = summary != null ? summary.TotalGst : 0m;
+
+                                    classTotal += rowTotal;
+                                    classSgst += rowSgst;
+                                    classCgst += rowCgst;
+                                    classTotalGst += rowTotalGst;
+
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 2px 4px;">GST @rate.ToString("0.00")%</td>
+                                        <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@rowTotal.ToString("0.00")</td>
+                                        <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">0.00</td>
+                                        <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">0.00</td>
+                                        <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@rowSgst.ToString("0.00")</td>
+                                        <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@rowCgst.ToString("0.00")</td>
+                                        <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@rowTotalGst.ToString("0.00")</td>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;">TOTAL</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">@classTotal.ToString("0.00")</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">0.00</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">0.00</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">@classSgst.ToString("0.00")</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">@classCgst.ToString("0.00")</td>
+                                    <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">@classTotalGst.ToString("0.00")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                    <td style="width: 30%; vertical-align: top;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <tr>
+                                <td colspan="4" style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">
+                                    TOTAL @Model.GrossAmount.ToString("0.00")
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">Total Items :-</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.TotalItems</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">DIS AMT.</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.TotalDisc.ToString("0.00")</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">Total Qty :-</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.TotalQty.ToString("0.##")</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">SGST</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.SgstAmount.ToString("0.00")</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">Total Disc. :-</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.TotalDisc.ToString("0.00")</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">CGST</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.CgstAmount.ToString("0.00")</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">CR/DR NOTE :-</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">0.00</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">TCS 0.00%</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">0.00</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">Party Disc. :- Rs.</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right"></td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">CR/DR NOTE</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">0.00</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">Courier Charges :-</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.CourierCharges.ToString("0.00")</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right"></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="totals-row" style="margin-top: 2px;">
+            <table>
+                <tr>
+                    <td style="width: 25%; border: 1px solid #000; padding: 2px 4px;">
+                        User Name: @Model.UserName
+                    </td>
+                    <td style="width: 20%; border: 1px solid #000; padding: 2px 4px;">
+                        Billing Time: @Model.BillingTime.ToString("HH:mm")
+                    </td>
+                    <td style="width: 55%; border: 1px solid #000; padding: 2px 4px;">
+                        <strong>Amount in Words:</strong> @Model.AmountInWords
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="border: 1px solid #000; padding: 2px 4px;">
+                        <strong>REMARKS:</strong>
+                        @if (!string.IsNullOrWhiteSpace(Model.Remarks))
+                        {
+                            @Model.Remarks
+                        }
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="footer-row">
+            <table>
+                <tr>
+                    <td style="width: 35%; border-right: 1px solid #000;">
+                        <div class="terms-title">Terms &amp; Conditions</div>
+                        <div>
+                            Goods once sold will not be taken back or exchanged.<br />
+                            All disputes subject to  Jurisdication only.<br />
+                            Bills not paid due date will attract 24% interest.
+                        </div>
+                    </td>
+                    <td style="width: 35%; border-right: 1px solid #000;">
+                        <div class="terms-title">Bank Details</div>
+                        <div>
+                            Bank Name : HDFC BANK, Branch : R A Puram A/c. No. : 50200030798768<br />
+                            RTGS / NEFT IFSC : HDFC0000141
+                        </div>
+                    </td>
+                    <td style="width: 15%; text-align: center; border-right: 1px solid #000;">
+                        <div style="margin-top: 10px;">For @(!string.IsNullOrWhiteSpace(Model.CompanyName) ? Model.CompanyName : "SSK ENTERPRISE")</div>
+                        <div style="margin-top: 18px;">Signature</div>
+                    </td>
+                    <td style="width: 15%; text-align: center; vertical-align: middle;">
+                        <div><strong>Grand Total</strong></div>
+                        <div class="grand-total-box">@Model.NetAmount.ToString("0.00")</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

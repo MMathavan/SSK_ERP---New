@@ -1,0 +1,346 @@
+@model SSK_ERP.Controllers.SalesOrderPrintViewModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Order - @Model.TRANDNO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .so-print-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .so-print-header {
+            text-align: center;
+            border-bottom: 3px solid #185a9d;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .so-print-header h1 {
+            color: #185a9d;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .so-print-header h2 {
+            color: #555;
+            font-size: 16px;
+            font-weight: normal;
+        }
+
+        .so-print-company {
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.4;
+            margin-top: 0;
+            margin-bottom: 6px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            white-space: pre-wrap;
+            font-weight: 600;
+        }
+
+        .so-print-info {
+            margin-bottom: 20px;
+        }
+
+        .so-print-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        .so-print-address-row > div:first-child {
+            flex: 0 0 60%;
+            max-width: 60%;
+        }
+
+        .so-print-address-row > div:last-child {
+            flex: 0 0 40%;
+            max-width: 40%;
+            text-align: right;
+        }
+
+        .so-print-address-row .so-print-info-value {
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
+
+        .so-print-info-label {
+            font-weight: 600;
+            min-width: 110px;
+            color: #555;
+        }
+
+        .so-print-info-value {
+            color: #333;
+        }
+
+        .so-print-section-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 16px 0 8px 0;
+            color: #185a9d;
+            border-bottom: 2px solid #43cea2;
+            padding-bottom: 4px;
+        }
+
+        .so-print-items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .so-print-items-table thead {
+            background: linear-gradient(135deg, #185a9d, #43cea2);
+            color: #ffffff;
+        }
+
+        .so-print-items-table th,
+        .so-print-items-table td {
+            padding: 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .so-print-items-table th {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .so-print-items-table th.text-right,
+        .so-print-items-table td.text-right {
+            text-align: right;
+        }
+
+        .so-print-items-table th.text-center,
+        .so-print-items-table td.text-center {
+            text-align: center;
+        }
+
+        .so-print-summary {
+            width: 100%;
+            max-width: 380px;
+            margin-left: auto;
+            margin-top: 10px;
+            border: 2px solid #185a9d;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .so-print-summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 14px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        .so-print-summary-row:last-child {
+            border-bottom: none;
+            background: linear-gradient(135deg, #185a9d, #43cea2);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .so-print-summary-label {
+            font-weight: 600;
+        }
+
+        .so-print-summary-value {
+            font-weight: 600;
+        }
+
+        .so-print-amount-words {
+            margin-top: 16px;
+            font-size: 13px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .so-print-footer {
+            margin-top: 40px;
+            padding-top: 18px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .so-print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #43cea2, #185a9d);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(24, 90, 157, 0.3);
+        }
+
+        .so-print-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(24, 90, 157, 0.4);
+        }
+
+        @@media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+
+            .so-print-container {
+                box-shadow: none;
+                padding: 20px;
+            }
+
+            .so-print-button {
+                display: none;
+            }
+
+            @@page {
+                margin: 1cm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="so-print-button" onclick="window.print();">
+        <i class="fa fa-print"></i> Print
+    </button>
+
+    <div class="so-print-container">
+        <div class="so-print-header">
+            <div class="so-print-company">SSK ENTERPRISE
+@Model.CompanyAddress</div>
+            <h1>Sales Order</h1>
+            <h2>Order No: @Model.TRANDNO</h2>
+        </div>
+
+        <div class="so-print-info">
+            <div class="so-print-info-row">
+                <div>
+                    <span class="so-print-info-label">Order No:</span>
+                    <span class="so-print-info-value">@Model.TRANDNO</span>
+                </div>
+                <div>
+                    <span class="so-print-info-label">Date:</span>
+                    <span class="so-print-info-value">@Model.TRANDATE.ToString("dd/MM/yyyy")</span>
+                </div>
+            </div>
+
+            <div class="so-print-section-title">Customer Details</div>
+            <div class="so-print-info-row">
+                <div>
+                    <span class="so-print-info-label">Name:</span>
+                    <span class="so-print-info-value">@Model.CustomerName</span>
+                </div>
+                <div>
+                    <span class="so-print-info-label">Code:</span>
+                    <span class="so-print-info-value">@Model.CustomerCode</span>
+                </div>
+            </div>
+            <div class="so-print-info-row so-print-address-row">
+                <div>
+                    <span class="so-print-info-label">Address:</span>
+                    <span class="so-print-info-value">
+                        @Model.Address1<br />
+                        @if (!string.IsNullOrWhiteSpace(Model.Address2))
+                        {
+                            @Model.Address2<br />
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Address3))
+                        {
+                            @Model.Address3<br />
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Address4))
+                        {
+                            @Model.Address4
+                        }
+                    </span>
+                </div>
+                <div>
+                    <span class="so-print-info-label">State:</span>
+                    <span class="so-print-info-value">@Model.State (@Model.StateCode)</span>
+                </div>
+            </div>
+            <div class="so-print-info-row">
+                <div>
+                    <span class="so-print-info-label">GST No:</span>
+                    <span class="so-print-info-value">@Model.GstNo</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="so-print-section-title">Order Items</div>
+        <table class="so-print-items-table">
+            <thead>
+                <tr>
+                    <th style="width:5%;" class="text-center">S.No</th>
+                    <th style="width:55%;">Item</th>
+                    <th style="width:30%;">Material Group</th>
+                    <th style="width:10%;" class="text-right">Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items != null && Model.Items.Any())
+                {
+                    var index = 1;
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td class="text-center">@index</td>
+                            <td>@item.MaterialName</td>
+                            <td>@item.MaterialGroupName</td>
+                            <td class="text-right">@item.Qty.ToString("N2")</td>
+                        </tr>
+                        index++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="4" class="text-center">No items available.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="so-print-footer">
+            <p>This is a computer-generated Sales Order and does not require a signature.</p>
+            <p>Printed on: @DateTime.Now.ToString("dd MMM yyyy HH:mm")</p>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</body>
+</html>

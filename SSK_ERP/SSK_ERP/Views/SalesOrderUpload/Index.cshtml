@@ -1,0 +1,488 @@
+@using System.Linq
+@using SSK_ERP.Controllers
+@{
+    ViewBag.Title = "Sales Order Upload";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .upload-main-container {
+        background: white;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .upload-content-wrapper {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .upload-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .upload-header-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .upload-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .upload-loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .upload-loading-box {
+        background: #ffffff;
+        padding: 20px 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.25);
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .upload-loading-spinner {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 3px solid #0d6efd;
+        border-top-color: transparent;
+        animation: upload-spin 0.8s linear infinite;
+    }
+
+    @@keyframes upload-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .upload-grid-container {
+        margin-top: 30px;
+    }
+
+    .upload-grid-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .upload-grid-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+    }
+
+    .upload-grid-table tbody td {
+        font-size: 12px;
+        vertical-align: middle;
+    }
+
+    /* Fix SweetAlert2 question icon clipping in confirmation dialogs */
+    .swal2-popup .swal2-icon.swal2-question {
+        margin-top: 1.25em !important;
+        margin-bottom: 1.25em !important;
+    }
+</style>
+
+<div class="upload-main-container">
+    <div class="upload-content-wrapper">
+        <div class="upload-header-section">
+            <h1 class="upload-header-title">
+                <i class="fa fa-upload"></i>
+                Sales Order Upload
+            </h1>
+        </div>
+
+@section scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script type="text/javascript">
+        (function ($) {
+            var uploadMaterialGroupMap = {};
+            var uploadGroupNameMap = {};
+            var uploadMaterialProfitMap = {};
+
+            function loadUploadMaterialGroupData() {
+                $.getJSON('@Url.Action("GetMaterialAndGroups", "SalesOrder")')
+                    .done(function (resp) {
+                        if (!resp || resp.success === false) {
+                            return;
+                        }
+
+                        uploadMaterialGroupMap = {};
+                        uploadGroupNameMap = {};
+                        uploadMaterialProfitMap = {};
+
+                        $.each(resp.materials || [], function (idx, item) {
+                            if (!item) return;
+                            uploadMaterialGroupMap[item.id] = item.groupId;
+                            uploadMaterialProfitMap[item.id] = item.profitPercent || 0;
+                        });
+
+                        $.each(resp.groups || [], function (idx, g) {
+                            if (!g) return;
+                            uploadGroupNameMap[g.id] = g.name || '';
+                        });
+                    });
+            }
+
+            function initUploadMaterialSelect2() {
+                if (!$.fn.select2) {
+                    return;
+                }
+
+                $('.upload-actual-material').each(function () {
+                    var $el = $(this);
+                    if ($el.hasClass('select2-hidden-accessible')) {
+                        $el.select2('destroy');
+                    }
+                    $el.select2({ width: '100%' });
+                });
+            }
+
+            $(document).ready(function () {
+                // Initialize customer dropdown with Select2 if available
+                var $ddl = $('#customerDropdown');
+                if ($.fn.select2 && $ddl.length) {
+                    $ddl.select2({ width: '100%' });
+                }
+
+                var $overlay = $('#uploadLoadingOverlay');
+
+                // Show success popup after confirming and saving upload, then go to Sales Order index
+                var uploadSuccessMessage = "@(TempData["SuccessMessage"] ?? "")";
+                if (uploadSuccessMessage && typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: uploadSuccessMessage,
+                        confirmButtonText: 'OK'
+                    }).then(function () {
+                        window.location.href = '@Url.Action("Index", "SalesOrder")';
+                    });
+                }
+
+                // Show error popup for validation failures (e.g., duplicate PO Number)
+                var uploadErrorMessage = "@(TempData["ErrorMessage"] ?? "")";
+                if (uploadErrorMessage && typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: uploadErrorMessage,
+                        confirmButtonText: 'OK'
+                    });
+                }
+
+                // Auto-hide success/error alerts after 2 seconds
+                var $alerts = $('.upload-body .alert');
+                if ($alerts.length) {
+                    setTimeout(function () {
+                        $alerts.fadeOut(400, function () {
+                            $(this).remove();
+                        });
+                    }, 2000);
+                }
+
+                // Upload form validation and SweetAlert confirmation (with graceful fallback if Swal is missing)
+                $('#uploadForm').on('submit', function (e) {
+                    var customerVal = $ddl.val();
+                    var fileVal = $.trim($('#file').val());
+
+                    if (!customerVal) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Customer required',
+                                text: 'Please select a customer.'
+                            });
+                        } else {
+                            alert('Please select a customer.');
+                        }
+                        return;
+                    }
+
+                    if (!fileVal) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'File required',
+                                text: 'Please select a PDF file to upload.'
+                            });
+                        } else {
+                            alert('Please select a PDF file to upload.');
+                        }
+                        return;
+                    }
+
+                    e.preventDefault();
+
+                    try {
+                        // Prefer SweetAlert confirmation if available
+                        Swal.fire({
+                            title: 'Are you sure?',
+                            text: 'You are about to upload and process this file.',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Yes, upload it!'
+                        }).then(function (result) {
+                            if (result.isConfirmed) {
+                                if ($overlay.length) {
+                                    // Use flex so the overlay centers its content correctly
+                                    $overlay.css('display', 'flex');
+                                }
+                                $('#uploadForm').off('submit').submit();
+                            }
+                        });
+                    } catch (ex) {
+                        // Fallback: SweetAlert not available; just show overlay (if present) and submit
+                        if ($overlay.length) {
+                            $overlay.css('display', 'flex');
+                        }
+                        $('#uploadForm').off('submit').submit();
+                    }
+                });
+
+                // Load material/group metadata for the upload grid (if present)
+                loadUploadMaterialGroupData();
+
+                // Initialize Actual Material dropdowns as searchable Select2
+                initUploadMaterialSelect2();
+                // Run a second time after a tick to catch any late DOM updates
+                setTimeout(initUploadMaterialSelect2, 0);
+
+                // Confirm & Save: validate all rows have a selected material, then SweetAlert confirm
+                $('#confirmUploadForm').on('submit', function (e) {
+                    var $form = $(this);
+                    var allSelected = true;
+
+                    $('.upload-actual-material').each(function () {
+                        var val = $(this).val();
+                        if (!val || parseInt(val, 10) <= 0) {
+                            allSelected = false;
+                            return false; // break
+                        }
+                    });
+
+                    if (!allSelected) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Material selection required',
+                                text: 'Please select an actual material for all rows before saving.'
+                            });
+                        } else {
+                            alert('Please select an actual material for all rows before saving.');
+                        }
+                        return;
+                    }
+
+                    e.preventDefault();
+
+                    try {
+                        // Prefer SweetAlert confirmation if available
+                        Swal.fire({
+                            title: 'Are you sure?',
+                            text: 'You are about to confirm and save this sales order.',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Yes, save it!'
+                        }).then(function (result) {
+                            if (result.isConfirmed) {
+                                $form.off('submit').submit();
+                            }
+                        });
+                    } catch (ex) {
+                        // Fallback: SweetAlert not available; just submit normally if validation passed
+                        $form.off('submit').submit();
+                    }
+                });
+            });
+
+            // When Actual Material changes in the upload grid, update the Material Group and Profit % cells
+            $(document).on('change', '.upload-actual-material', function () {
+                var $row = $(this).closest('tr');
+                var matId = parseInt($(this).val() || '0', 10);
+                var groupId = uploadMaterialGroupMap[matId];
+                var groupName = groupId ? (uploadGroupNameMap[groupId] || '') : '';
+                $row.find('.upload-material-group').text(groupName);
+
+                 var profit = uploadMaterialProfitMap[matId];
+                 var profitNum = parseFloat(profit);
+                 if (!isNaN(profitNum)) {
+                     $row.find('.upload-profit').text(profitNum.toFixed(2));
+                 } else {
+                     $row.find('.upload-profit').text('');
+                 }
+            });
+        })(jQuery);
+    </script>
+}
+        <div class="upload-body">
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+            }
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+            }
+
+            @using (Html.BeginForm("Index", "SalesOrderUpload", FormMethod.Post, new { enctype = "multipart/form-data", id = "uploadForm" }))
+            {
+                @Html.AntiForgeryToken()
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="customerDropdown">Customer</label>
+                            @Html.DropDownList("customerId",
+                                ViewBag.CustomerList as SelectList,
+                                "-- Select Customer --",
+                                new { @class = "form-control", id = "customerDropdown" })
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="file">Select File (PDF only)</label>
+                            <input type="file" id="file" name="file" class="form-control" accept="application/pdf,.pdf" />
+                            <small class="text-muted">Only PDF files (.pdf) are allowed.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="@Url.Action("Index", "SalesOrder")" class="btn btn-secondary">
+                        <i class="fa fa-arrow-left"></i> Back
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa fa-upload"></i> Upload
+                    </button>
+                </div>
+            }
+
+            @* Extracted text and separate Save step removed: processing now happens entirely on Upload. *@
+
+            @if (ViewBag.UploadedDetails != null)
+            {
+                var typedDetails = ViewBag.UploadedDetails as IEnumerable<SalesOrderUploadController.SalesOrderUploadItemViewModel>;
+                if (typedDetails != null)
+                {
+                    var detailsList = typedDetails.ToList();
+                    if (detailsList.Any())
+                    {
+                        using (Html.BeginForm("ConfirmUploadedDetails", "SalesOrderUpload", FormMethod.Post, new { id = "confirmUploadForm" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("uploadedSalesOrderId", ViewBag.UploadedSalesOrderId as int? ?? 0)
+                            @Html.Hidden("uploadBatchId", ViewBag.UploadBatchId as string)
+                            @Html.Hidden("transactionMasterTempId", ViewBag.TransactionMasterTempId as int? ?? 0)
+
+                            <div class="upload-grid-container">
+                                <div class="upload-grid-title">Uploaded Sales Order Details</div>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm upload-grid-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 60px;">S.No</th>
+                                                <th style="width: 220px;">Actual Material</th>
+                                                <th>Material</th>
+                                                <th>Material Group</th>
+                                                <th>Profit %</th>
+                                                <th>Qty</th>
+                                                <th>Rate</th>
+                                                <th>Actual Rate</th>
+                                                <th>Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                int i = 1;
+                                                var materialListAll = ViewBag.MaterialList as System.Web.Mvc.SelectList;
+                                                foreach (var row in detailsList)
+                                                {
+                                                    int detailId = row.DetailId;
+                                                    int actualMaterialId = row.ActualMaterialId;
+                                                    var perRowList = new System.Web.Mvc.SelectList(materialListAll, "Value", "Text", actualMaterialId);
+                                                    <tr>
+                                                        <td class="text-center">@i</td>
+                                                        <td>
+                                                            @Html.Hidden("detailIds", detailId)
+                                                            @Html.DropDownList(
+                                                                "actualMaterialIds",
+                                                                perRowList,
+                                                                "-- Select Material --",
+                                                                new
+                                                                {
+                                                                    @class = "form-control form-control-sm upload-actual-material",
+                                                                    id = "actualMaterialIds_" + i
+                                                                })
+                                                        </td>
+                                                        <td class="upload-material-name">@(row.ExtractedItemName ?? row.MaterialName ?? "")</td>
+                                                        <td class="upload-material-group">@(row.MaterialGroupName ?? "")</td>
+                                                        <td class="text-end upload-profit">@string.Format("{0:0.##}", row.ProfitPercent)</td>
+                                                        <td class="text-end upload-qty">@string.Format("{0:0.##}", row.Qty)</td>
+                                                        <td class="text-end upload-rate">@string.Format("{0:0.00}", row.Rate)</td>
+                                                        <td class="text-end upload-actual-rate">@string.Format("{0:0.00}", row.ActualRate)</td>
+                                                        <td class="text-end upload-amount">@string.Format("{0:0.00}", row.Amount)</td>
+                                                    </tr>
+                                                    i++;
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="form-actions" style="margin-top: 10px;">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fa fa-check"></i> Confirm and Save
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+                }
+            }
+        </div>
+    </div>
+    <div id="uploadLoadingOverlay" class="upload-loading-overlay">
+        <div class="upload-loading-box">
+            <div class="upload-loading-spinner"></div>
+            <span>Loading...</span>
+        </div>
+    </div>
+</div>

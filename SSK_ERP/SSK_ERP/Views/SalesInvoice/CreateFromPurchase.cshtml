@@ -1,0 +1,981 @@
+@model SSK_ERP.Controllers.SalesInvoiceController.SalesInvoiceFromPurchaseViewModel
+
+@{
+    ViewBag.Title = "Sales Invoice";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 12px 15px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .so-detail-table {
+        min-width: 1400px;
+    }
+
+    .so-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 10px;
+    }
+
+    .so-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    .so-detail-table .form-control-sm {
+        padding: 5px;
+        height: 32px;
+    }
+
+    .so-detail-table .select2-container {
+        width: 100% !important;
+    }
+
+    .so-detail-table .select2-container .select2-selection--single {
+        height: 32px;
+    }
+
+    .so-tax-table {
+        margin-bottom: 0;
+    }
+
+    .so-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 150px;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="main-container">
+    <div class="form-container">
+        <div class="form-header">
+            <h2 class="form-title">
+                <span>Sales Invoice From Purchase</span>
+            </h2>
+        </div>
+        <div class="form-body">
+            @using (Html.BeginForm("CreateFromPurchase", "SalesInvoice", FormMethod.Post, new { id = "siFromPurchaseForm" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.PurchaseTranMid)
+                @Html.HiddenFor(m => m.StateType, new { id = "siStateType" })
+
+                <div class="section-title">
+                    <span>Invoice Details</span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Purchase Invoice No</label>
+                            @Html.TextBoxFor(m => m.PurchaseInvoiceNo, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label class="control-label">Sales Invoice Date</label>
+                            @Html.TextBoxFor(m => m.PurchaseDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date", id = "siDate" })
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label class="control-label">PO Number</label>
+                            @Html.TextBoxFor(m => m.PoNumber, new { @class = "form-control" })
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label class="control-label">Credit Days</label>
+                            @Html.TextBoxFor(m => m.CreditDays, new { @class = "form-control", type = "number", min = "0" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label class="control-label">Ref No (Tax Bill No)</label>
+                            @Html.TextBoxFor(m => m.RefNo, new { @class = "form-control" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    <span>Customer Details</span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Customer Name</label>
+                            @Html.TextBoxFor(m => m.CustomerName, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">GST No</label>
+                            @Html.TextBoxFor(m => m.CustomerGstNo, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Address Line 1</label>
+                            @Html.TextBoxFor(m => m.CustomerAddress1, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Address Line 2</label>
+                            @Html.TextBoxFor(m => m.CustomerAddress2, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">City</label>
+                            @Html.TextBoxFor(m => m.CustomerCity, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">State</label>
+                            @Html.TextBoxFor(m => m.CustomerState, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Pincode</label>
+                            @Html.TextBoxFor(m => m.CustomerPincode, new { @class = "form-control", @readonly = "readonly" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    <span>Item Details</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm so-detail-table" id="siFromPurchaseTable">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;" class="text-center">
+                                    <input type="checkbox" id="chkAll" />
+                                </th>
+                                <th style="width:50px;" class="text-center">S.No</th>
+                                <th style="width:200px;">Material</th>
+                                <th style="width:120px;">HSN Code</th>
+                                <th style="width:110px;">Batch No</th>
+                                <th style="width:120px;">Exp Date</th>
+                                <th style="width:120px;">Packing</th>
+                                <th style="width:80px;" class="text-end">No of Boxes</th>
+                                <th style="width:80px;" class="text-end">Qty</th>
+                                <th style="width:100px;" class="text-end">Price Unit</th>
+                                <th style="width:100px;" class="text-end">PTR</th>
+                                <th style="width:100px;" class="text-end">MRP</th>
+                                <th style="width:120px;" class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < (Model.Items != null ? Model.Items.Count : 0); i++)
+                            {
+                                <tr data-cgst="@Model.Items[i].CgstRate" data-sgst="@Model.Items[i].SgstRate" data-igst="@Model.Items[i].IgstRate">
+                                    <td class="text-center">
+                                        @Html.CheckBoxFor(m => m.Items[i].Selected, new { @class = "row-select" })
+                                    </td>
+                                    <td class="text-center">@(i + 1)</td>
+                                    <td>
+                                        @Html.HiddenFor(m => m.Items[i].PurchaseTranDetailId)
+                                        @Html.HiddenFor(m => m.Items[i].MaterialId)
+                                        @Html.TextBoxFor(m => m.Items[i].MaterialName, new { @class = "form-control form-control-sm", @readonly = "readonly" })
+                                    </td>
+                                    <td>
+                                        @Html.TextBoxFor(m => m.Items[i].HsnCode, new { @class = "form-control form-control-sm text-center", @readonly = "readonly" })
+                                    </td>
+                                    <td>
+                                        @Html.TextBoxFor(m => m.Items[i].BatchNo, new { @class = "form-control form-control-sm", @readonly = "readonly" })
+                                    </td>
+                                    <td>
+                                        @Html.TextBoxFor(m => m.Items[i].ExpiryDate, "{0:dd-MM-yyyy}", new { @class = "form-control form-control-sm text-center", @readonly = "readonly" })
+                                    </td>
+                                    <td>
+                                        @Html.HiddenFor(m => m.Items[i].PackingId)
+                                        @Html.TextBoxFor(m => m.Items[i].PackingName, new { @class = "form-control form-control-sm", @readonly = "readonly" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].BoxQty, new { @class = "form-control form-control-sm text-end", @readonly = "readonly" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].Qty, new { @class = "form-control form-control-sm text-end qty-field" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].Rate, new { @class = "form-control form-control-sm text-end rate-field" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].Ptr, new { @class = "form-control form-control-sm text-end", @readonly = "readonly" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].Mrp, new { @class = "form-control form-control-sm text-end", @readonly = "readonly" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].Amount, new { @class = "form-control form-control-sm text-end amount-field", @readonly = "readonly" })
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered so-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="siTaxToggle">
+                                        <i class="fa fa-plus-square"></i> TAX
+                                    </button>
+                                </td>
+                                <td class="so-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    <input type="text" id="siGrossAmt" class="form-control text-end" readonly="readonly" value="@Model.GrossAmount.ToString("0.00")" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">CGST</td>
+                                <td>
+                                    <input type="text" id="siCgstAmt" class="form-control text-end" readonly="readonly" value="@Model.CgstAmount.ToString("0.00")" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">SGST</td>
+                                <td>
+                                    <input type="text" id="siSgstAmt" class="form-control text-end" readonly="readonly" value="@Model.SgstAmount.ToString("0.00")" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">IGST</td>
+                                <td>
+                                    <input type="text" id="siIgstAmt" class="form-control text-end" readonly="readonly" value="@Model.IgstAmount.ToString("0.00")" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Discount Amount</td>
+                                <td>
+                                    <input type="text" id="siDiscountAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Courier Charges</td>
+                                <td>
+                                    <input type="text" id="siCourierAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Selected Net Amount</td>
+                                <td>
+                                    <input type="text" id="selectedTotal" class="form-control text-end" readonly="readonly" value="@Model.NetAmount.ToString("0.00")" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Invoice Amount</td>
+                                <td>
+                                    <input type="text" id="siInvoiceAmt" class="form-control text-end" readonly="readonly" value="@Model.NetAmount.ToString("0.00")" />
+                                </td>
+                            </tr>
+                        </table>
+                        <input type="hidden" id="siTaxDataJson" name="TaxFactorsJson" value="@Model.TaxFactorsJson" />
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    <span>Remarks</span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Remarks</label>
+                            @Html.TextAreaFor(m => m.Remarks, new { @class = "form-control", rows = 3 })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions mt-4 d-flex justify-content-between">
+                    <a href="@Url.Action("Index", "PurchaseInvoice")" class="btn btn-secondary">Back</a>
+                    <button type="button" id="btnSaveSalesInvoice" class="btn btn-primary">Save Sales Invoice</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- TAX / Cost Factor modal for Sales Invoice from Purchase -->
+<div class="modal fade" id="siTaxModal" tabindex="-1" role="dialog" aria-labelledby="siTaxModalLabel" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="siTaxModalLabel">
+                    <i class="fa fa-calculator"></i> Tax Calculation
+                </h5>
+                <button type="button" class="close" id="siTaxCloseHeader" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <button type="button" class="btn btn-primary btn-sm" id="siAddTaxRow">
+                            <i class="fa fa-plus"></i> Add Row
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="siTaxTable">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width:5%">
+                                </th>
+                                <th style="width:30%">Cost Factor</th>
+                                <th style="width:20%">Expression</th>
+                                <th style="width:15%">Mode</th>
+                                <th style="width:15%">Value</th>
+                                <th style="width:15%">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="siTaxTableBody">
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-light">
+                                <td colspan="5" class="text-end"><strong>Total Add Amount:</strong></td>
+                                <td><strong id="siTotalAddAmount">0.00</strong></td>
+                            </tr>
+                            <tr class="bg-light">
+                                <td colspan="5" class="text-end"><strong>Total Less Amount:</strong></td>
+                                <td><strong id="siTotalLessAmount">0.00</strong></td>
+                            </tr>
+                            <tr class="bg-light">
+                                <td colspan="5" class="text-end"><strong>Total Tax Amount:</strong></td>
+                                <td><strong id="siTotalTaxAmount">0.00</strong></td>
+                            </tr>
+                            <tr class="bg-success text-white">
+                                <td colspan="5" class="text-end"><strong>Grand Total (Net + Tax):</strong></td>
+                                <td><strong id="siGrandTotal">0.00</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="siTaxCloseFooter" data-dismiss="modal">
+                    <i class="fa fa-times"></i> Close
+                </button>
+                <button type="button" class="btn btn-primary" id="siApplyTax">
+                    <i class="fa fa-check"></i> Apply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        var siCostFactorOptionsHtml = '<option value="">-- Select Cost Factor --</option>';
+        var siTaxData = [];
+        var siCostFactorMeta = {};
+        var siCostFactorLoaded = false;
+
+        function parseDecimal(val) {
+            var n = parseFloat(val);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function loadSiCostFactors(callback) {
+            if (siCostFactorLoaded) {
+                if (typeof callback === 'function') {
+                    callback();
+                }
+                return;
+            }
+
+            $.getJSON('@Url.Action("GetCostFactorsForSalesInvoice", "SalesInvoice")')
+                .done(function (resp) {
+                    if (!resp || resp.success === false) {
+                        return;
+                    }
+
+                    siCostFactorOptionsHtml = '<option value="">-- Select Cost Factor --</option>';
+                    siCostFactorMeta = {};
+
+                    $.each(resp.items || [], function (idx, item) {
+                        if (!item) return;
+                        var id = item.id;
+                        var name = item.name || '';
+                        siCostFactorOptionsHtml += '<option value="' + id + '">' + name + '</option>';
+                        siCostFactorMeta[id] = {
+                            belongsTo: typeof item.belongsTo !== 'undefined' ? item.belongsTo : null,
+                            desc: name
+                        };
+                    });
+
+                    $('#siTaxTableBody .si-cost-factor').each(function () {
+                        var current = $(this).val();
+                        $(this).html(siCostFactorOptionsHtml);
+                        if (current) {
+                            $(this).val(current);
+                        }
+                    });
+
+                    siCostFactorLoaded = true;
+                })
+                .always(function () {
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
+                });
+        }
+
+        function refreshSiCostFactorDropdowns() {
+            var usedIds = [];
+
+            $('#siTaxTableBody .si-cost-factor').each(function () {
+                var val = $(this).val();
+                if (val && $.inArray(val, usedIds) === -1) {
+                    usedIds.push(val);
+                }
+            });
+
+            $('#siTaxTableBody .si-cost-factor').each(function () {
+                var $select = $(this);
+                var currentVal = $select.val();
+
+                var $wrapper = $('<select>' + siCostFactorOptionsHtml + '</select>');
+                $wrapper.find('option').each(function () {
+                    var val = $(this).attr('value');
+                    if (val && val !== currentVal && $.inArray(val, usedIds) !== -1) {
+                        $(this).remove();
+                    }
+                });
+
+                $select.html($wrapper.html());
+
+                if (currentVal && $select.find('option[value="' + currentVal + '"]').length > 0) {
+                    $select.val(currentVal);
+                } else {
+                    $select.val('');
+                }
+            });
+        }
+
+        function enforceSiUniqueCostFactors() {
+            var seen = {};
+
+            $('#siTaxTableBody .si-cost-factor').each(function () {
+                var $sel = $(this);
+                var val = $sel.val();
+                if (val && seen[val]) {
+                    $sel.val('');
+                } else if (val) {
+                    seen[val] = true;
+                }
+            });
+
+            refreshSiCostFactorDropdowns();
+        }
+
+        function getSiGrossAmount() {
+            // For TAX popup calculations, use Selected Net Amount (gross + GST)
+            var net = parseDecimal($('#selectedTotal').val() || '0');
+            return net;
+        }
+
+        function recalcSiTaxTotals() {
+            var netBase = getSiGrossAmount();
+            var totalTax = 0;
+            var totalAdd = 0;
+            var totalLess = 0;
+
+            $('#siTaxTableBody tr').each(function () {
+                var $row = $(this);
+                var type = $row.find('.si-tax-type').val();
+                var mode = $row.find('.si-tax-mode').val();
+                var rawVal = $.trim($row.find('.si-tax-value').val() || '0');
+                var expr = parseDecimal(rawVal);
+
+                var baseAmount = 0;
+                if (type === 'Value') {
+                    baseAmount = expr;
+                } else {
+                    baseAmount = (netBase * expr) / 100.0;
+                }
+
+                var signedAmount = baseAmount;
+                if (mode === '-') {
+                    signedAmount = -baseAmount;
+                    totalLess += baseAmount;
+                } else {
+                    totalAdd += baseAmount;
+                }
+
+                $row.find('.si-tax-amount').val(signedAmount.toFixed(2));
+                totalTax += signedAmount;
+            });
+
+            $('#siTotalAddAmount').text(totalAdd.toFixed(2));
+            $('#siTotalLessAmount').text(totalLess.toFixed(2));
+            $('#siTotalTaxAmount').text(totalTax.toFixed(2));
+            $('#siGrandTotal').text((netBase + totalTax).toFixed(2));
+        }
+
+        function addSiTaxRow() {
+            var $tbody = $('#siTaxTableBody');
+            var $row = $('<tr>' +
+                '<td class="text-center">' +
+                '    <button type="button" class="btn btn-danger btn-sm si-tax-row-delete" title="Remove"><i class="fa fa-trash"></i></button>' +
+                '</td>' +
+                '<td>' +
+                '    <select class="form-control si-cost-factor"></select>' +
+                '</td>' +
+                '<td>' +
+                '    <select class="form-control si-tax-type">' +
+                '        <option value="%">%</option>' +
+                '        <option value="Value">Value</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td>' +
+                '    <select class="form-control si-tax-mode">' +
+                '        <option value="+">+</option>' +
+                '        <option value="-">-</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td>' +
+                '    <input type="text" class="form-control text-end si-tax-value" value="0.000" />' +
+                '</td>' +
+                '<td>' +
+                '    <input type="text" class="form-control text-end si-tax-amount" value="0.00" readonly="readonly" />' +
+                '</td>' +
+                '</tr>');
+
+            $row.find('.si-cost-factor').html(siCostFactorOptionsHtml);
+            $('#siTaxTableBody').append($row);
+            refreshSiCostFactorDropdowns();
+            recalcSiTaxTotals();
+        }
+
+        function openSiTaxModal() {
+            loadSiCostFactors(function () {
+                if ($('#siTaxTableBody tr').length === 0) {
+                    addSiTaxRow();
+                }
+
+                enforceSiUniqueCostFactors();
+                recalcSiTaxTotals();
+                $('#siTaxModal').modal('show');
+            });
+        }
+
+        function collectSiTaxData() {
+            var rows = [];
+            $('#siTaxTableBody tr').each(function () {
+                var $row = $(this);
+                var costFactorId = parseInt($row.find('.si-cost-factor').val() || '0', 10);
+                var type = $row.find('.si-tax-type').val();
+                var mode = $row.find('.si-tax-mode').val();
+                var exprVal = parseDecimal($row.find('.si-tax-value').val() || '0');
+                var amountVal = parseDecimal($row.find('.si-tax-amount').val() || '0');
+
+                if (costFactorId > 0) {
+                    rows.push({
+                        CostFactorId: costFactorId,
+                        ExpressionType: type,
+                        Mode: mode,
+                        ExpressionValue: exprVal,
+                        Amount: amountVal
+                    });
+                }
+            });
+
+            return rows;
+        }
+
+        function updateManualSummaryFromRows(rows) {
+            var discount = 0;
+            var courier = 0;
+            var totalManual = 0;
+
+            if (rows && rows.length) {
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    if (!r) continue;
+
+                    var amt = parseDecimal(r.Amount);
+                    if (!amt) continue;
+
+                    totalManual += amt;
+
+                    var cfId = r.CostFactorId;
+                    var meta = siCostFactorMeta[cfId];
+                    if (meta) {
+                        var belongs = meta.belongsTo;
+                        var desc = (meta.desc || '').toString().toUpperCase();
+
+                        var isCourier = (belongs === 8 || belongs === '8') || desc.indexOf('COURIER') >= 0;
+                        var isDiscount = ((belongs === 0 || belongs === '0') || desc.indexOf('DISCOUNT') >= 0) && !isCourier;
+
+                        if (isDiscount) {
+                            discount += amt;
+                        }
+
+                        if (isCourier) {
+                            courier += amt;
+                        }
+                    }
+                }
+            }
+
+            var baseNet = parseDecimal($('#selectedTotal').val() || '0');
+
+            $('#siDiscountAmt').val(discount.toFixed(2));
+            $('#siCourierAmt').val(courier.toFixed(2));
+            $('#siInvoiceAmt').val((baseNet + totalManual).toFixed(2));
+
+            var $discRow = $('#siDiscountAmt').closest('tr');
+            var $courRow = $('#siCourierAmt').closest('tr');
+            $discRow.toggle(Math.abs(discount) > 0.004);
+            $courRow.toggle(Math.abs(courier) > 0.004);
+        }
+
+        function recalcSelectedTotal() {
+            var stateType = parseInt($('#siStateType').val() || '0');
+
+            var gross = 0;
+            var cgst = 0;
+            var sgst = 0;
+            var igst = 0;
+
+            $('#siFromPurchaseTable tbody tr').each(function () {
+                var $tr = $(this);
+                var selected = $tr.find('.row-select').is(':checked');
+                if (!selected) return;
+
+                var amt = parseDecimal($tr.find('.amount-field').val() || '0');
+                if (amt <= 0) return;
+
+                var cgstRate = parseDecimal($tr.data('cgst') || '0');
+                var sgstRate = parseDecimal($tr.data('sgst') || '0');
+                var igstRate = parseDecimal($tr.data('igst') || '0');
+
+                gross += amt;
+
+                if (stateType === 0) {
+                    if (cgstRate > 0) {
+                        cgst += Math.round(((amt * cgstRate) / 100) * 100) / 100;
+                    }
+                    if (sgstRate > 0) {
+                        sgst += Math.round(((amt * sgstRate) / 100) * 100) / 100;
+                    }
+                } else {
+                    if (igstRate > 0) {
+                        igst += Math.round(((amt * igstRate) / 100) * 100) / 100;
+                    }
+                }
+            });
+
+            var net = gross + cgst + sgst + igst;
+
+            $('#siGrossAmt').val(gross.toFixed(2));
+            $('#siCgstAmt').val(cgst.toFixed(2));
+            $('#siSgstAmt').val(sgst.toFixed(2));
+            $('#siIgstAmt').val(igst.toFixed(2));
+            $('#selectedTotal').val(net.toFixed(2));
+        }
+
+        function validateSalesInvoiceForm() {
+            // 1. Require Sales Invoice Date
+            var dateVal = $('#siDate').val();
+            if (!dateVal) {
+                alert('Please select Sales Invoice Date.');
+                return false;
+            }
+
+            // 2. At least one row selected and qty > 0 for all selected
+            var anySelected = false;
+            var invalidQty = false;
+
+            $('#siFromPurchaseTable tbody tr').each(function () {
+                var $tr = $(this);
+                var selected = $tr.find('.row-select').is(':checked');
+                if (selected) {
+                    anySelected = true;
+                    var qty = parseDecimal($tr.find('.qty-field').val() || '0');
+                    if (qty <= 0) {
+                        invalidQty = true;
+                        return false; // break loop
+                    }
+                }
+            });
+
+            if (!anySelected) {
+                alert('Please select at least one item for the Sales Invoice.');
+                return false;
+            }
+
+            if (invalidQty) {
+                alert('Quantity must be greater than zero for all selected rows.');
+                return false;
+            }
+
+            return true;
+        }
+
+        $(document).ready(function () {
+            $('#chkAll').on('change', function () {
+                var checked = $(this).is(':checked');
+                $('.row-select').prop('checked', checked);
+                recalcSelectedTotal();
+            });
+
+            $('#siTaxToggle').on('click', function () {
+                openSiTaxModal();
+            });
+
+            $('#siTaxCloseHeader, #siTaxCloseFooter').on('click', function () {
+                $('#siTaxModal').modal('hide');
+            });
+
+            $('#siAddTaxRow').on('click', function () {
+                addSiTaxRow();
+            });
+
+            $(document).on('click', '.si-tax-row-delete', function () {
+                var $rows = $('#siTaxTableBody tr');
+                if ($rows.length > 1) {
+                    $(this).closest('tr').remove();
+                } else {
+                    $(this).closest('tr').find('select').prop('selectedIndex', 0);
+                    $(this).closest('tr').find('.si-tax-value').val('0.000');
+                    $(this).closest('tr').find('.si-tax-amount').val('0.00');
+                }
+                refreshSiCostFactorDropdowns();
+                recalcSiTaxTotals();
+            });
+
+            $(document).on('change keyup', '.si-tax-type, .si-tax-mode, .si-tax-value', function () {
+                recalcSiTaxTotals();
+            });
+
+            $(document).on('change', '.si-cost-factor', function () {
+                refreshSiCostFactorDropdowns();
+            });
+
+            $('#siApplyTax').on('click', function () {
+                siTaxData = collectSiTaxData();
+                $('#siTaxDataJson').val(JSON.stringify(siTaxData));
+
+                updateManualSummaryFromRows(siTaxData);
+
+                $('#siTaxModal').modal('hide');
+            });
+
+            $(document).on('change', '.row-select', function () {
+                var all = $('.row-select').length;
+                var sel = $('.row-select:checked').length;
+                $('#chkAll').prop('checked', all > 0 && sel === all);
+                recalcSelectedTotal();
+            });
+
+            $(document).on('input change', '.qty-field', function () {
+                var $tr = $(this).closest('tr');
+                var qty = parseDecimal($(this).val() || '0');
+                var rate = parseDecimal($tr.find('.rate-field').val() || '0');
+                var amt = qty * rate;
+                $tr.find('.amount-field').val(amt.toFixed(2));
+                recalcSelectedTotal();
+            });
+
+            $(document).on('input change', '.rate-field', function () {
+                var $tr = $(this).closest('tr');
+                var rate = parseDecimal($(this).val() || '0');
+                var qty = parseDecimal($tr.find('.qty-field').val() || '0');
+                var amt = qty * rate;
+                $tr.find('.amount-field').val(amt.toFixed(2));
+                recalcSelectedTotal();
+            });
+
+            // Initialize tax percentage data attributes from server-side HSN if available
+            $('#siFromPurchaseTable tbody tr').each(function () {
+                var $tr = $(this);
+                var cgstAttr = $tr.attr('data-cgst');
+                var sgstAttr = $tr.attr('data-sgst');
+                var igstAttr = $tr.attr('data-igst');
+                if (!cgstAttr && !sgstAttr && !igstAttr) {
+                    // Nothing to do; attributes should be set from server markup if required
+                }
+            });
+
+            // Save button click: validate + confirmation, then submit the form (similar to Purchase Invoice Form)
+            $('#btnSaveSalesInvoice').on('click', function () {
+                if (!validateSalesInvoiceForm()) {
+                    return;
+                }
+
+                // Persist current TAX popup rows into hidden field so that it can be wired to saving later
+                siTaxData = collectSiTaxData();
+                $('#siTaxDataJson').val(JSON.stringify(siTaxData));
+
+                var form = document.getElementById('siFromPurchaseForm');
+                if (!form) {
+                    if (window.console && console.error) {
+                        console.error('Sales Invoice form not found: #siFromPurchaseForm');
+                    }
+                    return;
+                }
+
+                if (confirm('Are you sure you want to save this Sales Invoice?')) {
+                    form.submit();
+                }
+            });
+
+            recalcSelectedTotal();
+
+            // Initialize manual Discount / Courier / Invoice summary from existing TaxFactorsJson (if any)
+            var existingTaxJson = $('#siTaxDataJson').val() || '';
+            if (existingTaxJson && existingTaxJson.trim().length > 0) {
+                try {
+                    var parsedTax = JSON.parse(existingTaxJson);
+                    if (parsedTax && parsedTax.length > 0) {
+                        loadSiCostFactors(function () {
+                            updateManualSummaryFromRows(parsedTax);
+                        });
+                    }
+                } catch (e) {
+                    // ignore JSON parse errors; keep default 0.00
+                }
+            }
+        });
+    </script>
+}

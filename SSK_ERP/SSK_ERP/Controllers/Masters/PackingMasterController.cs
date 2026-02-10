@@ -1,0 +1,253 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web.Mvc;
+using SSK_ERP.Models;
+
+namespace SSK_ERP.Controllers.Masters
+{
+    [SSK_ERP.SessionExpire]
+    public class PackingMasterController : Controller
+    {
+        private ApplicationDbContext db = new ApplicationDbContext();
+
+        [Authorize(Roles = "PackingMasterIndex")]
+        public ActionResult Index()
+        {
+            return View();
+        }
+
+        [Authorize(Roles = "PackingMasterCreate,PackingMasterEdit")]
+        public ActionResult Form(int id = 0)
+        {
+            PackingMaster tab = new PackingMaster();
+
+            if (id == 0)
+            {
+                tab.PACKMID = 0;
+                tab.DISPSTATUS = 0;
+                tab.PACKMNOU = 1;
+            }
+            else
+            {
+                tab = db.PackingMasters.Find(id);
+                if (tab == null)
+                {
+                    ViewBag.msg = "<div class='alert alert-danger'>Record not found!</div>";
+                    tab = new PackingMaster();
+                    tab.DISPSTATUS = 0;
+                    tab.PACKMNOU = 1;
+                }
+            }
+
+            var statusList = new List<SelectListItem>
+            {
+                new SelectListItem { Value = "0", Text = "Enabled" },
+                new SelectListItem { Value = "1", Text = "Disabled" }
+            };
+
+            ViewBag.DISPSTATUS = new SelectList(statusList, "Value", "Text", tab.DISPSTATUS.ToString());
+
+            return View(tab);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "PackingMasterCreate,PackingMasterEdit")]
+        public ActionResult savedata(PackingMaster tab)
+        {
+            try
+            {
+                if (ModelState.IsValid)
+                {
+                    var duplicateCheck = db.Database.SqlQuery<int>(
+                        @"SELECT COUNT(*) FROM PACKINGMASTER 
+                          WHERE UPPER(PACKMCODE) = @p0 AND PACKMID != @p1",
+                        tab.PACKMCODE.ToUpper(), tab.PACKMID
+                    ).FirstOrDefault();
+
+                    if (duplicateCheck > 0)
+                    {
+                        ModelState.AddModelError("PACKMCODE", "This packing code is already used.");
+                        ViewBag.msg = "<div class='alert alert-danger'>Packing code already exists. Please use a different code.</div>";
+                    }
+                    else
+                    {
+                        var currentUserName = Session["CUSRID"]?.ToString();
+                        if (string.IsNullOrEmpty(currentUserName))
+                        {
+                            currentUserName = User.Identity.Name ?? "admin";
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"Session CUSRID: {Session["CUSRID"]}");
+                        System.Diagnostics.Debug.WriteLine($"Session Group: {Session["Group"]}");
+                        System.Diagnostics.Debug.WriteLine($"User.Identity.Name: {User.Identity.Name}");
+                        System.Diagnostics.Debug.WriteLine($"Final currentUserName: {currentUserName}");
+
+                        var prcsdate = DateTime.Now;
+
+                        if (!string.IsNullOrEmpty(tab.PACKMDESC))
+                        {
+                            tab.PACKMDESC = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(tab.PACKMDESC.ToLower());
+                        }
+
+                        if (!string.IsNullOrEmpty(tab.PACKMCODE))
+                        {
+                            tab.PACKMCODE = tab.PACKMCODE.ToUpper();
+                        }
+
+                        if (tab.PACKMID == 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Creating new record with CUSRID: {currentUserName}, LMUSRID: {currentUserName}");
+
+                            db.Database.ExecuteSqlCommand(
+                                @"INSERT INTO PACKINGMASTER (PACKMDESC, PACKMCODE, PACKMNOU, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE) 
+                                  VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)",
+                                tab.PACKMDESC, tab.PACKMCODE, tab.PACKMNOU, currentUserName, currentUserName, tab.DISPSTATUS, prcsdate);
+
+                            return RedirectToAction("Index");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Updating existing record ID: {tab.PACKMID}, LMUSRID: {currentUserName}");
+
+                            db.Database.ExecuteSqlCommand(
+                                @"UPDATE PACKINGMASTER 
+                                  SET PACKMDESC = @p0, PACKMCODE = @p1, PACKMNOU = @p2, LMUSRID = @p3, 
+                                      DISPSTATUS = @p4, PRCSDATE = @p5 
+                                  WHERE PACKMID = @p6",
+                                tab.PACKMDESC, tab.PACKMCODE, tab.PACKMNOU, currentUserName, tab.DISPSTATUS, prcsdate, tab.PACKMID);
+
+                            return RedirectToAction("Index");
+                        }
+                    }
+                }
+                else
+                {
+                    ViewBag.msg = "<div class='alert alert-danger'>Please fix the validation errors.</div>";
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "<div class='alert alert-danger'>Error: " + ex.Message + "</div>";
+            }
+
+            var statusList = new List<SelectListItem>
+            {
+                new SelectListItem { Value = "0", Text = "Enabled" },
+                new SelectListItem { Value = "1", Text = "Disabled" }
+            };
+
+            ViewBag.DISPSTATUS = new SelectList(statusList, "Value", "Text", tab.DISPSTATUS.ToString());
+
+            return View("Form", tab);
+        }
+
+        [HttpGet]
+        public JsonResult GetAjaxData()
+        {
+            try
+            {
+                var packingMasters = db.Database.SqlQuery<PackingMaster>(
+                    @"SELECT PACKMID, PACKMDESC, PACKMCODE, PACKMNOU, CUSRID, LMUSRID, 
+                             DISPSTATUS, PRCSDATE 
+                      FROM PACKINGMASTER 
+                      ORDER BY PACKMCODE"
+                ).ToList();
+
+                var result = packingMasters.Select(p => new
+                {
+                    p.PACKMID,
+                    p.PACKMCODE,
+                    p.PACKMDESC,
+                    p.PACKMNOU,
+                    p.DISPSTATUS
+                }).ToList();
+
+                return Json(new { data = result }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PackingMaster GetAjaxData Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                return Json(new
+                {
+                    data = new List<object>(),
+                    error = ex.Message,
+                    success = false
+                }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpPost]
+        public ActionResult Del(int id)
+        {
+            try
+            {
+                if (!User.IsInRole("PackingMasterDelete"))
+                {
+                    return Content("Access Denied: You do not have permission to delete records. Please contact your administrator.");
+                }
+
+                var rowsAffected = db.Database.ExecuteSqlCommand(
+                    "DELETE FROM PACKINGMASTER WHERE PACKMID = @p0", id);
+
+                if (rowsAffected > 0)
+                {
+                    return Content("Successfully deleted");
+                }
+                else
+                {
+                    return Content("Record not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Content("Error: " + ex.Message);
+            }
+        }
+
+        [HttpPost]
+        public JsonResult ValidatePACKMCODE(string PACKMCODE, int PACKMID = 0)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(PACKMCODE))
+                {
+                    return Json(true, JsonRequestBehavior.AllowGet);
+                }
+
+                var existingRecord = db.Database.SqlQuery<int>(
+                    @"SELECT COUNT(*) FROM PACKINGMASTER 
+                      WHERE UPPER(PACKMCODE) = @p0 AND PACKMID != @p1",
+                    PACKMCODE.ToUpper(), PACKMID
+                ).FirstOrDefault();
+
+                bool isUnique = existingRecord == 0;
+
+                if (isUnique)
+                {
+                    return Json(true, JsonRequestBehavior.AllowGet);
+                }
+                else
+                {
+                    return Json("This packing code is already used.", JsonRequestBehavior.AllowGet);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Validation Error: {ex.Message}");
+                return Json(true, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                db.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+}
