@@ -2541,6 +2541,17 @@ namespace SSK_ERP.Controllers
                     master.TRANMID);
             }
 
+            try
+            {
+                db.Database.ExecuteSqlCommand(
+                    "EXEC [dbo].[PR_SALESORDER_INVMID_UPDT] @p0",
+                    master.TRANMID);
+            }
+            catch
+            {
+                // Do not break invoice save if SP fails
+            }
+
             TempData["SuccessMessage"] = "Sales Invoice created successfully.";
             return RedirectToAction("Index");
         }
