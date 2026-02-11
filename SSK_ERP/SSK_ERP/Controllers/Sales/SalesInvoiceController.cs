@@ -2546,6 +2546,17 @@ namespace SSK_ERP.Controllers
                 db.Database.ExecuteSqlCommand(
                     "EXEC [dbo].[PR_SALESORDER_INVMID_UPDT] @p0",
                     master.TRANMID);
+
+                try
+                {
+                    db.Database.ExecuteSqlCommand(
+                        "EXEC [dbo].[PR_BATCHDETAILTRANDPID_UPDT] @p0",
+                        master.TRANMID);
+                }
+                catch
+                {
+                    // Do not break invoice save if SP fails
+                }
             }
             catch
             {
