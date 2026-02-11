@@ -96,18 +96,7 @@ namespace SSK_ERP.Controllers
             string displayFrom = parsedFrom.HasValue ? parsedFrom.Value.ToString("dd-MM-yyyy") : string.Empty;
             string displayTo = parsedTo.HasValue ? parsedTo.Value.ToString("dd-MM-yyyy") : string.Empty;
 
-            string[] extraColumns =
-            {
-                "Dispatch Date",
-                "Despatch Mode",
-                "Delivery Date",
-                "Reason for Delay in Invoicing",
-                "Reason in Delay in Despatch",
-                "Reason in Delay in Delivery"
-            };
-
-            int baseColumnCount = table.Columns.Count > 0 ? table.Columns.Count : 1;
-            int columnCount = baseColumnCount + extraColumns.Length;
+            int columnCount = table.Columns.Count > 0 ? table.Columns.Count : 1;
 
             var sb = new StringBuilder();
             sb.AppendLine("<table border='1'>");
@@ -139,11 +128,6 @@ namespace SSK_ERP.Controllers
                 {
                     sb.AppendFormat("<th>{0}</th>", HttpUtility.HtmlEncode(col.ColumnName));
                 }
-
-                foreach (var colName in extraColumns)
-                {
-                    sb.AppendFormat("<th>{0}</th>", HttpUtility.HtmlEncode(colName));
-                }
                 sb.AppendLine("</tr>");
             }
 
@@ -172,11 +156,6 @@ namespace SSK_ERP.Controllers
                     }
 
                     sb.AppendFormat("<td>{0}</td>", HttpUtility.HtmlEncode(text));
-                }
-
-                for (int i = 0; i < extraColumns.Length; i++)
-                {
-                    sb.Append("<td></td>");
                 }
                 sb.AppendLine("</tr>");
             }
