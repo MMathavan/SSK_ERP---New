@@ -106,7 +106,7 @@
         border: none;
         font-size: 13px;
         border-right: 1px solid rgba(255, 255, 255, 0.35);
-        white-space: nowrap;
+        white-space: normal;
     }
 
     #slrTable thead th:last-child {
@@ -151,6 +151,16 @@
     .dataTables_wrapper .dataTables_filter label,
     .dataTables_wrapper .dataTables_length label {
         margin-bottom: 0;
+    }
+
+    .slr-body .table-responsive {
+        overflow-x: visible;
+    }
+
+    #slrTable thead th,
+    #slrTable tbody td {
+        white-space: normal;
+        word-break: break-word;
     }
 </style>
 
