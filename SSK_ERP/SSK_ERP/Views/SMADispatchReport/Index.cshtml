@@ -315,7 +315,7 @@
             $('#btnLoad').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
 
             $.ajax({
-                url: '@Url.Action("GetData", "ServiceLevelReport")',
+                url: '@Url.Action("GetData", "SMADispatchReport")',
                 type: 'GET',
                 data: { fromDate: fromDate, toDate: toDate },
                 success: function (res) {
@@ -347,7 +347,7 @@
                 return;
             }
 
-            var url = '@Url.Action("ExportToExcel", "ServiceLevelReport")'
+            var url = '@Url.Action("ExportToExcel", "SMADispatchReport")'
                 + '?fromDate=' + encodeURIComponent(fromDate)
                 + '&toDate=' + encodeURIComponent(toDate);
 
