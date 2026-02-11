@@ -101,6 +101,44 @@ namespace SSK_ERP.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Roles = "SalesReportItemwise")]
+        public JsonResult GetDataPost(string fromDate = null, string toDate = null, string[] materials = null)
+        {
+            try
+            {
+                var table = LoadItemwiseSalesData(fromDate, toDate, materials);
+
+                var columns = table.Columns.Cast<DataColumn>()
+                    .Select(c => c.ColumnName)
+                    .ToList();
+
+                var rows = new List<Dictionary<string, object>>();
+                foreach (DataRow dr in table.Rows)
+                {
+                    var dict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                    foreach (DataColumn col in table.Columns)
+                    {
+                        var val = dr[col];
+                        dict[col.ColumnName] = val == DBNull.Value ? null : val;
+                    }
+                    rows.Add(dict);
+                }
+
+                return new JsonResult
+                {
+                    Data = new { columns, data = rows, rowCount = rows.Count },
+                    JsonRequestBehavior = JsonRequestBehavior.DenyGet,
+                    MaxJsonLength = int.MaxValue,
+                    RecursionLimit = 100
+                };
+            }
+            catch (Exception ex)
+            {
+                return Json(new { columns = new string[0], data = new object[0], error = ex.Message });
+            }
+        }
+
         [HttpGet]
         [Authorize(Roles = "SalesReportItemwise")]
         public FileResult ExportToExcel(string fromDate = null, string toDate = null, string[] materials = null)
@@ -246,13 +284,20 @@ namespace SSK_ERP.Controllers
 
             if (materials != null)
             {
+                string materialColumnName = GetItemwiseMaterialColumnName();
+                string materialColSql = null;
+                if (!string.IsNullOrWhiteSpace(materialColumnName))
+                {
+                    materialColSql = "[" + materialColumnName.Replace("]", "]]" ) + "]";
+                }
+
                 var cleaned = materials
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Select(x => x.Trim())
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                if (cleaned.Count > 0)
+                if (cleaned.Count > 0 && !string.IsNullOrEmpty(materialColSql) && cleaned.Count <= 200)
                 {
                     var inParams = new List<string>();
                     for (int i = 0; i < cleaned.Count; i++)
@@ -263,7 +308,7 @@ namespace SSK_ERP.Controllers
                         paramIndex++;
                     }
 
-                    sql.Append("AND MTRLDESC IN (" + string.Join(",", inParams) + ") ");
+                    sql.Append("AND " + materialColSql + " IN (" + string.Join(",", inParams) + ") ");
                 }
             }
 
@@ -341,6 +386,62 @@ namespace SSK_ERP.Controllers
 
             // Fallback: try any column that contains 'date'
             var fallback = existing.FirstOrDefault(x => x != null && x.IndexOf("date", StringComparison.OrdinalIgnoreCase) >= 0);
+            return fallback;
+        }
+
+        private string GetItemwiseMaterialColumnName()
+        {
+            // Prefer common material/product description column names; supports view column aliases.
+            var preferred = new[]
+            {
+                "MTRLDESC",
+                "MtrlDesc",
+                "Material",
+                "MaterialName",
+                "NAME OF THE PRODUCT",
+                "Name Of The Product",
+                "PRODUCTNAME",
+                "ProductName",
+                "ITEMNAME",
+                "ItemName",
+                "DESCRIPTION",
+                "Description"
+            };
+
+            var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var conn = CreateOpenConnection())
+            {
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'VW_ItemWiseSales_RPT'";
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            if (reader[0] != DBNull.Value)
+                            {
+                                existing.Add(Convert.ToString(reader[0], CultureInfo.InvariantCulture));
+                            }
+                        }
+                    }
+                }
+            }
+
+            foreach (var name in preferred)
+            {
+                if (existing.Contains(name))
+                {
+                    return existing.First(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+
+            // Fallback: try any column that contains 'product' or 'mtrl' or 'item'
+            var fallback = existing.FirstOrDefault(x =>
+                x != null &&
+                (x.IndexOf("product", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 x.IndexOf("mtrl", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 x.IndexOf("item", StringComparison.OrdinalIgnoreCase) >= 0));
+
             return fallback;
         }
 

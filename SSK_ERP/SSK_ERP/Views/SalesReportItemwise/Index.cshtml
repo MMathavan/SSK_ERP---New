@@ -171,10 +171,15 @@
         border-radius: 8px;
         border: 1px solid #dee2e6;
         min-height: 38px;
+        max-height: 84px !important;
+        overflow-y: auto !important;
     }
 
     .select2-container--default .select2-selection--multiple .select2-selection__rendered {
         padding: 3px 8px;
+        max-height: 84px !important;
+        overflow-y: auto !important;
+        display: block;
     }
 
     .select2-container--default .select2-selection--multiple .select2-selection__choice {
@@ -188,6 +193,13 @@
 
     .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
         margin-right: 6px;
+    }
+
+    .sri-material-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-start;
     }
 </style>
 
@@ -221,6 +233,10 @@
                     <div class="col-md-4">
                         <label for="materials" class="form-label">Material</label>
                         <select id="materials" multiple="multiple" style="width:100%"></select>
+                        <div class="sri-material-actions mt-2">
+                            <button type="button" id="btnMaterialsSelectAll" class="btn btn-sm btn-outline-secondary">Select All</button>
+                            <button type="button" id="btnMaterialsDeselectAll" class="btn btn-sm btn-outline-secondary">Deselect All</button>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <div class="slr-actions">
@@ -317,6 +333,7 @@
                 setTimeout(function () {
                     try {
                         sriDt = $('#sriTable').DataTable({
+                            destroy: true,
                             pageLength: 25,
                             lengthMenu: [10, 25, 50, 100],
                             ordering: true,
@@ -385,10 +402,28 @@
             });
         }
 
+        function selectAllMaterials() {
+            var vals = [];
+            $('#materials option').each(function () {
+                vals.push($(this).val());
+            });
+            $('#materials').val(vals).trigger('change');
+        }
+
+        function deselectAllMaterials() {
+            $('#materials').val([]).trigger('change');
+        }
+
         function exportExcel() {
             var fromDate = $('#fromDate').val() || '';
             var toDate = $('#toDate').val() || '';
             var materials = $('#materials').val() || [];
+
+            // When user selects too many materials, treat it as no filter (equivalent to select all)
+            // to avoid extremely long URLs.
+            if (materials.length > 200) {
+                materials = [];
+            }
 
             if (fromDate && toDate && fromDate > toDate) {
                 alert('From Date cannot be greater than To Date');
@@ -411,6 +446,12 @@
             var toDate = $('#toDate').val() || '';
             var materials = $('#materials').val() || [];
 
+            // When user selects too many materials, treat it as no filter (equivalent to select all)
+            // to avoid URL length limits and too many SQL parameters.
+            if (materials.length > 200) {
+                materials = [];
+            }
+
             if (fromDate && toDate && fromDate > toDate) {
                 alert('From Date cannot be greater than To Date');
                 return;
@@ -419,8 +460,8 @@
             $('#btnLoad').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
 
             $.ajax({
-                url: '@Url.Action("GetData", "SalesReportItemwise")',
-                type: 'GET',
+                url: '@Url.Action("GetDataPost", "SalesReportItemwise")',
+                type: 'POST',
                 traditional: true,
                 data: { fromDate: fromDate, toDate: toDate, materials: materials },
                 success: function (res) {
@@ -457,6 +498,14 @@
 
             $('#btnExport').on('click', function () {
                 exportExcel();
+            });
+
+            $('#btnMaterialsSelectAll').on('click', function () {
+                selectAllMaterials();
+            });
+
+            $('#btnMaterialsDeselectAll').on('click', function () {
+                deselectAllMaterials();
             });
 
             loadMaterials(function () {
