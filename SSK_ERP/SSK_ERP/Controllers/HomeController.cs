@@ -68,70 +68,176 @@ namespace SSK_ERP.Controllers
             try
             {
                 // Fetch essential business statistics from database
-                int transactionsCount = 0;
                 int customersCount = 0, suppliersCount = 0, materialsCount = 0;
-                int rawMaterialIntakeCount = 0, invoicesCount = 0;
-                int pendingInvoicesCount = 0, approvedInvoicesCount = 0;
 
-                try { transactionsCount = _db.TransactionMasters.Count(t => t.DISPSTATUS == 0 || t.DISPSTATUS == null); } catch { }
+                int salesOrderCount = 0;
+                int pendingSalesOrderCount = 0;
+                int purchaseOrderCount = 0;
+
+                int purchaseInvoiceCount = 0;
+                int pendingPurchaseOrderCount = 0;
+                int pendingPurchaseInvoiceCount = 0;
+
+                int partialPurchaseInvoiceCount = 0;
+                int salesInvoiceCount = 0;
+                int pendingSalesInvoiceCount = 0;
+
+
                 try { customersCount = _db.CustomerMasters.Count(c => c.DISPSTATUS == 0 || c.DISPSTATUS == null); } catch { }
                 try { suppliersCount = _db.SupplierMasters.Count(s => s.DISPSTATUS == 0 || s.DISPSTATUS == null); } catch { }
                 try { materialsCount = _db.MaterialMasters.Count(m => m.DISPSTATUS == 0 || m.DISPSTATUS == null); } catch { }
-                try { rawMaterialIntakeCount = _db.TransactionMasters.Count(t => t.REGSTRID == 1 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
-                try { invoicesCount = _db.TransactionMasters.Count(t => t.REGSTRID == 2 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
-                
-                // For pending/approved invoices - try SQL query, fallback to simple count if it fails
+
+
+                // New dashboard counts (based on register IDs used by controllers)
+                // Sales Order = 1, Purchase Order = 2, Purchase Invoice = 18, Sales Invoice = 20
+                try { salesOrderCount = _db.TransactionMasters.Count(t => t.REGSTRID == 1 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
+                try { purchaseOrderCount = _db.TransactionMasters.Count(t => t.REGSTRID == 2 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
+                try { purchaseInvoiceCount = _db.TransactionMasters.Count(t => t.REGSTRID == 18 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
+                try { salesInvoiceCount = _db.TransactionMasters.Count(t => t.REGSTRID == 20 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
+
+                // Pending Sales Order: Sales order not yet converted to a Purchase Order
                 try
                 {
-                    var pendingInvoicesQuery = @"SELECT COUNT(*) FROM TRANSACTIONMASTER tm
-                                                LEFT JOIN PURCHASEINVOICESTATUS pis ON tm.DISPSTATUS = pis.PUINSTID
-                                                WHERE tm.REGSTRID = 2 
-                                                AND (tm.DISPSTATUS = 0 OR tm.DISPSTATUS IS NULL)
-                                                AND pis.PUINSTCODE = 'PUS003'";
-                    var result = _db.Database.SqlQuery<int>(pendingInvoicesQuery).FirstOrDefault();
-                    pendingInvoicesCount = result;
+                    var sql = @"SELECT COUNT(*)
+                                FROM TRANSACTIONMASTER so
+                                WHERE so.REGSTRID = 1
+                                  AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONMASTER po
+                                      WHERE po.REGSTRID = 2
+                                        AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                        AND po.TRANLMID = so.TRANMID
+                                  )";
+                    pendingSalesOrderCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
                 }
-                catch 
-                { 
-                    // Fallback: count all invoices as pending if status check fails
-                    try { pendingInvoicesCount = _db.TransactionMasters.Count(t => t.REGSTRID == 2 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
-                }
-                
-                try
+                catch
                 {
-                    var approvedInvoicesQuery = @"SELECT COUNT(*) FROM TRANSACTIONMASTER tm
-                                                 LEFT JOIN PURCHASEINVOICESTATUS pis ON tm.DISPSTATUS = pis.PUINSTID
-                                                 WHERE tm.REGSTRID = 2 
-                                                 AND (tm.DISPSTATUS = 0 OR tm.DISPSTATUS IS NULL)
-                                                 AND pis.PUINSTCODE = 'PUS004'";
-                    var result = _db.Database.SqlQuery<int>(approvedInvoicesQuery).FirstOrDefault();
-                    approvedInvoicesCount = result;
-                }
-                catch 
-                { 
-                    approvedInvoicesCount = 0;
+                    pendingSalesOrderCount = 0;
                 }
 
+                // Pending Purchase Order: PO not yet converted into a Purchase Invoice
+                try
+                {
+                    var sql = @"SELECT COUNT(*)
+                                FROM TRANSACTIONMASTER po
+                                WHERE po.REGSTRID = 2
+                                  AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONMASTER pi
+                                      WHERE pi.REGSTRID = 18
+                                        AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                        AND pi.TRANLMID = po.TRANMID
+                                  )";
+                    pendingPurchaseOrderCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                }
+                catch
+                {
+                    pendingPurchaseOrderCount = 0;
+                }
+
+                // Pending Purchase Invoice: Purchase invoice not yet converted into a Sales Invoice
+                try
+                {
+                    var sql = @"SELECT COUNT(*)
+                                FROM TRANSACTIONMASTER pi
+                                WHERE pi.REGSTRID = 18
+                                  AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONMASTER si
+                                      WHERE si.REGSTRID = 20
+                                        AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                        AND si.TRANLMID = pi.TRANMID
+                                  )";
+                    pendingPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                }
+                catch
+                {
+                    pendingPurchaseInvoiceCount = 0;
+                }
+
+                // Pending Sales Invoice: Sales order which does not yet have a Sales Invoice through SO->PO->PI->SI link
+                try
+                {
+                    var sql = @"SELECT COUNT(*)
+                                FROM TRANSACTIONMASTER so
+                                WHERE so.REGSTRID = 1
+                                  AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONMASTER po
+                                      INNER JOIN TRANSACTIONMASTER pi ON pi.REGSTRID = 18 AND pi.TRANLMID = po.TRANMID AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                      INNER JOIN TRANSACTIONMASTER si ON si.REGSTRID = 20 AND si.TRANLMID = pi.TRANMID AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                      WHERE po.REGSTRID = 2
+                                        AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                        AND po.TRANLMID = so.TRANMID
+                                  )";
+                    pendingSalesInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                }
+                catch
+                {
+                    pendingSalesInvoiceCount = 0;
+                }
+
+                // Partial Purchase Invoice: Purchase invoices created against a PO but total invoice qty < total PO qty
+                try
+                {
+                    var sql = @"SELECT COUNT(DISTINCT inv.TRANMID)
+                                FROM TRANSACTIONMASTER inv
+                                INNER JOIN TRANSACTIONMASTER po ON po.TRANMID = inv.TRANLMID AND po.REGSTRID = 2
+                                INNER JOIN (
+                                    SELECT TRANMID, SUM(ISNULL(TRANDQTY, 0)) AS QTY
+                                    FROM TRANSACTIONDETAIL
+                                    GROUP BY TRANMID
+                                ) invd ON invd.TRANMID = inv.TRANMID
+                                INNER JOIN (
+                                    SELECT TRANMID, SUM(ISNULL(TRANDQTY, 0)) AS QTY
+                                    FROM TRANSACTIONDETAIL
+                                    GROUP BY TRANMID
+                                ) pod ON pod.TRANMID = po.TRANMID
+                                WHERE inv.REGSTRID = 18
+                                  AND inv.TRANLMID IS NOT NULL
+                                  AND inv.TRANLMID > 0
+                                  AND (inv.DISPSTATUS = 0 OR inv.DISPSTATUS IS NULL)
+                                  AND invd.QTY < pod.QTY";
+                    partialPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                }
+                catch
+                {
+                    partialPurchaseInvoiceCount = 0;
+                }
+
+
                 // Pass essential business data to view
-                ViewBag.TransactionsCount = transactionsCount;
                 ViewBag.CustomersCount = customersCount;
                 ViewBag.SuppliersCount = suppliersCount;
                 ViewBag.MaterialsCount = materialsCount;
-                ViewBag.RawMaterialIntakeCount = rawMaterialIntakeCount;
-                ViewBag.InvoicesCount = invoicesCount;
-                ViewBag.PendingInvoicesCount = pendingInvoicesCount;
-                ViewBag.ApprovedInvoicesCount = approvedInvoicesCount;
 
-                // Chart Data - Monthly Invoice Trends (Last 6 months)
+                ViewBag.SalesOrderCount = salesOrderCount;
+                ViewBag.PendingSalesOrderCount = pendingSalesOrderCount;
+                ViewBag.PurchaseOrderCount = purchaseOrderCount;
+                ViewBag.PurchaseInvoiceCount = purchaseInvoiceCount;
+                ViewBag.PendingPurchaseOrderCount = pendingPurchaseOrderCount;
+                ViewBag.PendingPurchaseInvoiceCount = pendingPurchaseInvoiceCount;
+                ViewBag.PartialPurchaseInvoiceCount = partialPurchaseInvoiceCount;
+                ViewBag.SalesInvoiceCount = salesInvoiceCount;
+                ViewBag.PendingSalesInvoiceCount = pendingSalesInvoiceCount;
+
+                ViewBag.TransactionMetricsTotal = salesOrderCount + pendingSalesOrderCount + purchaseOrderCount + pendingPurchaseOrderCount + purchaseInvoiceCount + pendingPurchaseInvoiceCount + partialPurchaseInvoiceCount + salesInvoiceCount + pendingSalesInvoiceCount;
+
+                // Chart Data - Monthly Sales Invoice Trends (Last 6 months)
                 var monthlyInvoiceLabels = new List<string>();
                 var monthlyInvoiceCounts = new List<int>();
                 var monthlyInvoiceAmounts = new List<double>();
+
                 
                 try
                 {
                     var sixMonthsAgo = DateTime.Now.AddMonths(-6);
                     var invoices = _db.TransactionMasters
-                        .Where(t => t.REGSTRID == 2 && 
+                        .Where(t => t.REGSTRID == 20 &&
                                     (t.DISPSTATUS == 0 || t.DISPSTATUS == null) &&
                                     t.TRANDATE >= sixMonthsAgo)
                         .ToList();
@@ -160,10 +266,9 @@ namespace SSK_ERP.Controllers
                 ViewBag.MonthlyInvoiceCounts = monthlyInvoiceCounts;
                 ViewBag.MonthlyInvoiceAmounts = monthlyInvoiceAmounts;
 
-                // Chart Data - Transaction Status Distribution
-                ViewBag.StatusLabels = new List<string> { "Pending", "Approved", "Raw Material Intake" };
-                ViewBag.StatusCounts = new List<int> { pendingInvoicesCount, approvedInvoicesCount, rawMaterialIntakeCount };
-
+                // Chart Data - Invoice Distribution
+                ViewBag.StatusLabels = new List<string> { "Generated Purchase Invoice", "Partial Purchase Invoice", "Sales Invoice" };
+                ViewBag.StatusCounts = new List<int> { purchaseInvoiceCount, partialPurchaseInvoiceCount, salesInvoiceCount };
                 // Chart Data - Material Group Distribution
                 var materialGroupLabels = new List<string>();
                 var materialGroupCounts = new List<int>();
@@ -186,45 +291,46 @@ namespace SSK_ERP.Controllers
                     materialGroupLabels = materialGroups.Select(x => x.GroupName).ToList();
                     materialGroupCounts = materialGroups.Select(x => x.Count).ToList();
                 }
-                catch { }
+                catch
+                {
+                    materialGroupLabels = new List<string>();
+                    materialGroupCounts = new List<int>();
+                }
 
                 ViewBag.MaterialGroupLabels = materialGroupLabels;
                 ViewBag.MaterialGroupCounts = materialGroupCounts;
 
-                // Chart Data - Transaction Types Distribution
-                var transactionTypeLabels = new List<string>();
-                var transactionTypeCounts = new List<int>();
-                
-                try
+                // Chart Data - Key Metrics Distribution (for Pie/Bar toggle)
+                var transactionTypeLabels = new List<string>
                 {
-                    var transactionTypes = _db.TransactionMasters
-                        .Where(t => t.DISPSTATUS == 0 || t.DISPSTATUS == null)
-                        .GroupBy(t => t.REGSTRID)
-                        .Select(g => new
-                        {
-                            TypeId = g.Key,
-                            TypeName = g.Key == 1 ? "Raw Material Intake" : 
-                                       g.Key == 2 ? "Raw Material Invoice" : 
-                                       $"Transaction Type {g.Key}",
-                            Count = g.Count()
-                        })
-                        .OrderByDescending(x => x.Count)
-                        .Take(5)
-                        .ToList();
+                    "Total Sales Order",
+                    "Pending Sales Order",
+                    "Total Purchase Order",
+                    "Pending Purchase Order",
+                    "Total Purchase Invoice",
+                    "Pending Purchase Invoice",
+                    "Partial Purchase Invoice",
+                    "Total Sales Invoice",
+                    "Pending Sales Invoice"
+                };
 
-                    transactionTypeLabels = transactionTypes.Select(x => x.TypeName).ToList();
-                    transactionTypeCounts = transactionTypes.Select(x => x.Count).ToList();
-                }
-                catch { }
+                var transactionTypeCounts = new List<int>
+                {
+                    salesOrderCount,
+                    pendingSalesOrderCount,
+                    purchaseOrderCount,
+                    pendingPurchaseOrderCount,
+                    purchaseInvoiceCount,
+                    pendingPurchaseInvoiceCount,
+                    partialPurchaseInvoiceCount,
+                    salesInvoiceCount,
+                    pendingSalesInvoiceCount
+                };
 
                 ViewBag.TransactionTypeLabels = transactionTypeLabels;
                 ViewBag.TransactionTypeCounts = transactionTypeCounts;
 
-                // Debug output (after all variables are declared)
-                System.Diagnostics.Debug.WriteLine($"=== Dashboard Data ===");
-                System.Diagnostics.Debug.WriteLine($"Transactions: {transactionsCount}, Customers: {customersCount}, Suppliers: {suppliersCount}");
-                System.Diagnostics.Debug.WriteLine($"Materials: {materialsCount}, Raw Material Intake: {rawMaterialIntakeCount}");
-                System.Diagnostics.Debug.WriteLine($"Invoices: {invoicesCount}, Pending: {pendingInvoicesCount}, Approved: {approvedInvoicesCount}");
+                System.Diagnostics.Debug.WriteLine($"Customers: {customersCount}, Suppliers: {suppliersCount}, Materials: {materialsCount}");
                 System.Diagnostics.Debug.WriteLine($"Monthly Invoice Labels Count: {monthlyInvoiceLabels.Count}");
                 System.Diagnostics.Debug.WriteLine($"Material Group Labels Count: {materialGroupLabels.Count}");
                 System.Diagnostics.Debug.WriteLine($"Transaction Type Labels Count: {transactionTypeLabels.Count}");
@@ -232,21 +338,29 @@ namespace SSK_ERP.Controllers
             catch (Exception ex)
             {
                 // Set default values on error
-                ViewBag.TransactionsCount = 0;
                 ViewBag.CustomersCount = 0;
                 ViewBag.SuppliersCount = 0;
                 ViewBag.MaterialsCount = 0;
-                ViewBag.RawMaterialIntakeCount = 0;
-                ViewBag.InvoicesCount = 0;
-                ViewBag.PendingInvoicesCount = 0;
-                ViewBag.ApprovedInvoicesCount = 0;
-                
-                // Empty chart data
+
+                ViewBag.SalesOrderCount = 0;
+                ViewBag.PendingSalesOrderCount = 0;
+                ViewBag.PurchaseOrderCount = 0;
+                ViewBag.PendingPurchaseOrderCount = 0;
+                ViewBag.PurchaseInvoiceCount = 0;
+                ViewBag.PendingPurchaseInvoiceCount = 0;
+                ViewBag.PartialPurchaseInvoiceCount = 0;
+                ViewBag.SalesInvoiceCount = 0;
+                ViewBag.PendingSalesInvoiceCount = 0;
+
+                ViewBag.TransactionMetricsTotal = 0;
+
                 ViewBag.MonthlyInvoiceLabels = new List<string>();
                 ViewBag.MonthlyInvoiceCounts = new List<int>();
                 ViewBag.MonthlyInvoiceAmounts = new List<double>();
-                ViewBag.StatusLabels = new List<string> { "Pending", "Approved", "Raw Material Intake" };
+
+                ViewBag.StatusLabels = new List<string> { "Generated Purchase Invoice", "Partial Purchase Invoice", "Sales Invoice" };
                 ViewBag.StatusCounts = new List<int> { 0, 0, 0 };
+
                 ViewBag.MaterialGroupLabels = new List<string>();
                 ViewBag.MaterialGroupCounts = new List<int>();
                 ViewBag.TransactionTypeLabels = new List<string>();

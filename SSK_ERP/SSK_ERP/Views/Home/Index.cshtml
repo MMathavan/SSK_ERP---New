@@ -231,6 +231,29 @@
         background: linear-gradient(135deg, #ec4899, #db2777);
     }
 
+    .stat-card.sales-invoice {
+        border-top-color: #0ea5e9;
+    }
+    .stat-card.sales-invoice .stat-icon-wrapper {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    }
+
+    .stats-grid.three-cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    @@media (max-width: 1024px) {
+        .stats-grid.three-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .stats-grid.three-cards {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+    }
+
     /* Charts Section */
     .charts-section {
         margin-top: 50px;
@@ -373,7 +396,7 @@
     </div>
 
     <!-- Key Business Metrics -->
-    <div class="stats-grid">
+    <div class="stats-grid three-cards">
         <div class="stat-card customers">
             <div class="stat-card-header">
                 <div>
@@ -412,71 +435,126 @@
                 </div>
             </div>
         </div>
-
-        <div class="stat-card raw-material">
-            <div class="stat-card-header">
-                <div>
-                    <div class="stat-title">Raw Material Intake</div>
-                    <div class="stat-value">@(ViewBag.RawMaterialIntakeCount ?? 0)</div>
-                    <div class="stat-description">Total intake transactions</div>
-                </div>
-                <div class="stat-icon-wrapper">
-                    <i class="fa fa-warehouse"></i>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Invoice & Transaction Status -->
-    <div class="stats-grid">
-        <div class="stat-card invoices">
-            <div class="stat-card-header">
-                <div>
-                    <div class="stat-title">Total Invoices</div>
-                    <div class="stat-value">@(ViewBag.InvoicesCount ?? 0)</div>
-                    <div class="stat-description">All generated invoices</div>
-                </div>
-                <div class="stat-icon-wrapper">
-                    <i class="fa fa-file-invoice"></i>
+    <div class="charts-section" style="margin-top: 30px;">
+        <h2 class="section-title" style="margin-bottom: 20px;">Transactions</h2>
+
+        <div class="stats-grid three-cards">
+            <div class="stat-card raw-material">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Total Sales Order</div>
+                        <div class="stat-value">@(ViewBag.SalesOrderCount ?? 0)</div>
+                        <div class="stat-description">All sales orders</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-shopping-cart"></i>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="stat-card pending">
-            <div class="stat-card-header">
-                <div>
-                    <div class="stat-title">Pending Approval</div>
-                    <div class="stat-value">@(ViewBag.PendingInvoicesCount ?? 0)</div>
-                    <div class="stat-description">Invoices awaiting approval</div>
-                </div>
-                <div class="stat-icon-wrapper">
-                    <i class="fa fa-clock"></i>
+            <div class="stat-card invoices">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Pending Sales Order</div>
+                        <div class="stat-value">@(ViewBag.PendingSalesOrderCount ?? 0)</div>
+                        <div class="stat-description">Not yet converted to PO</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-clock"></i>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="stat-card approved">
-            <div class="stat-card-header">
-                <div>
-                    <div class="stat-title">Approved</div>
-                    <div class="stat-value">@(ViewBag.ApprovedInvoicesCount ?? 0)</div>
-                    <div class="stat-description">Approved invoices</div>
-                </div>
-                <div class="stat-icon-wrapper">
-                    <i class="fa fa-check-circle"></i>
+            <div class="stat-card pending">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Total Purchase Order</div>
+                        <div class="stat-value">@(ViewBag.PurchaseOrderCount ?? 0)</div>
+                        <div class="stat-description">All purchase orders</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-file-alt"></i>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="stat-card transactions">
-            <div class="stat-card-header">
-                <div>
-                    <div class="stat-title">Total Transactions</div>
-                    <div class="stat-value">@(ViewBag.TransactionsCount ?? 0)</div>
-                    <div class="stat-description">All system transactions</div>
+            <div class="stat-card invoices">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Pending Purchase Order</div>
+                        <div class="stat-value">@(ViewBag.PendingPurchaseOrderCount ?? 0)</div>
+                        <div class="stat-description">Not yet converted to PI</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-clock"></i>
+                    </div>
                 </div>
-                <div class="stat-icon-wrapper">
-                    <i class="fa fa-exchange-alt"></i>
+            </div>
+
+            <div class="stat-card approved">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Total Purchase Invoice</div>
+                        <div class="stat-value">@(ViewBag.PurchaseInvoiceCount ?? 0)</div>
+                        <div class="stat-description">All purchase invoices</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-receipt"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card invoices">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Pending Purchase Invoice</div>
+                        <div class="stat-value">@(ViewBag.PendingPurchaseInvoiceCount ?? 0)</div>
+                        <div class="stat-description">Not yet converted to SI</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-hourglass-half"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card transactions">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Partial Purchase Invoice</div>
+                        <div class="stat-value">@(ViewBag.PartialPurchaseInvoiceCount ?? 0)</div>
+                        <div class="stat-description">Invoices with partial receipt</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-hourglass-half"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card sales-invoice">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Total Sales Invoice</div>
+                        <div class="stat-value">@(ViewBag.SalesInvoiceCount ?? 0)</div>
+                        <div class="stat-description">All sales invoices</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-file-invoice-dollar"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card sales-invoice">
+                <div class="stat-card-header">
+                    <div>
+                        <div class="stat-title">Pending Sales Invoice</div>
+                        <div class="stat-value">@(ViewBag.PendingSalesInvoiceCount ?? 0)</div>
+                        <div class="stat-description">Sales orders not yet invoiced</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <i class="fa fa-clock"></i>
+                    </div>
                 </div>
             </div>
         </div>
@@ -486,24 +564,6 @@
     <div class="charts-section">
         <h2 class="section-title">Analytics & Insights</h2>
         
-        <div class="charts-grid">
-            <div class="chart-container">
-                <h3 class="chart-title">
-                    <i class="fa fa-chart-line" style="color: #667eea;"></i>
-                    Monthly Invoice Trends
-                </h3>
-                <canvas id="monthlyInvoiceChart" height="80"></canvas>
-            </div>
-
-            <div class="chart-container">
-                <h3 class="chart-title">
-                    <i class="fa fa-chart-pie" style="color: #f093fb;"></i>
-                    Transaction Status Distribution
-                </h3>
-                <canvas id="statusChart" height="80"></canvas>
-            </div>
-        </div>
-
         <div class="charts-grid">
             <div class="chart-container">
                 <h3 class="chart-title">
@@ -531,8 +591,8 @@
                 <div style="position: relative;">
                     <canvas id="transactionTypeChart" height="80"></canvas>
                     <div id="transactionTypeSummary" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; display: none;">
-                        <div style="font-size: 2rem; font-weight: 800; color: #1e293b;">@(ViewBag.TransactionsCount ?? 0)</div>
-                        <div style="font-size: 0.9rem; color: #64748b; font-weight: 600;">Total Transactions</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: #1e293b;">@(ViewBag.TransactionMetricsTotal ?? 0)</div>
+                        <div style="font-size: 0.9rem; color: #64748b; font-weight: 600;">Total Metrics</div>
                     </div>
                 </div>
             </div>
@@ -544,20 +604,12 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 @{
-    var monthlyLabels = ViewBag.MonthlyInvoiceLabels as List<string>;
-    var monthlyCounts = ViewBag.MonthlyInvoiceCounts as List<int>;
-    var statusLabels = ViewBag.StatusLabels as List<string>;
-    var statusCounts = ViewBag.StatusCounts as List<int>;
     var materialGroupLabels = ViewBag.MaterialGroupLabels as List<string>;
     var materialGroupCounts = ViewBag.MaterialGroupCounts as List<int>;
     var transactionTypeLabels = ViewBag.TransactionTypeLabels as List<string>;
     var transactionTypeCounts = ViewBag.TransactionTypeCounts as List<int>;
     
     // Ensure lists are not null
-    if (monthlyLabels == null) { monthlyLabels = new List<string>(); }
-    if (monthlyCounts == null) { monthlyCounts = new List<int>(); }
-    if (statusLabels == null) { statusLabels = new List<string>(); }
-    if (statusCounts == null) { statusCounts = new List<int>(); }
     if (materialGroupLabels == null) { materialGroupLabels = new List<string>(); }
     if (materialGroupCounts == null) { materialGroupCounts = new List<int>(); }
     if (transactionTypeLabels == null) { transactionTypeLabels = new List<string>(); }
@@ -569,104 +621,6 @@
     Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
     Chart.defaults.font.size = 12;
     Chart.defaults.color = '#64748b';
-
-    // Monthly Invoice Trends Chart
-    @if (monthlyLabels.Any() && monthlyCounts.Any())
-    {
-        <text>
-        const monthlyCtx = document.getElementById('monthlyInvoiceChart').getContext('2d');
-        new Chart(monthlyCtx, {
-            type: 'line',
-            data: {
-                labels: @Html.Raw(Json.Encode(monthlyLabels)),
-                datasets: [{
-                    label: 'Invoice Count',
-                    data: @Html.Raw(Json.Encode(monthlyCounts)),
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    pointBackgroundColor: '#667eea',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.05)'
-                        },
-                        ticks: {
-                            precision: 0
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                }
-            }
-        });
-        </text>
-    }
-
-    // Transaction Status Distribution Chart
-    @if (statusLabels.Any() && statusCounts.Any())
-    {
-        <text>
-        const statusCtx = document.getElementById('statusChart').getContext('2d');
-        new Chart(statusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: @Html.Raw(Json.Encode(statusLabels)),
-                datasets: [{
-                    data: @Html.Raw(Json.Encode(statusCounts)),
-                    backgroundColor: [
-                        '#f59e0b',
-                        '#10b981',
-                        '#8b5cf6'
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 10
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 20,
-                            usePointStyle: true,
-                            font: {
-                                size: 13
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        </text>
-    }
 
     // Material Group Distribution Chart
     @if (materialGroupLabels.Any() && materialGroupCounts.Any())
@@ -760,11 +714,13 @@
                         backgroundColor: [
                             '#feca57',
                             '#667eea',
+                            '#10b981',
                             '#43e97b',
                             '#fa709a',
                             '#4ecdc4',
                             '#ff6b6b',
-                            '#a29bfe'
+                            '#a29bfe',
+                            '#f59e0b'
                         ],
                         borderWidth: isPieChart ? 3 : 0,
                         borderColor: '#ffffff',
