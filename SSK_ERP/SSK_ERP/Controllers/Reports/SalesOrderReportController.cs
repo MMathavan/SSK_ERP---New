@@ -31,7 +31,15 @@ namespace SSK_ERP.Controllers
                 var normalized = new string(name.Where(ch => !char.IsWhiteSpace(ch) && ch != '_').ToArray())
                     .ToLowerInvariant();
 
-                if (normalized == "customername")
+                if (normalized == "customername" ||
+                    normalized == "customer" ||
+                    normalized == "customerdesc" ||
+                    normalized == "customerdescription" ||
+                    normalized == "tranrefname" ||
+                    normalized == "partyname" ||
+                    normalized == "party" ||
+                    normalized == "buyername" ||
+                    normalized == "buyer")
                 {
                     return col.ColumnName;
                 }
@@ -226,7 +234,7 @@ namespace SSK_ERP.Controllers
             string displayTo = inclusiveTo.HasValue ? inclusiveTo.Value.ToString("dd-MM-yyyy") : string.Empty;
 
             var sql = new StringBuilder();
-            sql.Append("SELECT * FROM vw_salesorder_Datewise_consolidated_rpt WHERE 1 = 1 ");
+            sql.Append("SELECT * FROM VW_SALESORDER_DATEWISE_CONSOLIDATED_RPT WHERE 1 = 1 ");
 
             var parameters = new List<object>();
             int paramIndex = 0;
@@ -573,7 +581,7 @@ namespace SSK_ERP.Controllers
             }
 
             var sql = new StringBuilder();
-            sql.Append("SELECT * FROM vw_salesorder_Datewise_consolidated_rpt WHERE 1 = 1 ");
+            sql.Append("SELECT * FROM VW_SALESORDER_DATEWISE_CONSOLIDATED_RPT WHERE 1 = 1 ");
 
             var parameters = new List<object>();
             int paramIndex = 0;
@@ -766,12 +774,28 @@ namespace SSK_ERP.Controllers
             {
                 var names = db.CustomerMasters
                     .Where(c => selectedCustomerIds.Contains(c.CATEID))
-                    .Select(c => c.CATENAME)
+                    .Select(c => new { c.CATENAME, c.CATEDNAME })
                     .ToList();
 
                 if (names.Count > 0)
                 {
-                    allowedCustomerNames = new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
+                    allowedCustomerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var n in names)
+                    {
+                        if (!string.IsNullOrWhiteSpace(n.CATENAME))
+                        {
+                            allowedCustomerNames.Add(n.CATENAME.Trim());
+                        }
+                        if (!string.IsNullOrWhiteSpace(n.CATEDNAME))
+                        {
+                            allowedCustomerNames.Add(n.CATEDNAME.Trim());
+                        }
+                    }
+
+                    if (allowedCustomerNames.Count == 0)
+                    {
+                        allowedCustomerNames = null;
+                    }
                 }
             }
 
