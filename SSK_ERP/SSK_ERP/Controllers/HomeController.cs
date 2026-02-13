@@ -82,6 +82,10 @@ namespace SSK_ERP.Controllers
                 int salesInvoiceCount = 0;
                 int pendingSalesInvoiceCount = 0;
 
+                var pendingPurchaseOrderDetails = new List<PendingDocRow>();
+                var pendingSalesOrderDetails = new List<PendingDocRow>();
+                var pendingPurchaseInvoiceDetails = new List<PendingDocRow>();
+                var pendingSalesInvoiceDetails = new List<PendingDocRow>();
 
                 try { customersCount = _db.CustomerMasters.Count(c => c.DISPSTATUS == 0 || c.DISPSTATUS == null); } catch { }
                 try { suppliersCount = _db.SupplierMasters.Count(s => s.DISPSTATUS == 0 || s.DISPSTATUS == null); } catch { }
@@ -137,6 +141,60 @@ namespace SSK_ERP.Controllers
                     pendingPurchaseOrderCount = 0;
                 }
 
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    po.TRANDATE AS [Date],
+                                    po.TRANNO AS [Number],
+                                    po.TRANREFNO AS [DocNo],
+                                    po.TRANREFNAME AS [CustomerName],
+                                    ISNULL(po.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER po
+                               WHERE po.REGSTRID = 2
+                                 AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER pi
+                                     WHERE pi.REGSTRID = 18
+                                       AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                       AND pi.TRANLMID = po.TRANMID
+                                 )
+                               ORDER BY po.TRANDATE DESC, po.TRANNO DESC";
+
+                    pendingPurchaseOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                }
+                catch
+                {
+                    pendingPurchaseOrderDetails = new List<PendingDocRow>();
+                }
+
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    so.TRANDATE AS [Date],
+                                    so.TRANNO AS [Number],
+                                    so.TRANREFNO AS [DocNo],
+                                    so.TRANREFNAME AS [CustomerName],
+                                    ISNULL(so.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER so
+                               WHERE so.REGSTRID = 1
+                                 AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER po
+                                     WHERE po.REGSTRID = 2
+                                       AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                       AND po.TRANLMID = so.TRANMID
+                                 )
+                               ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
+
+                    pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                }
+                catch
+                {
+                    pendingSalesOrderDetails = new List<PendingDocRow>();
+                }
+
                 // Pending Purchase Invoice: Purchase invoice not yet converted into a Sales Invoice
                 try
                 {
@@ -156,6 +214,33 @@ namespace SSK_ERP.Controllers
                 catch
                 {
                     pendingPurchaseInvoiceCount = 0;
+                }
+
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    pi.TRANDATE AS [Date],
+                                    pi.TRANNO AS [Number],
+                                    pi.TRANREFNO AS [DocNo],
+                                    pi.TRANREFNAME AS [CustomerName],
+                                    ISNULL(pi.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER pi
+                               WHERE pi.REGSTRID = 18
+                                 AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER si
+                                     WHERE si.REGSTRID = 20
+                                       AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                       AND si.TRANLMID = pi.TRANMID
+                                 )
+                               ORDER BY pi.TRANDATE DESC, pi.TRANNO DESC";
+
+                    pendingPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                }
+                catch
+                {
+                    pendingPurchaseInvoiceDetails = new List<PendingDocRow>();
                 }
 
                 // Pending Sales Invoice: Sales order which does not yet have a Sales Invoice through SO->PO->PI->SI link
@@ -179,6 +264,35 @@ namespace SSK_ERP.Controllers
                 catch
                 {
                     pendingSalesInvoiceCount = 0;
+                }
+
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    so.TRANDATE AS [Date],
+                                    so.TRANNO AS [Number],
+                                    so.TRANREFNO AS [DocNo],
+                                    so.TRANREFNAME AS [CustomerName],
+                                    ISNULL(so.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER so
+                               WHERE so.REGSTRID = 1
+                                 AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER po
+                                     INNER JOIN TRANSACTIONMASTER pi ON pi.REGSTRID = 18 AND pi.TRANLMID = po.TRANMID AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                     INNER JOIN TRANSACTIONMASTER si ON si.REGSTRID = 20 AND si.TRANLMID = pi.TRANMID AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                     WHERE po.REGSTRID = 2
+                                       AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                       AND po.TRANLMID = so.TRANMID
+                                 )
+                               ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
+
+                    pendingSalesInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                }
+                catch
+                {
+                    pendingSalesInvoiceDetails = new List<PendingDocRow>();
                 }
 
                 // Partial Purchase Invoice: Purchase invoices created against a PO but total invoice qty < total PO qty
@@ -224,6 +338,11 @@ namespace SSK_ERP.Controllers
                 ViewBag.PartialPurchaseInvoiceCount = partialPurchaseInvoiceCount;
                 ViewBag.SalesInvoiceCount = salesInvoiceCount;
                 ViewBag.PendingSalesInvoiceCount = pendingSalesInvoiceCount;
+
+                ViewBag.PendingPurchaseOrderDetails = pendingPurchaseOrderDetails;
+                ViewBag.PendingSalesOrderDetails = pendingSalesOrderDetails;
+                ViewBag.PendingPurchaseInvoiceDetails = pendingPurchaseInvoiceDetails;
+                ViewBag.PendingSalesInvoiceDetails = pendingSalesInvoiceDetails;
 
                 ViewBag.TransactionMetricsTotal = salesOrderCount + pendingSalesOrderCount + purchaseOrderCount + pendingPurchaseOrderCount + purchaseInvoiceCount + pendingPurchaseInvoiceCount + partialPurchaseInvoiceCount + salesInvoiceCount + pendingSalesInvoiceCount;
 
@@ -352,6 +471,11 @@ namespace SSK_ERP.Controllers
                 ViewBag.SalesInvoiceCount = 0;
                 ViewBag.PendingSalesInvoiceCount = 0;
 
+                ViewBag.PendingPurchaseOrderDetails = new List<PendingDocRow>();
+                ViewBag.PendingSalesOrderDetails = new List<PendingDocRow>();
+                ViewBag.PendingPurchaseInvoiceDetails = new List<PendingDocRow>();
+                ViewBag.PendingSalesInvoiceDetails = new List<PendingDocRow>();
+
                 ViewBag.TransactionMetricsTotal = 0;
 
                 ViewBag.MonthlyInvoiceLabels = new List<string>();
@@ -440,5 +564,14 @@ namespace SSK_ERP.Controllers
         public string ShrimpType { get; set; }
         public int Transactions { get; set; }
         public decimal TotalQuantity { get; set; }
+    }
+
+    public class PendingDocRow
+    {
+        public DateTime? Date { get; set; }
+        public int? Number { get; set; }
+        public string DocNo { get; set; }
+        public string CustomerName { get; set; }
+        public decimal Amount { get; set; }
     }
 }

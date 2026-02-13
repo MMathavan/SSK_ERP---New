@@ -560,6 +560,145 @@
         </div>
     </div>
 
+    <div class="charts-section" style="margin-top: 30px;">
+        <h2 class="section-title" style="margin-bottom: 20px;">Transaction Pending Details</h2>
+
+        @{
+            var pendingPurchaseOrderDetails = ViewBag.PendingPurchaseOrderDetails as IEnumerable<dynamic>;
+            var pendingSalesOrderDetails = ViewBag.PendingSalesOrderDetails as IEnumerable<dynamic>;
+            var pendingPurchaseInvoiceDetails = ViewBag.PendingPurchaseInvoiceDetails as IEnumerable<dynamic>;
+            var pendingSalesInvoiceDetails = ViewBag.PendingSalesInvoiceDetails as IEnumerable<dynamic>;
+        }
+
+        @if (pendingSalesOrderDetails != null && pendingSalesOrderDetails.Any())
+        {
+            <div style="margin-top: 20px;">
+                <div style="font-weight: 700; color: #1e293b; margin-bottom: 10px;">Pending Sales Order Details</div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Date</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Number</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">SO No.</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Customer Name</th>
+                                <th style="text-align: right; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in pendingSalesOrderDetails)
+                            {
+                                <tr>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@((row.Date == null) ? "" : ((DateTime)row.Date).ToString("dd-MM-yyyy"))</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.Number ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-weight: 700;">@(row.DocNo ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.CustomerName ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; text-align: right;">@(row.Amount ?? 0)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (pendingPurchaseOrderDetails != null && pendingPurchaseOrderDetails.Any())
+        {
+            <div style="margin-top: 20px;">
+                <div style="font-weight: 700; color: #1e293b; margin-bottom: 10px;">Pending Purchase Order Details</div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Date</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Number</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">PO No.</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Customer Name</th>
+                                <th style="text-align: right; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in pendingPurchaseOrderDetails)
+                            {
+                                <tr>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@((row.Date == null) ? "" : ((DateTime)row.Date).ToString("dd-MM-yyyy"))</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.Number ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-weight: 700;">@(row.DocNo ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.CustomerName ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; text-align: right;">@(row.Amount ?? 0)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (pendingPurchaseInvoiceDetails != null && pendingPurchaseInvoiceDetails.Any())
+        {
+            <div style="margin-top: 20px;">
+                <div style="font-weight: 700; color: #1e293b; margin-bottom: 10px;">Pending Purchase Invoice Details</div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Date</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Number</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">PI No.</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Customer Name</th>
+                                <th style="text-align: right; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in pendingPurchaseInvoiceDetails)
+                            {
+                                <tr>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@((row.Date == null) ? "" : ((DateTime)row.Date).ToString("dd-MM-yyyy"))</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.Number ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-weight: 700;">@(row.DocNo ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.CustomerName ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; text-align: right;">@(row.Amount ?? 0)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (pendingSalesInvoiceDetails != null && pendingSalesInvoiceDetails.Any())
+        {
+            <div style="margin-top: 20px;">
+                <div style="font-weight: 700; color: #1e293b; margin-bottom: 10px;">Pending Sales Invoice Details</div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Date</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Number</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">SO No.</th>
+                                <th style="text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Customer Name</th>
+                                <th style="text-align: right; padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in pendingSalesInvoiceDetails)
+                            {
+                                <tr>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@((row.Date == null) ? "" : ((DateTime)row.Date).ToString("dd-MM-yyyy"))</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.Number ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-weight: 700;">@(row.DocNo ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">@(row.CustomerName ?? "")</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; text-align: right;">@(row.Amount ?? 0)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
     <!-- Charts Section -->
     <div class="charts-section">
         <h2 class="section-title">Analytics & Insights</h2>
