@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -17,6 +18,65 @@ namespace SSK_ERP.Controllers
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesOrderRegisterId = 1;
         private const int PurchaseRegisterId = 2;
+        private const string DatewisePendingConsolidatedView = "vw_salesorder_Consolidate_Pending_rpt";
+
+        private static string ResolveDateColumn(DataTable table)
+        {
+            if (table == null)
+            {
+                return null;
+            }
+
+            foreach (DataColumn col in table.Columns)
+            {
+                var name = col.ColumnName ?? string.Empty;
+                var normalized = new string(name.Where(ch => !char.IsWhiteSpace(ch) && ch != '_').ToArray())
+                    .ToLowerInvariant();
+
+                if (normalized == "salesorderdate" ||
+                    normalized == "salesorderdt" ||
+                    normalized == "salesdate" ||
+                    normalized == "orderdate" ||
+                    normalized == "trandate" ||
+                    normalized == "date")
+                {
+                    return col.ColumnName;
+                }
+            }
+
+            return null;
+        }
+
+        private string ResolveDateColumnForView(string viewName)
+        {
+            if (string.IsNullOrWhiteSpace(viewName))
+            {
+                return null;
+            }
+
+            var connectionString = db.Database.Connection.ConnectionString;
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                return null;
+            }
+
+            var table = new DataTable();
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT TOP 0 * FROM " + viewName;
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        table.Load(reader);
+                    }
+                }
+            }
+
+            return ResolveDateColumn(table);
+        }
 
         private static string ResolveCustomerNameColumn(DataTable table)
         {
@@ -63,10 +123,94 @@ namespace SSK_ERP.Controllers
 
         [HttpGet]
         [Authorize(Roles = "SalesOrderReport")]
-        public JsonResult GetDateWise(string fromDate = null, string toDate = null)
+        public JsonResult GetDateWise(string fromDate = null, string toDate = null, string mode = "Consolidated")
         {
             try
             {
+                var normalizedMode = (mode ?? "Consolidated").Trim().ToLowerInvariant();
+                if (normalizedMode.Contains("pending"))
+                {
+                    var dateColumn = ResolveDateColumnForView(DatewisePendingConsolidatedView);
+
+                    var sql = new StringBuilder();
+                    sql.Append("SELECT * FROM ").Append(DatewisePendingConsolidatedView).Append(" WHERE 1 = 1 ");
+
+                    var parameters = new List<object>();
+                    int paramIndex = 0;
+
+                    DateTime pendingFromDate;
+                    if (!string.IsNullOrWhiteSpace(fromDate) &&
+                        DateTime.TryParseExact(fromDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out pendingFromDate))
+                    {
+                        if (!string.IsNullOrWhiteSpace(dateColumn))
+                        {
+                            sql.Append("AND [").Append(dateColumn).Append("] >= @p" + paramIndex + " ");
+                        }
+                        parameters.Add(pendingFromDate.Date);
+                        paramIndex++;
+                    }
+
+                    DateTime pendingToDate;
+                    if (!string.IsNullOrWhiteSpace(toDate) &&
+                        DateTime.TryParseExact(toDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out pendingToDate))
+                    {
+                        var exclusiveToDate = pendingToDate.Date.AddDays(1);
+                        if (!string.IsNullOrWhiteSpace(dateColumn))
+                        {
+                            sql.Append("AND [").Append(dateColumn).Append("] < @p" + paramIndex + " ");
+                        }
+                        parameters.Add(exclusiveToDate);
+                        paramIndex++;
+                    }
+
+                    var table = new DataTable();
+                    using (var conn = db.Database.Connection)
+                    {
+                        bool shouldClose = false;
+                        if (conn.State != ConnectionState.Open)
+                        {
+                            conn.Open();
+                            shouldClose = true;
+                        }
+
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = sql.ToString();
+                            for (int i = 0; i < parameters.Count; i++)
+                            {
+                                var p = cmd.CreateParameter();
+                                p.ParameterName = "@p" + i;
+                                p.Value = parameters[i] ?? DBNull.Value;
+                                cmd.Parameters.Add(p);
+                            }
+
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                table.Load(reader);
+                            }
+                        }
+
+                        if (shouldClose)
+                        {
+                            conn.Close();
+                        }
+                    }
+
+                    var rows = new List<Dictionary<string, object>>();
+                    foreach (DataRow dr in table.Rows)
+                    {
+                        var dict = new Dictionary<string, object>();
+                        foreach (DataColumn col in table.Columns)
+                        {
+                            var value = dr[col];
+                            dict[col.ColumnName] = (value == DBNull.Value) ? null : value;
+                        }
+                        rows.Add(dict);
+                    }
+
+                    return Json(new { data = rows }, JsonRequestBehavior.AllowGet);
+                }
+
                 var query = db.TransactionMasters.Where(t => t.REGSTRID == SalesOrderRegisterId);
 
                 DateTime parsedFromDate;
@@ -101,6 +245,168 @@ namespace SSK_ERP.Controllers
             {
                 return Json(new { data = new object[0], error = ex.Message }, JsonRequestBehavior.AllowGet);
             }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "SalesOrderReport")]
+        public FileResult ExportDatewisePendingConsolidated(string fromDate = null, string toDate = null)
+        {
+            DateTime? parsedFrom = null;
+            DateTime? parsedToExclusive = null;
+
+            DateTime temp;
+            if (!string.IsNullOrWhiteSpace(fromDate) &&
+                DateTime.TryParseExact(fromDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out temp))
+            {
+                parsedFrom = temp.Date;
+            }
+
+            if (!string.IsNullOrWhiteSpace(toDate) &&
+                DateTime.TryParseExact(toDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out temp))
+            {
+                parsedToExclusive = temp.Date.AddDays(1);
+            }
+
+            string displayFrom = parsedFrom.HasValue ? parsedFrom.Value.ToString("dd-MM-yyyy") : string.Empty;
+            DateTime? inclusiveTo = parsedToExclusive.HasValue ? parsedToExclusive.Value.AddDays(-1) : (DateTime?)null;
+            string displayTo = inclusiveTo.HasValue ? inclusiveTo.Value.ToString("dd-MM-yyyy") : string.Empty;
+
+            var dateColumn = ResolveDateColumnForView(DatewisePendingConsolidatedView);
+
+            var sql = new StringBuilder();
+            sql.Append("SELECT * FROM ").Append(DatewisePendingConsolidatedView).Append(" WHERE 1 = 1 ");
+
+            var parameters = new List<object>();
+            int paramIndex = 0;
+
+            if (parsedFrom.HasValue)
+            {
+                if (!string.IsNullOrWhiteSpace(dateColumn))
+                {
+                    sql.Append("AND [").Append(dateColumn).Append("] >= @p" + paramIndex + " ");
+                }
+                parameters.Add(parsedFrom.Value);
+                paramIndex++;
+            }
+
+            if (parsedToExclusive.HasValue)
+            {
+                if (!string.IsNullOrWhiteSpace(dateColumn))
+                {
+                    sql.Append("AND [").Append(dateColumn).Append("] < @p" + paramIndex + " ");
+                }
+                parameters.Add(parsedToExclusive.Value);
+                paramIndex++;
+            }
+
+            var table = new DataTable();
+            using (var conn = db.Database.Connection)
+            {
+                bool shouldClose = false;
+                if (conn.State != ConnectionState.Open)
+                {
+                    conn.Open();
+                    shouldClose = true;
+                }
+
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = sql.ToString();
+                    for (int i = 0; i < parameters.Count; i++)
+                    {
+                        var p = cmd.CreateParameter();
+                        p.ParameterName = "@p" + i;
+                        p.Value = parameters[i] ?? DBNull.Value;
+                        cmd.Parameters.Add(p);
+                    }
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        table.Load(reader);
+                    }
+                }
+
+                if (shouldClose)
+                {
+                    conn.Close();
+                }
+            }
+
+            int columnCount = table.Columns.Count > 0 ? table.Columns.Count : 1;
+
+            const string companyName = "SSK ENTERPRISE";
+            var headerLine = new StringBuilder("SALES ORDER DATEWISE - PENDING (CONSOLIDATED)");
+            if (!string.IsNullOrEmpty(displayFrom) || !string.IsNullOrEmpty(displayTo))
+            {
+                headerLine.Append(" - ");
+                if (!string.IsNullOrEmpty(displayFrom) && !string.IsNullOrEmpty(displayTo))
+                {
+                    headerLine.Append(displayFrom).Append(" TO ").Append(displayTo);
+                }
+                else if (!string.IsNullOrEmpty(displayFrom))
+                {
+                    headerLine.Append("FROM ").Append(displayFrom);
+                }
+                else if (!string.IsNullOrEmpty(displayTo))
+                {
+                    headerLine.Append("UP TO ").Append(displayTo);
+                }
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("<table border='1'>");
+            sb.AppendLine("<tr><th colspan='" + columnCount + "' style='text-align:center;'>" + HttpUtility.HtmlEncode(companyName) + "</th></tr>");
+            sb.AppendLine("<tr><th colspan='" + columnCount + "' style='text-align:center;'>" + HttpUtility.HtmlEncode(headerLine.ToString()) + "</th></tr>");
+
+            if (table.Columns.Count > 0)
+            {
+                sb.AppendLine("<tr>");
+                foreach (DataColumn col in table.Columns)
+                {
+                    sb.AppendFormat("<th>{0}</th>", HttpUtility.HtmlEncode(col.ColumnName));
+                }
+                sb.AppendLine("</tr>");
+            }
+
+            foreach (DataRow row in table.Rows)
+            {
+                sb.AppendLine("<tr>");
+                foreach (DataColumn col in table.Columns)
+                {
+                    var value = row[col];
+                    string text;
+                    if (value == null || value == DBNull.Value)
+                    {
+                        text = string.Empty;
+                    }
+                    else if (value is DateTime dt)
+                    {
+                        text = dt.ToString("dd-MM-yyyy");
+                    }
+                    else if (value is decimal || value is double || value is float)
+                    {
+                        text = string.Format(CultureInfo.InvariantCulture, "{0:0.###}", value);
+                    }
+                    else
+                    {
+                        text = Convert.ToString(value, CultureInfo.InvariantCulture);
+                    }
+
+                    sb.AppendFormat("<td>{0}</td>", HttpUtility.HtmlEncode(text));
+                }
+                sb.AppendLine("</tr>");
+            }
+
+            sb.AppendLine("</table>");
+
+            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+            var rangePart = (!string.IsNullOrEmpty(displayFrom) && !string.IsNullOrEmpty(displayTo))
+                ? string.Format("{0}_to_{1}", displayFrom, displayTo)
+                : DateTime.Now.ToString("yyyyMMddHHmmss");
+
+            var fileName = string.Format("SSK_ENTERPRISE_SALES_ORDER_DATEWISE_PENDING_CONSOLIDATED_{0}.xls", rangePart);
+
+            return File(bytes, "application/vnd.ms-excel", fileName);
         }
 
         [HttpGet]
