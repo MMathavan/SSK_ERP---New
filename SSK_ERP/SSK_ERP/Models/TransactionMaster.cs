@@ -72,6 +72,41 @@ namespace SSK_ERP.Models
         [Column("TRANTAXBILLNO")]
         public string TRANTAXBILLNO { get; set; }
 
+        [MaxLength(100)]
+        [Column("IRNNO")]
+        public string IRNNO { get; set; }
+
+        [MaxLength(100)]
+        [Column("ACKNO")]
+        public string ACKNO { get; set; }
+
+        [Column("ACKDT")]
+        public DateTime? ACKDT { get; set; }
+
+        [Column("QRCODEPATH")]
+        public string QRCODEPATH { get; set; }
+
+        [MaxLength(100)]
+        [Column("EINV_UPLOADEDBY")]
+        public string EINV_UPLOADEDBY { get; set; }
+
+        [Column("EINV_UPLOADED_DATETIME")]
+        public DateTime? EINV_UPLOADED_DATETIME { get; set; }
+
+        [MaxLength(100)]
+        [Column("SignedInvoice")]
+        public string SignedInvoice { get; set; }
+
+        [MaxLength(100)]
+        [Column("SignedQRCode")]
+        public string SignedQRCode { get; set; }
+
+        [Column("SignedInvoiceURL")]
+        public string SignedInvoiceURL { get; set; }
+
+        [Column("SignedQRCodeURL")]
+        public string SignedQRCodeURL { get; set; }
+
         [Required]
         [Column("TRAN_CRDPRDT")]
         public int TRAN_CRDPRDT { get; set; }

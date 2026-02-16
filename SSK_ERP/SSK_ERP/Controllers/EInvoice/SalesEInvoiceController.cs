@@ -127,7 +127,7 @@ namespace SSK_ERP.Controllers
                                 : (t.TRANREFNO ?? "-"),
                             CustomerName = t.TRANREFNAME ?? string.Empty,
                             Amount = t.TRANNAMT,
-                            AckNo = string.Empty,
+                            AckNo = t.ACKNO ?? string.Empty,
                             Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled"
                         })
                         .ToList();
