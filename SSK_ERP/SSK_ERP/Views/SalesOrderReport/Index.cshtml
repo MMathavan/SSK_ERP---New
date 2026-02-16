@@ -461,12 +461,19 @@
                     return;
                 }
 
-                var url = baseUrl
-                    + '?fromDate=' + encodeURIComponent(fromDate)
-                    + '&toDate=' + encodeURIComponent(toDate)
-                    + '&customerIds=' + encodeURIComponent(selectedIds.join(','));
+                var postUrl = '@Url.Action("ExportCustomerwiseConsolidatedPost", "SalesOrderReport")';
+                if (mode === 'detailed') {
+                    postUrl = '@Url.Action("ExportCustomerwiseDetailedPost", "SalesOrderReport")';
+                }
 
-                window.location = url;
+                var $form = $('<form method="POST" style="display:none;"></form>');
+                $form.attr('action', postUrl);
+                $form.append($('<input type="hidden" name="fromDate" />').val(fromDate));
+                $form.append($('<input type="hidden" name="toDate" />').val(toDate));
+                $form.append($('<input type="hidden" name="customerIds" />').val(selectedIds.join(',')));
+                $('body').append($form);
+                $form.submit();
+                $form.remove();
             });
 
             $('.report-tab-btn').on('click', function () {

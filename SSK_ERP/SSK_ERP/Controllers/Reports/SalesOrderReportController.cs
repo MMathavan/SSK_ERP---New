@@ -392,7 +392,21 @@ namespace SSK_ERP.Controllers
                         text = Convert.ToString(value, CultureInfo.InvariantCulture);
                     }
 
-                    sb.AppendFormat("<td>{0}</td>", HttpUtility.HtmlEncode(text));
+                    var encoded = HttpUtility.HtmlEncode(text);
+                    bool forceText = false;
+                    if (!string.IsNullOrEmpty(text) && text.Length >= 11)
+                    {
+                        forceText = text.All(char.IsDigit);
+                    }
+
+                    if (forceText)
+                    {
+                        sb.AppendFormat("<td style=\"mso-number-format:'\\@';\">{0}</td>", encoded);
+                    }
+                    else
+                    {
+                        sb.AppendFormat("<td>{0}</td>", encoded);
+                    }
                 }
                 sb.AppendLine("</tr>");
             }
@@ -652,7 +666,21 @@ namespace SSK_ERP.Controllers
                         text = Convert.ToString(value, CultureInfo.InvariantCulture);
                     }
 
-                    sb.AppendFormat("<td>{0}</td>", HttpUtility.HtmlEncode(text));
+                    var encoded = HttpUtility.HtmlEncode(text);
+                    bool forceText = false;
+                    if (!string.IsNullOrEmpty(text) && text.Length >= 11)
+                    {
+                        forceText = text.All(char.IsDigit);
+                    }
+
+                    if (forceText)
+                    {
+                        sb.AppendFormat("<td style=\"mso-number-format:'\\@';\">{0}</td>", encoded);
+                    }
+                    else
+                    {
+                        sb.AppendFormat("<td>{0}</td>", encoded);
+                    }
                 }
                 sb.AppendLine("</tr>");
             }
@@ -806,7 +834,21 @@ namespace SSK_ERP.Controllers
                         text = Convert.ToString(value, CultureInfo.InvariantCulture);
                     }
 
-                    sb.AppendFormat("<td>{0}</td>", HttpUtility.HtmlEncode(text));
+                    var encoded = HttpUtility.HtmlEncode(text);
+                    bool forceText = false;
+                    if (!string.IsNullOrEmpty(text) && text.Length >= 11)
+                    {
+                        forceText = text.All(char.IsDigit);
+                    }
+
+                    if (forceText)
+                    {
+                        sb.AppendFormat("<td style=\"mso-number-format:'\\@';\">{0}</td>", encoded);
+                    }
+                    else
+                    {
+                        sb.AppendFormat("<td>{0}</td>", encoded);
+                    }
                 }
                 sb.AppendLine("</tr>");
             }
@@ -1020,7 +1062,21 @@ namespace SSK_ERP.Controllers
                         text = Convert.ToString(value, CultureInfo.InvariantCulture);
                     }
 
-                    sb.AppendFormat("<td>{0}</td>", HttpUtility.HtmlEncode(text));
+                    var encoded = HttpUtility.HtmlEncode(text);
+                    bool forceText = false;
+                    if (!string.IsNullOrEmpty(text) && text.Length >= 11)
+                    {
+                        forceText = text.All(char.IsDigit);
+                    }
+
+                    if (forceText)
+                    {
+                        sb.AppendFormat("<td style=\"mso-number-format:'\\@';\">{0}</td>", encoded);
+                    }
+                    else
+                    {
+                        sb.AppendFormat("<td>{0}</td>", encoded);
+                    }
                 }
                 sb.AppendLine("</tr>");
             }
@@ -1035,6 +1091,13 @@ namespace SSK_ERP.Controllers
             var fileName = string.Format("SSK_ENTERPRISE_SALES_ORDER_CUSTOMER_WISE_CONSOLIDATED_{0}.xls", rangePart);
 
             return File(bytes, "application/vnd.ms-excel", fileName);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SalesOrderReport")]
+        public FileResult ExportCustomerwiseConsolidatedPost(string fromDate = null, string toDate = null, string customerIds = null)
+        {
+            return ExportCustomerwiseConsolidated(fromDate, toDate, customerIds);
         }
 
         [HttpGet]
@@ -1239,7 +1302,21 @@ namespace SSK_ERP.Controllers
                         text = Convert.ToString(value, CultureInfo.InvariantCulture);
                     }
 
-                    sb.AppendFormat("<td>{0}</td>", HttpUtility.HtmlEncode(text));
+                    var encoded = HttpUtility.HtmlEncode(text);
+                    bool forceText = false;
+                    if (!string.IsNullOrEmpty(text) && text.Length >= 11)
+                    {
+                        forceText = text.All(char.IsDigit);
+                    }
+
+                    if (forceText)
+                    {
+                        sb.AppendFormat("<td style=\"mso-number-format:'\\@';\">{0}</td>", encoded);
+                    }
+                    else
+                    {
+                        sb.AppendFormat("<td>{0}</td>", encoded);
+                    }
                 }
                 sb.AppendLine("</tr>");
             }
@@ -1254,6 +1331,13 @@ namespace SSK_ERP.Controllers
             var fileName = string.Format("SSK_ENTERPRISE_SALES_ORDER_CUSTOMER_WISE_DETAILED_{0}.xls", rangePart);
 
             return File(bytes, "application/vnd.ms-excel", fileName);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SalesOrderReport")]
+        public FileResult ExportCustomerwiseDetailedPost(string fromDate = null, string toDate = null, string customerIds = null)
+        {
+            return ExportCustomerwiseDetailed(fromDate, toDate, customerIds);
         }
     }
 }

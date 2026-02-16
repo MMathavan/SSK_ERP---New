@@ -169,11 +169,25 @@ namespace SSK_ERP.Controllers
             return ExportFromView(SiDatewiseConsolidatedView, "SALES INVOICE CUSTOMER WISE - CONSOLIDATED", "SSK_ENTERPRISE_SALES_INVOICE_CUSTOMER_WISE_CONSOLIDATED", fromDate, toDate, customerIds);
         }
 
+        [HttpPost]
+        [Authorize(Roles = "SalesInvoiceReport")]
+        public FileResult ExportCustomerwiseConsolidatedPost(string fromDate = null, string toDate = null, string customerIds = null)
+        {
+            return ExportCustomerwiseConsolidated(fromDate, toDate, customerIds);
+        }
+
         [HttpGet]
         [Authorize(Roles = "SalesInvoiceReport")]
         public FileResult ExportCustomerwiseDetailed(string fromDate = null, string toDate = null, string customerIds = null)
         {
             return ExportFromView(SiDatewiseDetailedView, "SALES INVOICE CUSTOMER WISE - DETAILED", "SSK_ENTERPRISE_SALES_INVOICE_CUSTOMER_WISE_DETAILED", fromDate, toDate, customerIds);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SalesInvoiceReport")]
+        public FileResult ExportCustomerwiseDetailedPost(string fromDate = null, string toDate = null, string customerIds = null)
+        {
+            return ExportCustomerwiseDetailed(fromDate, toDate, customerIds);
         }
 
         private FileResult ExportFromView(
