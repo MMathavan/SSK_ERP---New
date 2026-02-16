@@ -473,21 +473,21 @@
                                         </a>
                                     </li>
                                 }
-                                @if (User.IsInRole("SalesInvoiceReport"))
-                                {
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "SalesInvoiceReport")"
-                                           data-role="SalesInvoiceReport" data-menugroupid="2" data-menuorder="3">
-                                            <i class="bi bi-clipboard2-pulse-fill"></i> Sales Invoice
-                                        </a>
-                                    </li>
-                                }
                                 @if (User.IsInRole("PurchaseInvoiceReport"))
                                 {
                                     <li>
                                         <a class="dropdown-item" href="@Url.Action("Index", "PurchaseInvoiceReport")"
                                            data-role="PurchaseInvoiceReport" data-menugroupid="2" data-menuorder="4">
                                             <i class="fa fa-file-alt"></i> Purchase Invoice
+                                        </a>
+                                    </li>
+                                }
+                                @if (User.IsInRole("SalesInvoiceReport"))
+                                {
+                                    <li>
+                                        <a class="dropdown-item" href="@Url.Action("Index", "SalesInvoiceReport")"
+                                           data-role="SalesInvoiceReport" data-menugroupid="2" data-menuorder="3">
+                                            <i class="bi bi-clipboard2-pulse-fill"></i> Sales Invoice
                                         </a>
                                     </li>
                                 }
