@@ -331,6 +331,8 @@
     <!-- Excluded per cleanup -->
     <!-- <Compile Include="Controllers\ProfileMasterController.cs" /> -->
     <Compile Include="Controllers\RolesController.cs" />
+    <Compile Include="Controllers\EInvoice\SalesEInvoiceController.cs" />
+    <Compile Include="Controllers\EInvoice\CreditNoteEInvoiceController.cs" />
     <Compile Include="Data\AspNetUser.cs">
       <DependentUpon>SSK_ERP.tt</DependentUpon>
     </Compile>
@@ -1167,6 +1169,8 @@
     <Content Include="Content\bootstrap-grid.min.css.map" />
     <Content Include="Content\bootstrap-grid.css.map" />
     <Content Include="Views\SalesOrderUpload\Index.cshtml" />
+    <Content Include="Views\SalesEInvoice\Index.cshtml" />
+    <Content Include="Views\CreditNoteEInvoice\Index.cshtml" />
     <Content Include="Views\CreateDirectPurchaseReturn\Direct.cshtml" />
     <Content Include="Views\CreateDirectSalesReturn\Direct.cshtml" />
     <EntityDeploy Include="Data\SSK_ERP.edmx">
