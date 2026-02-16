@@ -293,9 +293,14 @@
                             var html = '';
                             if (canUpload) {
                                 html += '<a href="' + uploadUrl + '" class="btn btn-action btn-upload"><i class="fa fa-upload"></i> Upload</a>';
+                            } else {
+                                html += '<a href="#" class="btn btn-action btn-upload" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Upload\');"><i class="fa fa-upload"></i> Upload</a>';
                             }
+
                             if (canPrint) {
                                 html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                            } else {
+                                html += '<a href="#" class="btn btn-action btn-print" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Print\');"><i class="fa fa-print"></i> Print</a>';
                             }
                             return html;
                         }
@@ -329,5 +334,20 @@
                 table.ajax.reload();
             });
         });
+
+        function noAccess(actionName) {
+            var msg = (actionName || 'This action') + ' is not allowed. Please contact your administrator.';
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Access Denied',
+                    text: msg,
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                alert(msg);
+            }
+            return false;
+        }
     </script>
 }
