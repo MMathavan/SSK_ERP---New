@@ -431,6 +431,36 @@
                         </li>
                     }
 
+                    @if (Model != null && (User.IsInRole("SalesEInvoiceIndex") || User.IsInRole("CreditNoteEInvoiceIndex")))
+                    {
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="eInvoiceDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-credit-card"></i> E Invoice
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="eInvoiceDropdown">
+                                @if (User.IsInRole("SalesEInvoiceIndex"))
+                                {
+                                    <li>
+                                        <a class="dropdown-item" href="@Url.Action("Index", "SalesEInvoice")"
+                                           data-role="SalesEInvoiceIndex" data-menugroupid="6" data-menuorder="1">
+                                            <i class="bi bi-cash-coin"></i> Sales EInvoice
+                                        </a>
+                                    </li>
+                                }
+                                @if (User.IsInRole("CreditNoteEInvoiceIndex"))
+                                {
+                                    <li>
+                                        <a class="dropdown-item" href="@Url.Action("Index", "CreditNoteEInvoice")"
+                                           data-role="CreditNoteEInvoiceIndex" data-menugroupid="6" data-menuorder="2">
+                                            <i class="bi bi-currency-euro"></i> Credit Note EInvoice
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </li>
+                    }
+
                     @* Tally Menu - Role Based Access Control
                        RMenuGroupId = 3 (Tally)
                        RMenuGroupOrder = 1
