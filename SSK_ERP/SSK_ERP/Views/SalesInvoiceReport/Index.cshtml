@@ -3,13 +3,436 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container-fluid py-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0"><i class="bi bi-clipboard2-pulse-fill"></i> Sales Invoice Report</h4>
+<style>
+    .so-main-container {
+        background: white;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .so-content-wrapper {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .so-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .so-header-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .so-table-container {
+        padding: 30px;
+        background: white;
+    }
+
+    .report-tabs {
+        display: inline-flex;
+        border-radius: 999px;
+        background-color: #f1f3f5;
+        padding: 4px;
+        margin-bottom: 20px;
+    }
+
+    .report-tab-btn {
+        border: none;
+        background: transparent;
+        padding: 8px 20px;
+        border-radius: 999px;
+        font-weight: 600;
+        color: #495057;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+    }
+
+    .report-tab-btn.active {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #ffffff;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .cw-mode-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 15px;
+        justify-content: center;
+    }
+
+    .cw-mode-btn,
+    .dw-mode-btn {
+        border-radius: 20px;
+        border: 1px solid #dee2e6;
+        background-color: #ffffff;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #495057;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .cw-mode-btn.active,
+    .dw-mode-btn.active {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #ffffff;
+        border-color: #4facfe;
+        box-shadow: 0 3px 8px rgba(79, 172, 254, 0.4);
+    }
+
+    .customer-item-row.hidden-by-search {
+        display: none !important;
+    }
+</style>
+
+<div class="so-main-container">
+    <div class="so-content-wrapper">
+        <div class="so-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="so-header-title">
+                    <i class="bi bi-clipboard2-pulse-fill"></i>
+                    Sales Invoice Report
+                </h1>
+            </div>
         </div>
-        <div class="card-body">
-            <p class="text-muted">Configure Sales Invoice Report filters and results here.</p>
+
+        <div class="so-table-container">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="fromDate" class="form-label">From Date</label>
+                    <input type="date" id="fromDate" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label for="toDate" class="form-label">To Date</label>
+                    <input type="date" id="toDate" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" id="filterBtn" class="btn btn-primary me-2">
+                        <i class="fa fa-filter"></i> Filter
+                    </button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                        <i class="fa fa-times"></i> Clear
+                    </button>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div id="filterStatus" style="display:none;">
+                        <small class="text-muted"><span id="filterText"></span></small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="report-tabs">
+                    <button type="button" class="report-tab-btn active" data-target="datewise">Date wise</button>
+                    <button type="button" class="report-tab-btn" data-target="customerwise">Customer Wise</button>
+                </div>
+            </div>
+
+            <div id="datewiseSection">
+                <div class="text-center mb-3">
+                    <label class="mb-1">Select an option</label>
+                    <div class="cw-mode-pills">
+                        <button type="button" class="dw-mode-btn active" data-mode="Consolidated">Consolidated</button>
+                        <button type="button" class="dw-mode-btn" data-mode="Detailed">Detailed</button>
+                        <button type="button" class="dw-mode-btn" data-mode="Pending">Pending</button>
+                    </div>
+                </div>
+                <div id="datewiseContent"></div>
+                <div class="text-center mt-3">
+                    <button type="button" id="btnExportDatewise" class="btn btn-sm btn-outline-success">
+                        <i class="fa fa-file-excel-o"></i> Export to Excel
+                    </button>
+                </div>
+            </div>
+
+            <div id="customerwiseSection" style="display:none;">
+                <div class="text-center mb-3">
+                    <label class="mb-1">Select an option</label>
+                    <div class="cw-mode-pills">
+                        <button type="button" class="cw-mode-btn active" data-mode="Consolidated">Consolidated</button>
+                        <button type="button" class="cw-mode-btn" data-mode="Detailed">Detailed</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="border rounded p-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">Available Customers</h6>
+                                <button type="button" id="btnSelectAllCustomers" class="btn btn-sm btn-outline-primary">
+                                    Select All
+                                </button>
+                            </div>
+                            <input type="text" id="customerSearch" class="form-control mb-2" placeholder="Search customer..." onkeyup="filterAvailableCustomers()" />
+                            <div id="availableCustomerList" style="max-height:350px; overflow-y:auto;">
+                                @if (ViewBag.CustomerList != null)
+                                {
+                                    foreach (SSK_ERP.Models.CustomerMaster c in ViewBag.CustomerList)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center border-bottom py-1 customer-item-row" data-id="@c.CATEID" data-name="@c.CATENAME">
+                                            <span class="customer-name">@c.CATENAME</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-add-customer">Add</button>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">Selected Customers</h6>
+                                <button type="button" id="btnRemoveAllCustomers" class="btn btn-sm btn-outline-danger">
+                                    Remove All
+                                </button>
+                            </div>
+                            <input type="text" id="selectedCustomerSearch" class="form-control mb-2" placeholder="Search selected..." onkeyup="filterSelectedCustomers()" />
+                            <div id="selectedCustomerList" style="max-height:350px; overflow-y:auto;">
+                                <!-- Filled by script -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <button type="button" id="btnExportCustomerwise" class="btn btn-sm btn-outline-success">
+                        <i class="fa fa-file-excel-o"></i> Export to Excel
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+@section scripts {
+    <script type="text/javascript">
+        function filterAvailableCustomers() {
+            var input = document.getElementById('customerSearch');
+            if (!input) return;
+            var term = (input.value || '').toLowerCase();
+            var rows = document.querySelectorAll('#availableCustomerList .customer-item-row');
+            for (var i = 0; i < rows.length; i++) {
+                var txt = (rows[i].textContent || rows[i].innerText || '').toLowerCase();
+                if (!term || txt.indexOf(term) !== -1) {
+                    rows[i].classList.remove('hidden-by-search');
+                } else {
+                    rows[i].classList.add('hidden-by-search');
+                }
+            }
+        }
+
+        function filterSelectedCustomers() {
+            var input = document.getElementById('selectedCustomerSearch');
+            if (!input) return;
+            var term = (input.value || '').toLowerCase();
+            var rows = document.querySelectorAll('#selectedCustomerList .customer-item-row');
+            for (var i = 0; i < rows.length; i++) {
+                var txt = (rows[i].textContent || rows[i].innerText || '').toLowerCase();
+                if (!term || txt.indexOf(term) !== -1) {
+                    rows[i].classList.remove('hidden-by-search');
+                } else {
+                    rows[i].classList.add('hidden-by-search');
+                }
+            }
+        }
+
+        $(document).ready(function () {
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
+            $('#fromDate').val(todayStr);
+            $('#toDate').val(todayStr);
+
+            var consolidatedExportUrl = '@Url.Action("ExportDatewiseConsolidated", "SalesInvoiceReport")';
+            var detailedExportUrl = '@Url.Action("ExportDatewiseDetailed", "SalesInvoiceReport")';
+            var pendingExportUrl = '@Url.Action("ExportDatewisePendingConsolidated", "SalesInvoiceReport")';
+            var cwConsolidatedExportUrl = '@Url.Action("ExportCustomerwiseConsolidated", "SalesInvoiceReport")';
+            var cwDetailedExportUrl = '@Url.Action("ExportCustomerwiseDetailed", "SalesInvoiceReport")';
+
+            function updateFilterStatus() {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+                var statusDiv = $('#filterStatus');
+                var textSpan = $('#filterText');
+
+                if (fromDate || toDate) {
+                    var filterText = 'Filtered: ';
+                    if (fromDate && toDate) {
+                        filterText += fromDate + ' to ' + toDate;
+                    } else if (fromDate) {
+                        filterText += 'From ' + fromDate;
+                    } else if (toDate) {
+                        filterText += 'Until ' + toDate;
+                    }
+                    textSpan.text(filterText);
+                    statusDiv.show();
+                } else {
+                    statusDiv.hide();
+                }
+            }
+
+            $('#filterBtn').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+
+                if (fromDate && toDate && fromDate > toDate) {
+                    alert('From Date cannot be greater than To Date');
+                    return;
+                }
+
+                var $btn = $(this);
+                $btn.html('<i class="fa fa-spinner fa-spin"></i> Filtering...');
+                $btn.prop('disabled', true);
+
+                updateFilterStatus();
+
+                setTimeout(function () {
+                    $btn.html('<i class="fa fa-filter"></i> Filter');
+                    $btn.prop('disabled', false);
+                }, 300);
+            });
+
+            $('#clearBtn').on('click', function () {
+                $('#fromDate').val('');
+                $('#toDate').val('');
+                updateFilterStatus();
+
+                var $btn = $(this);
+                $btn.html('<i class="fa fa-spinner fa-spin"></i> Clearing...');
+                $btn.prop('disabled', true);
+
+                setTimeout(function () {
+                    $btn.html('<i class="fa fa-times"></i> Clear');
+                    $btn.prop('disabled', false);
+                }, 300);
+            });
+
+            $('#btnExportDatewise').on('click', function () {
+                var fromDate = $('#fromDate').val() || '';
+                var toDate = $('#toDate').val() || '';
+
+                var mode = ($('.dw-mode-btn.active').data('mode') || '').toString().toLowerCase();
+                var baseUrl = consolidatedExportUrl;
+                if (mode === 'detailed') {
+                    baseUrl = detailedExportUrl;
+                } else if (mode === 'pending') {
+                    baseUrl = pendingExportUrl;
+                }
+
+                var url = baseUrl
+                    + '?fromDate=' + encodeURIComponent(fromDate)
+                    + '&toDate=' + encodeURIComponent(toDate);
+
+                window.location = url;
+            });
+
+            $('#btnExportCustomerwise').on('click', function () {
+                var fromDate = $('#fromDate').val() || '';
+                var toDate = $('#toDate').val() || '';
+
+                var mode = ($('.cw-mode-btn.active').data('mode') || '').toString().toLowerCase();
+
+                var baseUrl = cwConsolidatedExportUrl;
+                if (mode === 'detailed') {
+                    baseUrl = cwDetailedExportUrl;
+                }
+
+                var selectedIds = [];
+                $('#selectedCustomerList .customer-item-row').each(function () {
+                    var id = $(this).data('id');
+                    if (id !== undefined && id !== null && id !== '') {
+                        selectedIds.push(id);
+                    }
+                });
+
+                if (selectedIds.length === 0) {
+                    alert('Please select at least one customer for Customer wise export.');
+                    return;
+                }
+
+                var url = baseUrl
+                    + '?fromDate=' + encodeURIComponent(fromDate)
+                    + '&toDate=' + encodeURIComponent(toDate)
+                    + '&customerIds=' + encodeURIComponent(selectedIds.join(','));
+
+                window.location = url;
+            });
+
+            $('.report-tab-btn').on('click', function () {
+                $('.report-tab-btn').removeClass('active');
+                $(this).addClass('active');
+
+                var target = $(this).data('target');
+                if (target === 'datewise') {
+                    $('#datewiseSection').show();
+                    $('#customerwiseSection').hide();
+                } else {
+                    $('#datewiseSection').hide();
+                    $('#customerwiseSection').show();
+                }
+            });
+
+            $(document).on('click', '.btn-add-customer', function () {
+                var $row = $(this).closest('.customer-item-row');
+                $row.appendTo('#selectedCustomerList');
+                $(this)
+                    .removeClass('btn-add-customer btn-outline-primary')
+                    .addClass('btn-remove-customer btn-outline-danger')
+                    .text('Remove');
+            });
+
+            $(document).on('click', '.btn-remove-customer', function () {
+                var $row = $(this).closest('.customer-item-row');
+                $row.appendTo('#availableCustomerList');
+                $(this)
+                    .removeClass('btn-remove-customer btn-outline-danger')
+                    .addClass('btn-add-customer btn-outline-primary')
+                    .text('Add');
+            });
+
+            $('#btnSelectAllCustomers').on('click', function () {
+                $('#availableCustomerList .btn-add-customer:visible').each(function () {
+                    $(this).trigger('click');
+                });
+            });
+
+            $(document).on('click', '.cw-mode-btn', function () {
+                $('.cw-mode-btn').removeClass('active');
+                $(this).addClass('active');
+            });
+
+            $(document).on('click', '.dw-mode-btn', function () {
+                $('.dw-mode-btn').removeClass('active');
+                $(this).addClass('active');
+            });
+
+            $('#btnRemoveAllCustomers').on('click', function () {
+                $('#selectedCustomerSearch').val('');
+                $('#selectedCustomerList .customer-item-row').show();
+
+                $('#selectedCustomerList .btn-remove-customer').each(function () {
+                    $(this).trigger('click');
+                });
+            });
+
+            updateFilterStatus();
+
+            setInterval(function () {
+                filterAvailableCustomers();
+                filterSelectedCustomers();
+            }, 400);
+        });
+    </script>
+}
