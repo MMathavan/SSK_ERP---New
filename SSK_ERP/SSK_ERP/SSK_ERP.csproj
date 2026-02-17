@@ -405,6 +405,7 @@
     <!-- <Compile Include="Migrations\202501010000004_AddGovernmentProofTable.Designer.cs" /> -->
     <Compile Include="Models\DepartmentMaster.cs" />
     <Compile Include="Models\DesignationMaster.cs" />
+    <Compile Include="Models\EInvoice.cs" />
     <Compile Include="Models\LocationMaster.cs" />
     <Compile Include="Models\RegionMaster.cs" />
     <Compile Include="Models\MenuMaster.cs" />

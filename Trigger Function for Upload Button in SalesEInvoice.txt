@@ -1,0 +1,62 @@
+        $(document).on("click", "a.EInvoice", function () {
+            var idx = $(this).attr('id');
+            base = window.location.origin;
+            swal({
+                title: "Are you sure?",
+                text: "Are you sure to Upload this Invoice ?",
+                type: "warning",
+                confirmButtonText: "Yes",
+                showCancelButton: true,
+                cancelButtonText: "No",
+                showCloseButton: true
+            }).then((result) => {
+                if (result.value) {
+                    //
+                    $.ajax({
+
+                        type: 'post',
+                        url: '@Url.Action("CInvoice", "SalesEInvoice")/' + idx, // we are calling json method
+                        success: function (jdata) {
+                            //alert(jdata);
+                            if (jdata == "Uploaded Succesfully") {
+                                        swal({
+                                            title: "Saved",
+                                            text: "Sales Invoice Uploaded Successfully !!",
+                                            type: "success",
+                                            timer: 10000
+                                        }).then(function () {
+                                            location.replace(base + "/SalesEInvoice/index");
+                                        }
+                                        );
+                                    }
+                            else {
+                                        swal({
+                                            title: "Error",
+                                            text: jdata,
+                                            type: "warning",
+                                            //timer: 10000
+                                        }).then(function () {
+                                            location.replace(base + "/SalesEInvoice/index");
+                                        }
+                                        );
+                                    }
+
+                        },
+                        error: function (ex) {
+                            alert('Failed to save data ' + ex);
+                        }
+                    });
+
+
+                } else if (result.dismiss === 'cancel') {
+
+                    //
+                    location.replace(base + "/SalesEInvoice/index");
+                    return false;
+                    //
+                }
+            });
+
+
+
+        });//End
