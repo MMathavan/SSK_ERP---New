@@ -22,6 +22,82 @@ namespace SSK_ERP.Controllers
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesInvoiceRegisterId = 20;
 
+        private static bool HasColumn(IDataRecord reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (string.Equals(reader.GetName(i), columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static string GetString(IDataRecord reader, string columnName, string defaultValue = "")
+        {
+            if (!HasColumn(reader, columnName))
+            {
+                return defaultValue;
+            }
+
+            var value = reader[columnName];
+            if (value == null || value == DBNull.Value)
+            {
+                return defaultValue;
+            }
+
+            return Convert.ToString(value);
+        }
+
+        private static int GetInt32(IDataRecord reader, string columnName, int defaultValue = 0)
+        {
+            if (!HasColumn(reader, columnName))
+            {
+                return defaultValue;
+            }
+
+            var value = reader[columnName];
+            if (value == null || value == DBNull.Value)
+            {
+                return defaultValue;
+            }
+
+            return Convert.ToInt32(value);
+        }
+
+        private static decimal GetDecimal(IDataRecord reader, string columnName, decimal defaultValue = 0)
+        {
+            if (!HasColumn(reader, columnName))
+            {
+                return defaultValue;
+            }
+
+            var value = reader[columnName];
+            if (value == null || value == DBNull.Value)
+            {
+                return defaultValue;
+            }
+
+            return Convert.ToDecimal(value);
+        }
+
+        private static string GetDateString(IDataRecord reader, string columnName, string format, string defaultValue = "")
+        {
+            if (!HasColumn(reader, columnName))
+            {
+                return defaultValue;
+            }
+
+            var value = reader[columnName];
+            if (value == null || value == DBNull.Value)
+            {
+                return defaultValue;
+            }
+
+            return Convert.ToDateTime(value).Date.ToString(format);
+        }
+
         private class SalesEInvoiceListRow
         {
             public int TRANMID { get; set; }
@@ -166,278 +242,286 @@ namespace SSK_ERP.Controllers
 
         public async Task<ActionResult> CInvoice(int id = 0)/*10rs.reminder*/
         {
-
-            SqlDataReader reader = null;
-            //SqlDataReader Sreader = null;
-            string _connStr = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
-            SqlConnection myConnection = new SqlConnection(_connStr);
-
-            string _SconnStr = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
-            SqlConnection SmyConnection = new SqlConnection(_SconnStr);
-
-            var tranmid = id;// Convert.ToInt32(Request.Form.Get("id"));// Convert.ToInt32(ids);
-
-            SqlCommand sqlCmd = new SqlCommand();
-            sqlCmd.CommandType = CommandType.Text;
-            sqlCmd.CommandText = "Select * from Z_SALES_EINVOICE_DETAILS Where TRANMID = " + tranmid;
-            sqlCmd.Connection = myConnection;
-            myConnection.Open();
-            reader = sqlCmd.ExecuteReader();
-
-            int custgid = 0;
-            string suptyp = "";
-            string stringjson = "";
-
-            decimal itemamt = 0;
-            decimal taxblamt = 0;
-            decimal discamt = 0;
-            decimal roff_amt = 0;
-
-            decimal cgst_amt = 0;
-            decimal sgst_amt = 0;
-            decimal igst_amt = 0;
-
-            string ewaybillno = null;
-            string trnsprtgstinno = null;
-            string trnsprtname = null;
-            int distance = 0;
-            string TransDocNo = null;
-            string TransDocDt = null;
-            string vhlno = null;
-            string VehType = null;
-            string TransMode = null;
-
-            while (reader.Read())
+            SqlConnection myConnection = null;
+            try
             {
-                if (reader["EWAYBILLNO"].ToString() != "")
+                var showJson = string.Equals(Request.QueryString["showjson"], "1", StringComparison.OrdinalIgnoreCase);
+                SqlDataReader reader = null;
+                //SqlDataReader Sreader = null;
+                var connSettings = ConfigurationManager.ConnectionStrings["DefaultConnection"]
+                    ?? ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"];
+                if (connSettings == null || string.IsNullOrWhiteSpace(connSettings.ConnectionString))
                 {
-                    ewaybillno = reader["EWAYBILLNO"].ToString();
-                    trnsprtgstinno = reader["TRNSPRTGSTINNO"].ToString();
-                    trnsprtname = reader["TRNSPRTNAME"].ToString();
-                    distance = Convert.ToInt32(reader["DISTANCE"]);
-                    TransDocNo = reader["TRANDNO"].ToString();
-                    TransDocDt = Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy");
-                    vhlno = reader["VHLNO"].ToString();
-                    VehType = "R";
-                    TransMode = "1";
+                    return Content("Connection string not found. Please configure 'DefaultConnection' or 'SSK_DefaultConnection' in Web.config.");
                 }
 
+                string _connStr = connSettings.ConnectionString;
+                myConnection = new SqlConnection(_connStr);
 
-                itemamt = Convert.ToDecimal(reader["DGAMT"]);
-                taxblamt = Convert.ToDecimal(reader["TRANGAMT"]);
+                var tranmid = id;// Convert.ToInt32(Request.Form.Get("id"));// Convert.ToInt32(ids);
 
-                cgst_amt = Convert.ToDecimal(reader["TRANCGSTAMT"]);
-                sgst_amt = Convert.ToDecimal(reader["TRANSGSTAMT"]);
-                igst_amt = Convert.ToDecimal(reader["TRANIGSTAMT"]);
+                SqlCommand sqlCmd = new SqlCommand();
+                sqlCmd.CommandType = CommandType.Text;
+                sqlCmd.CommandText = "Select * from Z_SALES_EINVOICE_DETAILS Where TRANMID = " + tranmid;
+                sqlCmd.Connection = myConnection;
+                myConnection.Open();
+                reader = sqlCmd.ExecuteReader();
 
-                discamt = Convert.ToDecimal(reader["DISCAMT"]);
+                int custgid = 0;
+                string suptyp = "";
+                string stringjson = "";
 
-                roff_amt = Convert.ToDecimal(reader["TRANROAMT"]);
+                decimal taxblamt = 0;
+                decimal discamt = 0;
+                decimal roff_amt = 0;
 
-                custgid = Convert.ToInt32(reader["CUSTGID"]);
-                switch (custgid)
+                decimal cgst_amt = 0;
+                decimal sgst_amt = 0;
+                decimal igst_amt = 0;
+
+                while (reader.Read())
                 {
-                    case 6:
-                        suptyp = "SEZWP";
-                        break;
-                    default:
-                        suptyp = "B2B";
-                        break;
-                }
+                    taxblamt = GetDecimal(reader, "TRANGAMT");
 
-                var response = new Response()
-                {
-                    Version = "1.1",
+                    cgst_amt = GetDecimal(reader, "TRANCGSTAMT");
+                    sgst_amt = GetDecimal(reader, "TRANSGSTAMT");
+                    igst_amt = GetDecimal(reader, "TRANIGSTAMT");
 
-                    TranDtls = new TranDtls()
+                    discamt = GetDecimal(reader, "DISCAMT");
+                    roff_amt = GetDecimal(reader, "TRANROAMT");
+
+                    custgid = GetInt32(reader, "CUSTGID");
+                    switch (custgid)
                     {
-                        TaxSch = "GST",
-                        SupTyp = suptyp,//"B2B",
-                        RegRev = "N",
-                        EcmGstin = null,
-                        IgstOnIntra = "N"
-                    },
+                        case 6:
+                            suptyp = "SEZWP";
+                            break;
+                        default:
+                            suptyp = "B2B";
+                            break;
+                    }
 
-                    DocDtls = new DocDtls()
+                    var response = new Response()
                     {
-                        Typ = "INV",
-                        No = reader["TRANDNO"].ToString(),
-                        Dt = Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy")
-                    },
+                        Version = "1.1",
 
-                    SellerDtls = new SellerDtls()
-                    {
-                        Gstin = reader["COMPGSTNO"].ToString(),
-                        LglNm = reader["COMPNAME"].ToString(),
-                        Addr1 = reader["COMPADDR1"].ToString(),
-                        Addr2 = reader["COMPADDR2"].ToString(),
-                        Loc = reader["COMPLOCTDESC"].ToString(),
-                        Pin = Convert.ToInt32(reader["COMPPINCODE"]),
-                        Stcd = reader["COMPSTATECODE"].ToString(),
-                        Ph = reader["COMPPHN1"].ToString(),
-                        Em = reader["COMPMAIL"].ToString()
-                    },
-
-                    BuyerDtls = new BuyerDtls()
-                    {
-                        Gstin = reader["CATEBGSTNO"].ToString(),
-                        LglNm = reader["TRANREFNAME"].ToString(),
-                        Pos = reader["STATECODE"].ToString(),
-                        Addr1 = reader["TRAN_CUST_ADDR1"].ToString(),
-                        Addr2 = reader["TRAN_CUST_ADDR2"].ToString(),
-                        Loc = reader["TRAN_CUST_LOCTDESC"].ToString(),
-                        Pin = Convert.ToInt32(reader["TRAN_CUST_PINCODE"]),
-                        Stcd = reader["STATECODE"].ToString(),
-                        Ph = reader["CATECPHN1"].ToString(),
-                        Em = null// reader["CATEMAIL"].ToString()
-                    },
-
-                    ValDtls = new ValDtls()
-                    {
-                        AssVal = taxblamt,// Convert.ToDecimal(reader["HANDL_TAXABLE_AMT"]),
-                        CesVal = 0,
-                        CgstVal = cgst_amt,// Convert.ToDecimal(reader["HANDL_CGST_AMT"]),
-                        IgstVal = igst_amt,// Convert.ToDecimal(reader["HANDL_IGST_AMT"]),
-                        OthChrg = 0,
-                        SgstVal = sgst_amt,// Convert.ToDecimal(reader["HANDL_sGST_AMT"]),
-                        Discount = discamt,
-                        StCesVal = 0,
-                        RndOffAmt = roff_amt,
-                        TotInvVal = Convert.ToDecimal(reader["TRANNAMT"]),
-                        TotItemValSum = taxblamt,//Convert.ToDecimal(reader["TOTALITEMVAL"])
-                    },
-
-                    //EwbDtls = new EwbDtls()
-                    //{
-                    //    TransId = trnsprtgstinno,// reader["EWAYBILLNO"].ToString(),// Convert.ToDecimal(reader["HANDL_TAXABLE_AMT"]),
-                    //    TransName = trnsprtname,//reader["TRNSPRTNAME"].ToString(),
-                    //    Distance = distance,//Convert.ToInt32(reader["DISTANCE"]),
-                    //    TransDocNo = TransDocNo,//reader["TRANDNO"].ToString(),
-                    //    TransDocDt = TransDocDt,//Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy"),
-                    //    VehNo = vhlno,//reader["VHLNO"].ToString(),
-                    //    VehType = VehType,//"R",
-                    //    TransMode = TransMode,//"1"
-                    //},
-
-                    ItemList = GetItemList(tranmid),
-
-                };
-
-                stringjson = JsonConvert.SerializeObject(response);
-
-
-            }
-
-            SmyConnection.Close();
-            myConnection.Close();
-
-            string msg = "";
-
-            using (var httpClient = new HttpClient())
-            {
-                using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
-                {
-                    // Replace with your authorization code
-                    request.Headers.TryAddWithoutValidation("Token", "3a3b2ee0-677a-4cb7-b8d4-5e26adf35dce");
-
-                    //// Replace with your E-Invoice JSON data
-                    request.Content = new StringContent(stringjson);
-                    request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-
-                    var response = await httpClient.SendAsync(request);
-
-
-                    if (response != null)
-                    {
-                        var jsonString = await response.Content.ReadAsStringAsync();
-                        var data = (JObject)JsonConvert.DeserializeObject(jsonString);
-
-
-                        var status = 0;
-                        string zirnno = "";// param[2].ToString();
-                        string zackdt = "";//param[3].ToString();
-                        string zackno = "";//param[4].ToString();
-                        string imgUrl = "";
-
-                        msg = data["message"].Value<string>();
-
-                        status = data["status"].Value<int>();
-
-                        //if (zparam[0] != "") { status = (Convert.ToInt32(zparam[0].Substring(9))); } else { status = 0; }
-                        //if (zparam[1] != "") { msg = zparam[1].Substring(10); } else { msg = ""; }
-                        if (status == 1)
+                        TranDtls = new TranDtls()
                         {
-                            msg = data["message"].Value<string>();
-                            zirnno = data["Irn"].Value<string>();
-                            zackdt = data["AckDt"].Value<string>();
-                            zackno = data["AckNo"].Value<string>();
-                            imgUrl = data["SignedQrCodeImgUrl"].Value<string>();
+                            TaxSch = "GST",
+                            SupTyp = suptyp,//"B2B",
+                            RegRev = "N",
+                            EcmGstin = null,
+                            IgstOnIntra = "N"
+                        },
 
-                            var imageFileUrl = "";
-                            var newimageurl = "";
+                        DocDtls = new DocDtls()
+                        {
+                            Typ = "INV",
+                            No = GetString(reader, "TRANDNO"),
+                            Dt = GetDateString(reader, "TRANDATE", "dd/MM/yyyy")
+                        },
 
+                        SellerDtls = new SellerDtls()
+                        {
+                            Gstin = GetString(reader, "COMPGSTNO"),
+                            LglNm = GetString(reader, "COMPNAME"),
+                            Addr1 = GetString(reader, "COMPADDR1"),
+                            Addr2 = GetString(reader, "COMPADDR2"),
+                            Loc = GetString(reader, "COMPLOCTDESC"),
+                            Pin = GetInt32(reader, "COMPPINCODE"),
+                            Stcd = GetString(reader, "COMPSTATECODE"),
+                            Ph = GetString(reader, "COMPPHN1"),
+                            Em = GetString(reader, "COMPMAIL")
+                        },
 
-                            if (imgUrl != "")
+                        BuyerDtls = new BuyerDtls()
+                        {
+                            Gstin = GetString(reader, "CATEBGSTNO"),
+                            LglNm = GetString(reader, "TRANREFNAME"),
+                            Pos = GetString(reader, "STATECODE"),
+                            Addr1 = GetString(reader, "TRAN_CUST_ADDR1"),
+                            Addr2 = GetString(reader, "TRAN_CUST_ADDR2"),
+                            Loc = GetString(reader, "TRAN_CUST_LOCTDESC"),
+                            Pin = GetInt32(reader, "TRAN_CUST_PINCODE"),
+                            Stcd = GetString(reader, "STATECODE"),
+                            Ph = GetString(reader, "CATECPHN1"),
+                            Em = null// reader["CATEMAIL"].ToString()
+                        },
+
+                        ValDtls = new ValDtls()
+                        {
+                            AssVal = taxblamt,// Convert.ToDecimal(reader["HANDL_TAXABLE_AMT"]),
+                            CesVal = 0,
+                            CgstVal = cgst_amt,// Convert.ToDecimal(reader["HANDL_CGST_AMT"]),
+                            IgstVal = igst_amt,// Convert.ToDecimal(reader["HANDL_IGST_AMT"]),
+                            OthChrg = 0,
+                            SgstVal = sgst_amt,// Convert.ToDecimal(reader["HANDL_sGST_AMT"]),
+                            Discount = discamt,
+                            StCesVal = 0,
+                            RndOffAmt = roff_amt,
+                            TotInvVal = GetDecimal(reader, "TRANNAMT"),
+                            TotItemValSum = taxblamt,//Convert.ToDecimal(reader["TOTALITEMVAL"])
+                        },
+
+                        ItemList = GetItemList(tranmid),
+
+                    };
+
+                    stringjson = JsonConvert.SerializeObject(response);
+                }
+
+                string msg = "";
+                string portalResponseRaw = "";
+                int portalHttpStatus = 0;
+                string portalHttpReason = "";
+
+                using (var httpClient = new HttpClient())
+                {
+                    using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
+                    {
+                        request.Headers.TryAddWithoutValidation("Token", "3a3b2ee0-677a-4cb7-b8d4-5e26adf35dce");
+
+                        request.Content = new StringContent(stringjson);
+                        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+
+                        var response = await httpClient.SendAsync(request);
+
+                        if (response != null)
+                        {
+                            portalHttpStatus = (int)response.StatusCode;
+                            portalHttpReason = response.ReasonPhrase;
+                            var jsonString = await response.Content.ReadAsStringAsync();
+                            portalResponseRaw = jsonString;
+                            JObject data = null;
+                            try
                             {
-                                imageFileUrl = imgUrl;// imgUrl.Substring(7, imgUrl.Length - 7);
-                                                      //newimageurl = "https://my.gstzen.in/~jdhwmhsdtr/a/invoices/" + imageFileUrl + "/einvoice/qrcode/.png/";
-                                newimageurl = "https://my.gstzen.in" + imageFileUrl;// + "/.png/";
+                                data = (JObject)JsonConvert.DeserializeObject(jsonString);
+                            }
+                            catch
+                            {
+                                data = null;
                             }
 
-                            SqlConnection GmyConnection = new SqlConnection(_connStr);
-                            SqlCommand cmd = new SqlCommand("pr_IRN_Transaction_Update_Assgn_N01", GmyConnection);
-                            cmd.CommandType = CommandType.StoredProcedure;
-                            //cmd.Parameters.AddWithValue("@CustomerID", 0);    
-                            cmd.Parameters.AddWithValue("@PTranMID", tranmid);
-                            cmd.Parameters.AddWithValue("@PIRNNO", zirnno);
-                            cmd.Parameters.AddWithValue("@PACKNO", zackno);
-                            cmd.Parameters.AddWithValue("@PACKDT", Convert.ToDateTime(zackdt));
-                            cmd.Parameters.AddWithValue("@PCUSRID", Session["CUSRID"].ToString());
-                            cmd.Parameters.AddWithValue("@PSignedQRCode", imageFileUrl);
-                            cmd.Parameters.AddWithValue("@PSignedQRCodeURL", newimageurl);
-                            GmyConnection.Open();
-                            cmd.ExecuteNonQuery();
-                            GmyConnection.Close();
+                            if (data == null)
+                            {
+                                msg = string.IsNullOrWhiteSpace(jsonString) ? "Empty response from portal." : jsonString;
+                            }
+                            else
+                            {
 
-                            //string remoteFileUrl = "https://my.gstzen.in/" + imgUrl;
-                            //string remoteFileUrl = "https://fusiontec.com//entexebill//images//qrcode.png";
-                            string localFileName = tranmid.ToString() + ".png";
+                                var status = 0;
+                                string zirnno = "";// param[2].ToString();
+                                string zackdt = "";//param[3].ToString();
+                                string zackno = "";//param[4].ToString();
+                                string imgUrl = "";
 
-                            string path = Server.MapPath("~/QrCode");
+                                msg = data["message"] != null ? data["message"].Value<string>() : "";
+                                status = data["status"] != null ? data["status"].Value<int>() : 0;
 
+                                if (status == 1)
+                                {
+                                    msg = data["message"] != null ? data["message"].Value<string>() : msg;
+                                    zirnno = data["Irn"] != null ? data["Irn"].Value<string>() : "";
+                                    zackdt = data["AckDt"] != null ? data["AckDt"].Value<string>() : "";
+                                    zackno = data["AckNo"] != null ? data["AckNo"].Value<string>() : "";
+                                    imgUrl = data["SignedQrCodeImgUrl"] != null ? data["SignedQrCodeImgUrl"].Value<string>() : "";
 
-                            WebClient webClient = new WebClient();
-                            //webClient.DownloadFile(remoteFileUrl, path + "\\" + localFileName);
-                            webClient.DownloadFile(newimageurl, path + "\\" + localFileName);
+                                    var imageFileUrl = "";
+                                    var newimageurl = "";
 
-                            SqlConnection XmyConnection = new SqlConnection(_connStr);
-                            SqlCommand Xcmd = new SqlCommand("pr_Transaction_QrCode_Path_Update_Assgn", XmyConnection);
-                            Xcmd.CommandType = CommandType.StoredProcedure;
-                            //cmd.Parameters.AddWithValue("@CustomerID", 0);    
-                            Xcmd.Parameters.AddWithValue("@PTranMID", tranmid);
-                            Xcmd.Parameters.AddWithValue("@PPath", path + "\\" + localFileName);
-                            XmyConnection.Open();
-                            Xcmd.ExecuteNonQuery();
-                            //result = cmd.ExecuteScalar().ToString();
-                            XmyConnection.Close();
+                                    if (imgUrl != "")
+                                    {
+                                        imageFileUrl = imgUrl;
+                                        newimageurl = "https://my.gstzen.in" + imageFileUrl;
+                                    }
 
-                            msg = "Uploaded Succesfully";
-                        }
-                        else
-                        {
+                                    SqlConnection GmyConnection = new SqlConnection(_connStr);
+                                    SqlCommand cmd = new SqlCommand("pr_IRN_Transaction_Update_Assgn_N01", GmyConnection);
+                                    cmd.CommandType = CommandType.StoredProcedure;
+                                    cmd.Parameters.AddWithValue("@PTranMID", tranmid);
+                                    cmd.Parameters.AddWithValue("@PIRNNO", zirnno);
+                                    cmd.Parameters.AddWithValue("@PACKNO", zackno);
+                                    cmd.Parameters.AddWithValue("@PACKDT", Convert.ToDateTime(zackdt));
+                                    cmd.Parameters.AddWithValue("@PCUSRID", Session["CUSRID"].ToString());
+                                    cmd.Parameters.AddWithValue("@PSignedQRCode", imageFileUrl);
+                                    cmd.Parameters.AddWithValue("@PSignedQRCodeURL", newimageurl);
+                                    GmyConnection.Open();
+                                    cmd.ExecuteNonQuery();
+                                    GmyConnection.Close();
 
+                                    string localFileName = tranmid.ToString() + ".png";
+                                    string path = Server.MapPath("~/QrCode");
+
+                                    WebClient webClient = new WebClient();
+                                    webClient.DownloadFile(newimageurl, path + "\\" + localFileName);
+
+                                    SqlConnection XmyConnection = new SqlConnection(_connStr);
+                                    SqlCommand Xcmd = new SqlCommand("pr_Transaction_QrCode_Path_Update_Assgn", XmyConnection);
+                                    Xcmd.CommandType = CommandType.StoredProcedure;
+                                    Xcmd.Parameters.AddWithValue("@PTranMID", tranmid);
+                                    Xcmd.Parameters.AddWithValue("@PPath", path + "\\" + localFileName);
+                                    XmyConnection.Open();
+                                    Xcmd.ExecuteNonQuery();
+                                    XmyConnection.Close();
+
+                                    msg = "Uploaded Succesfully";
+                                }
+                            }
                         }
                     }
 
+                    if (showJson)
+                    {
+                        var payload = new
+                        {
+                            message = msg,
+                            requestJson = stringjson,
+                            responseJson = portalResponseRaw,
+                            portalHttpStatus = portalHttpStatus,
+                            portalHttpReason = portalHttpReason
+                        };
+                        return Content(JsonConvert.SerializeObject(payload), "application/json");
+                    }
+
+                    return Content(msg);
                 }
             }
-            return Content(msg);
+            catch (Exception ex)
+            {
+                var showJson = string.Equals(Request.QueryString["showjson"], "1", StringComparison.OrdinalIgnoreCase);
+                if (showJson)
+                {
+                    var payload = new
+                    {
+                        message = ex.Message,
+                        requestJson = "",
+                        responseJson = ""
+                    };
+                    return Content(JsonConvert.SerializeObject(payload), "application/json");
+                }
+
+                return Content(ex.Message);
+            }
+            finally
+            {
+                if (myConnection != null)
+                {
+                    try { myConnection.Close(); } catch { }
+                }
+            }
         }
 
         private List<Models.EInvoice.ItemList> GetItemList(int id)
         {
             SqlDataReader reader = null;
-            string _connStr = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+            var connSettings = ConfigurationManager.ConnectionStrings["DefaultConnection"]
+                ?? ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"];
+            if (connSettings == null || string.IsNullOrWhiteSpace(connSettings.ConnectionString))
+            {
+                return new List<Models.EInvoice.ItemList>();
+            }
+
+            string _connStr = connSettings.ConnectionString;
             SqlConnection myConnection = new SqlConnection(_connStr);
 
             SqlCommand sqlCmd = new SqlCommand("pr_EInvoice_Sales_Transaction_Detail_Assgn", myConnection);
@@ -455,22 +539,22 @@ namespace SSK_ERP.Controllers
                 ItemList.Add(new Models.EInvoice.ItemList
                 {
                     SlNo = 1,
-                    PrdDesc = reader["PrdDesc"].ToString(),
+                    PrdDesc = GetString(reader, "PrdDesc"),
                     IsServc = "Y",
-                    HsnCd = reader["HsnCd"].ToString(),
+                    HsnCd = GetString(reader, "HsnCd"),
                     Barcde = "123456",
-                    Qty = Convert.ToDecimal(reader["Qty"]),
+                    Qty = GetDecimal(reader, "Qty"),
                     FreeQty = 0,
-                    Unit = reader["UnitCode"].ToString(),
-                    UnitPrice = Convert.ToDecimal(reader["UnitPrice"]),
-                    TotAmt = Convert.ToDecimal(reader["TotAmt"]),
-                    Discount = Convert.ToDecimal(reader["DiscAmt"]),
+                    Unit = GetString(reader, "UnitCode"),
+                    UnitPrice = GetDecimal(reader, "UnitPrice"),
+                    TotAmt = GetDecimal(reader, "TotAmt"),
+                    Discount = GetDecimal(reader, "DiscAmt"),
                     PreTaxVal = 1,
-                    AssAmt = Convert.ToDecimal(reader["AssAmt"]),
-                    GstRt = Convert.ToDecimal(reader["GstRt"]),
-                    IgstAmt = Convert.ToDecimal(reader["IgstAmt"]),
-                    CgstAmt = Convert.ToDecimal(reader["CgstAmt"]),
-                    SgstAmt = Convert.ToDecimal(reader["SgstAmt"]),
+                    AssAmt = GetDecimal(reader, "AssAmt"),
+                    GstRt = GetDecimal(reader, "GstRt"),
+                    IgstAmt = GetDecimal(reader, "IgstAmt"),
+                    CgstAmt = GetDecimal(reader, "CgstAmt"),
+                    SgstAmt = GetDecimal(reader, "SgstAmt"),
                     CesRt = 0,
                     CesAmt = 0,
                     CesNonAdvlAmt = 0,
@@ -478,7 +562,7 @@ namespace SSK_ERP.Controllers
                     StateCesAmt = 0,
                     StateCesNonAdvlAmt = 0,
                     OthChrg = 0,
-                    TotItemVal = Convert.ToDecimal(reader["TotItemVal"])
+                    TotItemVal = GetDecimal(reader, "TotItemVal")
                     //OrdLineRef = "",
                     //OrgCntry = "",
                     //PrdSlNo = ""
@@ -491,3 +575,4 @@ namespace SSK_ERP.Controllers
 
     }
 }
+

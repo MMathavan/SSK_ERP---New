@@ -287,12 +287,12 @@
                         orderable: false,
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
-                            var uploadUrl = '@Url.Action("Upload", "SalesEInvoice")' + '?id=' + id;
+                            var uploadUrl = '@Url.Action("CInvoice", "SalesEInvoice")' + '/' + id;
                             var printUrl = '@Url.Action("Print", "SalesEInvoice")' + '?id=' + id;
 
                             var html = '';
                             if (canUpload) {
-                                html += '<a href="' + uploadUrl + '" class="btn btn-action btn-upload"><i class="fa fa-upload"></i> Upload</a>';
+                                html += '<a href="javascript:void(0)" class="btn btn-action btn-upload EInvoice" id="' + id + '"><i class="fa fa-upload"></i> Upload</a>';
                             } else {
                                 html += '<a href="#" class="btn btn-action btn-upload" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Upload\');"><i class="fa fa-upload"></i> Upload</a>';
                             }
@@ -334,6 +334,115 @@
                 table.ajax.reload();
             });
         });
+
+        $(document).on("click", "a.EInvoice", function () {
+            var idx = $(this).attr('id');
+            base = window.location.origin;
+            var showConfirm = function () {
+                if (window.Swal && Swal.fire) {
+                    return Swal.fire({
+                        title: "Are you sure?",
+                        text: "Are you sure to Upload this Invoice ?",
+                        icon: "warning",
+                        confirmButtonText: "Yes",
+                        showCancelButton: true,
+                        cancelButtonText: "No",
+                        showCloseButton: true
+                    });
+                }
+                return swal({
+                    title: "Are you sure?",
+                    text: "Are you sure to Upload this Invoice ?",
+                    type: "warning",
+                    confirmButtonText: "Yes",
+                    showCancelButton: true,
+                    cancelButtonText: "No",
+                    showCloseButton: true
+                });
+            };
+
+            showConfirm().then((result) => {
+                var isConfirmed = (result && (result.value === true || result.isConfirmed === true));
+                var isCancel = (result && (result.dismiss === 'cancel' || result.isDismissed === true));
+                if (isConfirmed) {
+                    $.ajax({
+                        type: 'post',
+                        url: '@Url.Action("CInvoice", "SalesEInvoice")/' + idx + '?showjson=1',
+                        success: function (jdata) {
+                            var serverMsg = jdata;
+                            if (jdata && typeof jdata === 'object' && jdata.message !== undefined) {
+                                serverMsg = jdata.message;
+                                var combined = 'REQUEST JSON:\n\n' + (jdata.requestJson || '') + '\n\n\nRESPONSE JSON:\n\n' + (jdata.responseJson || '');
+                                if (window.Swal && Swal.fire) {
+                                    Swal.fire({
+                                        title: 'EInvoice JSON',
+                                        html: '<textarea class="form-control" style="width:100%;height:360px;" readonly>' + (combined || '') + '</textarea>',
+                                        confirmButtonText: 'OK'
+                                    });
+                                } else {
+                                    alert(combined);
+                                }
+                            }
+
+                            if (serverMsg == "Uploaded Succesfully") {
+                                if (window.Swal && Swal.fire) {
+                                    Swal.fire({
+                                        title: "Saved",
+                                        text: "Sales Invoice Uploaded Successfully !!",
+                                        icon: "success",
+                                        timer: 10000
+                                    }).then(function () {
+                                        location.replace(base + "/SalesEInvoice/index");
+                                    });
+                                } else {
+                                    swal({
+                                        title: "Saved",
+                                        text: "Sales Invoice Uploaded Successfully !!",
+                                        type: "success",
+                                        timer: 10000
+                                    }).then(function () {
+                                        location.replace(base + "/SalesEInvoice/index");
+                                    });
+                                }
+                            }
+                            else {
+                                if (window.Swal && Swal.fire) {
+                                    Swal.fire({
+                                        title: "Error",
+                                        text: serverMsg,
+                                        icon: "warning",
+                                    }).then(function () {
+                                        location.replace(base + "/SalesEInvoice/index");
+                                    });
+                                } else {
+                                    swal({
+                                        title: "Error",
+                                        text: serverMsg,
+                                        type: "warning",
+                                    }).then(function () {
+                                        location.replace(base + "/SalesEInvoice/index");
+                                    });
+                                }
+                            }
+                        },
+                        error: function (xhr, status, err) {
+                            var details = '';
+                            if (xhr && xhr.responseText) {
+                                details = xhr.responseText;
+                            } else if (err) {
+                                details = err;
+                            } else {
+                                details = status;
+                            }
+                            alert('Failed to save data: ' + details);
+                        }
+                    });
+                } else if (isCancel) {
+                    location.replace(base + "/SalesEInvoice/index");
+                    return false;
+                }
+            });
+        });//End
 
         function noAccess(actionName) {
             var msg = (actionName || 'This action') + ' is not allowed. Please contact your administrator.';
