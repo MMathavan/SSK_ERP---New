@@ -1155,40 +1155,180 @@ namespace SSK_ERP.Controllers
             {
                 return RedirectToAction("Login");
             }
-            var user = _db.Users.FirstOrDefault(u => u.UserName == id || u.Id == id);
-            if (user == null) return HttpNotFound();
+
+            var step = "start";
             try
             {
-                bool deletingSelf = string.Equals(user.UserName, User.Identity.Name, StringComparison.OrdinalIgnoreCase);
-
-                // Remove group memberships
-                var memberships = _db.Set<ApplicationUserGroup>().Where(ug => ug.UserId == user.Id).ToList();
-                if (memberships.Any())
+                if (string.IsNullOrWhiteSpace(id))
                 {
-                    _db.Set<ApplicationUserGroup>().RemoveRange(memberships);
+                    return RedirectToAction("Index");
                 }
 
-                // Remove identity roles
-                var roles = UserManager.GetRoles(user.Id).ToArray();
-                if (roles.Length > 0)
+                var currentUserName = Session != null ? Convert.ToString(Session["CUSRID"]) : null;
+                if (!string.IsNullOrWhiteSpace(currentUserName) &&
+                    string.Equals(currentUserName, id, StringComparison.OrdinalIgnoreCase))
                 {
-                    await UserManager.RemoveFromRolesAsync(user.Id, roles);
+                    TempData["ErrorMessage"] = "You cannot delete the currently logged-in user.";
+                    return RedirectToAction("Index");
                 }
 
-                // Delete user via EF context to avoid NotSupportedException from provider
-                _db.Users.Remove(user);
-                _db.SaveChanges();
-
-                if (deletingSelf)
+                // Load from the same DbContext instance used for deletion to avoid cross-context tracking issues.
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == id);
+                if (user == null)
                 {
-                    Authentication.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
-                    Session.Clear();
-                    Session.Abandon();
+                    TempData["ErrorMessage"] = "User not found.";
+                    return RedirectToAction("Index");
                 }
+
+                using (var tx = _db.Database.BeginTransaction())
+                {
+                    step = "remove roles";
+                    var roles = await UserManager.GetRolesAsync(user.Id);
+                    if (roles != null && roles.Count > 0)
+                    {
+                        await UserManager.RemoveFromRolesAsync(user.Id, roles.ToArray());
+                    }
+
+                    // Remove dependent records that may block deletion via FK constraints
+                    // Subscription table schema differs between deployments; delete by whichever link column exists.
+                    step = "delete subscription";
+                    _db.Database.ExecuteSqlCommand(@"
+IF OBJECT_ID('[dbo].[Subscription]', 'U') IS NOT NULL
+BEGIN
+    DECLARE @col SYSNAME = NULL;
+    DECLARE @val NVARCHAR(256) = NULL;
+    DECLARE @sql NVARCHAR(MAX) = NULL;
+
+    IF COL_LENGTH('[dbo].[Subscription]', 'UserId') IS NOT NULL
+    BEGIN
+        SET @col = 'UserId';
+        SET @val = @p0;
+    END
+    ELSE IF COL_LENGTH('[dbo].[Subscription]', 'USERID') IS NOT NULL
+    BEGIN
+        SET @col = 'USERID';
+        SET @val = @p0;
+    END
+    ELSE IF COL_LENGTH('[dbo].[Subscription]', 'CUSRID') IS NOT NULL
+    BEGIN
+        SET @col = 'CUSRID';
+        SET @val = @p1;
+    END
+    ELSE IF COL_LENGTH('[dbo].[Subscription]', 'UserName') IS NOT NULL
+    BEGIN
+        SET @col = 'UserName';
+        SET @val = @p1;
+    END
+    ELSE IF COL_LENGTH('[dbo].[Subscription]', 'USERNAME') IS NOT NULL
+    BEGIN
+        SET @col = 'USERNAME';
+        SET @val = @p1;
+    END
+
+    IF @col IS NOT NULL
+    BEGIN
+        SET @sql = N'DELETE FROM [dbo].[Subscription] WHERE [' + @col + N'] = @v';
+        EXEC sp_executesql @sql, N'@v NVARCHAR(256)', @v = @val;
+    END
+END
+", user.Id, user.UserName);
+
+                    step = "delete application user groups";
+                    _db.Database.ExecuteSqlCommand(@"
+IF OBJECT_ID('[dbo].[ApplicationUserGroups]', 'U') IS NOT NULL
+BEGIN
+    DECLARE @col SYSNAME = NULL;
+    DECLARE @sql NVARCHAR(MAX) = NULL;
+
+    IF COL_LENGTH('[dbo].[ApplicationUserGroups]', 'UserId') IS NOT NULL
+        SET @col = 'UserId';
+    ELSE IF COL_LENGTH('[dbo].[ApplicationUserGroups]', 'USERID') IS NOT NULL
+        SET @col = 'USERID';
+
+    IF @col IS NOT NULL
+    BEGIN
+        SET @sql = N'DELETE FROM [dbo].[ApplicationUserGroups] WHERE [' + @col + N'] = @v';
+        EXEC sp_executesql @sql, N'@v NVARCHAR(128)', @v = @p0;
+    END
+END
+", user.Id);
+
+                    step = "delete claims";
+                    _db.Database.ExecuteSqlCommand(@"
+IF OBJECT_ID('[dbo].[AspNetUserClaims]', 'U') IS NOT NULL
+BEGIN
+    DECLARE @col SYSNAME = NULL;
+    DECLARE @sql NVARCHAR(MAX) = NULL;
+
+    IF COL_LENGTH('[dbo].[AspNetUserClaims]', 'UserId') IS NOT NULL
+        SET @col = 'UserId';
+    ELSE IF COL_LENGTH('[dbo].[AspNetUserClaims]', 'USERID') IS NOT NULL
+        SET @col = 'USERID';
+
+    IF @col IS NOT NULL
+    BEGIN
+        SET @sql = N'DELETE FROM [dbo].[AspNetUserClaims] WHERE [' + @col + N'] = @v';
+        EXEC sp_executesql @sql, N'@v NVARCHAR(128)', @v = @p0;
+    END
+END
+", user.Id);
+
+                    step = "delete logins";
+                    _db.Database.ExecuteSqlCommand(@"
+IF OBJECT_ID('[dbo].[AspNetUserLogins]', 'U') IS NOT NULL
+BEGIN
+    DECLARE @col SYSNAME = NULL;
+    DECLARE @sql NVARCHAR(MAX) = NULL;
+
+    IF COL_LENGTH('[dbo].[AspNetUserLogins]', 'UserId') IS NOT NULL
+        SET @col = 'UserId';
+    ELSE IF COL_LENGTH('[dbo].[AspNetUserLogins]', 'USERID') IS NOT NULL
+        SET @col = 'USERID';
+
+    IF @col IS NOT NULL
+    BEGIN
+        SET @sql = N'DELETE FROM [dbo].[AspNetUserLogins] WHERE [' + @col + N'] = @v';
+        EXEC sp_executesql @sql, N'@v NVARCHAR(128)', @v = @p0;
+    END
+END
+", user.Id);
+
+                    step = "delete user roles";
+                    _db.Database.ExecuteSqlCommand(@"
+IF OBJECT_ID('[dbo].[AspNetUserRoles]', 'U') IS NOT NULL
+BEGIN
+    DECLARE @col SYSNAME = NULL;
+    DECLARE @sql NVARCHAR(MAX) = NULL;
+
+    IF COL_LENGTH('[dbo].[AspNetUserRoles]', 'UserId') IS NOT NULL
+        SET @col = 'UserId';
+    ELSE IF COL_LENGTH('[dbo].[AspNetUserRoles]', 'USERID') IS NOT NULL
+        SET @col = 'USERID';
+
+    IF @col IS NOT NULL
+    BEGIN
+        SET @sql = N'DELETE FROM [dbo].[AspNetUserRoles] WHERE [' + @col + N'] = @v';
+        EXEC sp_executesql @sql, N'@v NVARCHAR(128)', @v = @p0;
+    END
+END
+", user.Id);
+
+                    // Delete user via EF context
+                    step = "delete user";
+                    _db.Users.Remove(user);
+                    _db.SaveChanges();
+                    tx.Commit();
+                }
+
+                TempData["SuccessMessage"] = "User deleted successfully.";
+
+                return RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("[Delete User] " + ex.Message);
+                var msg = ex.GetBaseException() != null ? ex.GetBaseException().Message : ex.Message;
+                System.Diagnostics.Debug.WriteLine("[Delete User] " + msg);
+                TempData["ErrorMessage"] = "Delete failed (" + step + "): " + msg;
             }
             return RedirectToAction("Index");
         }

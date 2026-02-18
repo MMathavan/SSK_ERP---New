@@ -13,6 +13,16 @@
             </a>
         </div>
         <div class="card-body">
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+            }
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+            }
+
             <div class="table-responsive">
                 <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
