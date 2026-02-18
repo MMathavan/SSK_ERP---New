@@ -234,6 +234,7 @@
                         <button type="button" class="dw-mode-btn active" data-mode="Consolidated">Consolidated</button>
                         <button type="button" class="dw-mode-btn" data-mode="Detailed">Detailed</button>
                         <button type="button" class="dw-mode-btn" data-mode="Pending">Pending</button>
+                        <button type="button" class="dw-mode-btn" data-mode="Partial Pending Details">Partial Pending Details</button>
                     </div>
                 </div>
                 <div id="datewiseContent"></div>
@@ -342,6 +343,7 @@
             var consolidatedExportUrl = '@Url.Action("ExportDatewiseConsolidated", "SalesOrderReport")';
             var detailedExportUrl = '@Url.Action("ExportDatewiseDetailed", "SalesOrderReport")';
             var pendingConsolidatedExportUrl = '@Url.Action("ExportDatewisePendingConsolidated", "SalesOrderReport")';
+            var partialPendingExportUrl = '@Url.Action("ExportDatewisePartialPendingDetails", "SalesOrderReport")';
             var cwConsolidatedExportUrl = '@Url.Action("ExportCustomerwiseConsolidated", "SalesOrderReport")';
             var cwDetailedExportUrl = '@Url.Action("ExportCustomerwiseDetailed", "SalesOrderReport")';
 
@@ -428,6 +430,8 @@
                     baseUrl = detailedExportUrl;
                 } else if (mode === 'pending') {
                     baseUrl = pendingConsolidatedExportUrl;
+                } else if (mode === 'partial pending details') {
+                    baseUrl = partialPendingExportUrl;
                 }
 
                 var url = baseUrl
