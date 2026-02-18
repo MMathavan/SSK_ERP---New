@@ -86,6 +86,7 @@ namespace SSK_ERP.Controllers
                 var pendingSalesOrderDetails = new List<PendingDocRow>();
                 var pendingPurchaseInvoiceDetails = new List<PendingDocRow>();
                 var pendingSalesInvoiceDetails = new List<PendingDocRow>();
+                var partialPurchaseInvoiceDetails = new List<PendingDocRow>();
 
                 try { customersCount = _db.CustomerMasters.Count(c => c.DISPSTATUS == 0 || c.DISPSTATUS == null); } catch { }
                 try { suppliersCount = _db.SupplierMasters.Count(s => s.DISPSTATUS == 0 || s.DISPSTATUS == null); } catch { }
@@ -323,6 +324,40 @@ namespace SSK_ERP.Controllers
                     partialPurchaseInvoiceCount = 0;
                 }
 
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    inv.TRANDATE AS [Date],
+                                    inv.TRANNO AS [Number],
+                                    inv.TRANREFNO AS [DocNo],
+                                    inv.TRANREFNAME AS [CustomerName],
+                                    ISNULL(inv.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER inv
+                               INNER JOIN TRANSACTIONMASTER po ON po.TRANMID = inv.TRANLMID AND po.REGSTRID = 2
+                               INNER JOIN (
+                                   SELECT TRANMID, SUM(ISNULL(TRANDQTY, 0)) AS QTY
+                                   FROM TRANSACTIONDETAIL
+                                   GROUP BY TRANMID
+                               ) invd ON invd.TRANMID = inv.TRANMID
+                               INNER JOIN (
+                                   SELECT TRANMID, SUM(ISNULL(TRANDQTY, 0)) AS QTY
+                                   FROM TRANSACTIONDETAIL
+                                   GROUP BY TRANMID
+                               ) pod ON pod.TRANMID = po.TRANMID
+                               WHERE inv.REGSTRID = 18
+                                 AND inv.TRANLMID IS NOT NULL
+                                 AND inv.TRANLMID > 0
+                                 AND (inv.DISPSTATUS = 0 OR inv.DISPSTATUS IS NULL)
+                                 AND invd.QTY < pod.QTY
+                               ORDER BY inv.TRANDATE DESC, inv.TRANNO DESC";
+
+                    partialPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                }
+                catch
+                {
+                    partialPurchaseInvoiceDetails = new List<PendingDocRow>();
+                }
+
 
                 // Pass essential business data to view
                 ViewBag.CustomersCount = customersCount;
@@ -332,8 +367,8 @@ namespace SSK_ERP.Controllers
                 ViewBag.SalesOrderCount = salesOrderCount;
                 ViewBag.PendingSalesOrderCount = pendingSalesOrderCount;
                 ViewBag.PurchaseOrderCount = purchaseOrderCount;
-                ViewBag.PurchaseInvoiceCount = purchaseInvoiceCount;
                 ViewBag.PendingPurchaseOrderCount = pendingPurchaseOrderCount;
+                ViewBag.PurchaseInvoiceCount = purchaseInvoiceCount;
                 ViewBag.PendingPurchaseInvoiceCount = pendingPurchaseInvoiceCount;
                 ViewBag.PartialPurchaseInvoiceCount = partialPurchaseInvoiceCount;
                 ViewBag.SalesInvoiceCount = salesInvoiceCount;
@@ -343,6 +378,7 @@ namespace SSK_ERP.Controllers
                 ViewBag.PendingSalesOrderDetails = pendingSalesOrderDetails;
                 ViewBag.PendingPurchaseInvoiceDetails = pendingPurchaseInvoiceDetails;
                 ViewBag.PendingSalesInvoiceDetails = pendingSalesInvoiceDetails;
+                ViewBag.PartialPurchaseInvoiceDetails = partialPurchaseInvoiceDetails;
 
                 ViewBag.TransactionMetricsTotal = salesOrderCount + pendingSalesOrderCount + purchaseOrderCount + pendingPurchaseOrderCount + purchaseInvoiceCount + pendingPurchaseInvoiceCount + partialPurchaseInvoiceCount + salesInvoiceCount + pendingSalesInvoiceCount;
 
@@ -475,6 +511,7 @@ namespace SSK_ERP.Controllers
                 ViewBag.PendingSalesOrderDetails = new List<PendingDocRow>();
                 ViewBag.PendingPurchaseInvoiceDetails = new List<PendingDocRow>();
                 ViewBag.PendingSalesInvoiceDetails = new List<PendingDocRow>();
+                ViewBag.PartialPurchaseInvoiceDetails = new List<PendingDocRow>();
 
                 ViewBag.TransactionMetricsTotal = 0;
 
