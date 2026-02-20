@@ -81,7 +81,7 @@ namespace SSK_ERP.Models
                 UserId = userId,
                 PlanName = "Basic",
                 StartDate = startDate,
-                ExpiryDate = startDate.AddMonths(1), // 1 month from start date
+                ExpiryDate = startDate.AddYears(1),
                 IsActive = true,
                 CreatedAt = DateTime.Now,
                 Approval = APPROVED // Default to approved for new subscriptions
@@ -97,7 +97,7 @@ namespace SSK_ERP.Models
                 UserId = userId,
                 PlanName = planName,
                 StartDate = startDate,
-                ExpiryDate = startDate.AddMonths(1), // 1 month from start date
+                ExpiryDate = startDate.AddYears(1),
                 IsActive = false, // Not active until approved
                 CreatedAt = DateTime.Now,
                 Approval = NOT_APPROVED // Requires approval (false)
@@ -105,7 +105,7 @@ namespace SSK_ERP.Models
         }
 
         // Method to extend subscription
-        public void ExtendSubscription(int months = 1)
+        public void ExtendSubscription(int months = 12)
         {
             if (IsExpired)
             {

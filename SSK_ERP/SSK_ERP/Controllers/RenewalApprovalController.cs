@@ -96,7 +96,7 @@ namespace SSK_ERP.Controllers
                 if (subscription.ExpiryDate <= DateTime.Now)
                 {
                     subscription.StartDate = DateTime.Now;
-                    subscription.ExpiryDate = DateTime.Now.AddMonths(1); // Set to 1 month from now
+                    subscription.ExpiryDate = DateTime.Now.AddYears(1);
                 }
                 // If not expired, keep the original expiry date from the renewal request
                 // (Don't add extra months - the renewal request already has correct duration)
