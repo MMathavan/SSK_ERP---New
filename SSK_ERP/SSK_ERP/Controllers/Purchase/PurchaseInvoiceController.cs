@@ -11,6 +11,7 @@ namespace SSK_ERP.Controllers.Purchase
     {
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int PurchaseInvoiceRegisterId = 18;
+        private const int SalesInvoiceRegisterId = 20;
 
         private class PurchaseInvoiceListRow
         {
@@ -78,6 +79,19 @@ namespace SSK_ERP.Controllers.Purchase
 
                 var invoices = db.Database.SqlQuery<PurchaseInvoiceListRow>(sql, parameters.ToArray()).ToList();
 
+                var invoiceIds = invoices.Select(i => i.TRANMID).ToList();
+                var salesInvoiceLinkSet = new System.Collections.Generic.HashSet<int>();
+                if (invoiceIds.Any())
+                {
+                    salesInvoiceLinkSet = new System.Collections.Generic.HashSet<int>(
+                        db.TransactionMasters
+                            .Where(t => t.REGSTRID == SalesInvoiceRegisterId && t.TRANLMID > 0 && invoiceIds.Contains(t.TRANLMID))
+                            .Select(t => t.TRANLMID)
+                            .Distinct()
+                            .ToList()
+                    );
+                }
+
                 var allInvoices = invoices.Select(i => new
                 {
                     TRANMID = i.TRANMID,
@@ -91,7 +105,8 @@ namespace SSK_ERP.Controllers.Purchase
                     DISPSTATUS = i.DISPSTATUS,
                     StatusDescription = i.DISPSTATUS.HasValue
                         ? i.DISPSTATUS.Value.ToString()
-                        : "N/A"
+                        : "N/A",
+                    HasSalesInvoice = salesInvoiceLinkSet.Contains(i.TRANMID)
                 }).ToList();
 
                 return Json(new { aaData = allInvoices }, JsonRequestBehavior.AllowGet);
@@ -133,6 +148,12 @@ namespace SSK_ERP.Controllers.Purchase
                 if (invoice == null)
                 {
                     return Json(new { success = false, message = "Invoice not found" });
+                }
+
+                bool hasSalesInvoice = db.TransactionMasters.Any(t => t.REGSTRID == SalesInvoiceRegisterId && t.TRANLMID == id);
+                if (hasSalesInvoice)
+                {
+                    return Json(new { success = false, message = "Cannot delete this Purchase Invoice because a Sales Invoice has already been created." });
                 }
 
                 if (string.Equals(invoice.StatusDescription, "Approved", StringComparison.OrdinalIgnoreCase))
@@ -183,6 +204,13 @@ namespace SSK_ERP.Controllers.Purchase
                 if (!User.IsInRole("PurchaseInvoiceEdit"))
                 {
                     TempData["ErrorMessage"] = "You do not have permission to edit Purchase Invoices.";
+                    return RedirectToAction("Index");
+                }
+
+                bool hasSalesInvoice = db.TransactionMasters.Any(t => t.REGSTRID == SalesInvoiceRegisterId && t.TRANLMID == id.Value);
+                if (hasSalesInvoice)
+                {
+                    TempData["ErrorMessage"] = "This Purchase Invoice already has a Sales Invoice and cannot be edited.";
                     return RedirectToAction("Index");
                 }
 

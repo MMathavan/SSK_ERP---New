@@ -464,6 +464,7 @@
                         orderable: false,
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
+                            var hasSalesInvoice = row['HasSalesInvoice'] === true || row['HasSalesInvoice'] === 'true';
                             var status = row['StatusDescription']; // might be text or 0/1
                             // Check approved logic consistently
                             // If status is "0", it's just Enabled. If "1", Disabled.
@@ -475,14 +476,19 @@
                             var editUrl = '@Url.Action("Form", "PurchaseInvoice")' + '?id=' + id;
                             var printUrl = '@Url.Action("Print", "PurchaseInvoice")' + '?id=' + id; // Changed from RawMaterialInvoice to PurchaseInvoice just in case
 
-                            html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
-                            
-                            // Sales Invoice Button (Yellow)
-                            html += '<button type="button" class="btn btn-action btn-si" onclick="openSalesInvoice(' + id + ');"><i class="fa fa-file-invoice"></i> Sales Invoice</button>';
-
-                            html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
-
-                            html += '<button type="button" class="btn btn-action btn-delete" onclick="deletePurchaseInvoice(' + id + ');"><i class="fa fa-trash"></i> Delete</button>';
+                            if (!hasSalesInvoice) {
+                                html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
+                                
+                                // Sales Invoice Button (Yellow)
+                                html += '<button type="button" class="btn btn-action btn-si" onclick="openSalesInvoice(' + id + ');"><i class="fa fa-file-invoice"></i> Sales Invoice</button>';
+    
+                                html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+    
+                                html += '<button type="button" class="btn btn-action btn-delete" onclick="deletePurchaseInvoice(' + id + ');"><i class="fa fa-trash"></i> Delete</button>';
+                            } else {
+                                html += '<span class="badge bg-success">Sales Invoice Created</span>&nbsp;';
+                                html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                            }
                             
                             return html;
                         }
