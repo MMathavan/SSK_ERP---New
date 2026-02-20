@@ -14,6 +14,7 @@ namespace SSK_ERP.Controllers.Purchase
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesOrderRegisterId = 1;
         private const int PurchaseRegisterId = 2;
+        private const int PurchaseInvoiceRegisterId = 18;
 
         [Authorize(Roles = "PurchaseOrderIndex")]
         public ActionResult Index()
@@ -33,6 +34,13 @@ namespace SSK_ERP.Controllers.Purchase
             if (id <= 0)
             {
                 TempData["ErrorMessage"] = "Invalid Purchase Order.";
+                return RedirectToAction("Index");
+            }
+
+            bool hasInvoice = db.TransactionMasters.Any(t => t.REGSTRID == PurchaseInvoiceRegisterId && t.TRANLMID == id);
+            if (hasInvoice)
+            {
+                TempData["ErrorMessage"] = "This Purchase Order already has a Purchase Invoice and cannot be edited.";
                 return RedirectToAction("Index");
             }
 
@@ -159,6 +167,15 @@ namespace SSK_ERP.Controllers.Purchase
                     .ThenByDescending(t => t.TRANMID)
                     .ToList();
 
+                var masterIds = masters.Select(m => m.TRANMID).ToList();
+                var invoiceLinkSet = new HashSet<int>(
+                    db.TransactionMasters
+                        .Where(t => t.REGSTRID == PurchaseInvoiceRegisterId && t.TRANLMID > 0 && masterIds.Contains(t.TRANLMID))
+                        .Select(t => t.TRANLMID)
+                        .Distinct()
+                        .ToList()
+                );
+
                 var data = masters
             .Select(t => new
             {
@@ -169,7 +186,8 @@ namespace SSK_ERP.Controllers.Purchase
                 PODate = t.PRCSDATE,
                 SupplierName = t.TRANREFNAME,
                 Amount = t.TRANNAMT,
-                Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled"
+                Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled",
+                HasInvoice = invoiceLinkSet.Contains(t.TRANMID)
             })
             .ToList();
 
@@ -745,6 +763,12 @@ namespace SSK_ERP.Controllers.Purchase
                 if (!User.IsInRole("PurchaseOrderDelete"))
                 {
                     return Json("Access Denied: You do not have permission to delete records. Please contact your administrator.");
+                }
+
+                bool hasInvoice = db.TransactionMasters.Any(t => t.REGSTRID == PurchaseInvoiceRegisterId && t.TRANLMID == id);
+                if (hasInvoice)
+                {
+                    return Json("Cannot delete this Purchase Order because a Purchase Invoice has already been created.");
                 }
 
                 var existing = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == id && t.REGSTRID == PurchaseRegisterId);

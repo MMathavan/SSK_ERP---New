@@ -329,21 +329,29 @@
                         orderable: false,
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
+                            var hasInvoice = row['HasInvoice'] === true || row['HasInvoice'] === 'true';
                             var html = '';
 
                             var editUrl = '@Url.Action("PoEdit", "PurchaseOrder")' + '?id=' + id;
                             var printUrl = '@Url.Action("Print", "PurchaseOrder")' + '?id=' + id;
 
-                            if (canEditPo) {
-                                html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>&nbsp;';
-                            }
+                            if (!hasInvoice) {
+                                if (canEditPo) {
+                                    html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>&nbsp;';
+                                }
 
-                            if (canPrintPo) {
-                                html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>&nbsp;';
-                            }
+                                if (canPrintPo) {
+                                    html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>&nbsp;';
+                                }
 
-                            if (canDeletePo) {
-                                html += '<a href="#" class="btn btn-action btn-delete po_delete" data-id="' + id + '"><i class="fa fa-trash"></i> Delete</a>';
+                                if (canDeletePo) {
+                                    html += '<a href="#" class="btn btn-action btn-delete po_delete" data-id="' + id + '"><i class="fa fa-trash"></i> Delete</a>';
+                                }
+                            } else {
+                                html += '<span class="badge bg-success">Invoice Created</span>&nbsp;';
+                                if (canPrintPo) {
+                                    html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                                }
                             }
 
                             return html;
