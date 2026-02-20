@@ -1546,6 +1546,172 @@
                 loadCostFactors();
                 initCustomerSelect();
 
+                var lastSoDetailRowForTab = null;
+                var pendingSoQtyFocusRow = null;
+
+                // Keep track of the most recently interacted detail row (helps Select2 dropdown inputs
+                // which can live outside the table DOM).
+                $(document).on('focusin', '#soDetailsBody input, #soDetailsBody select', function () {
+                    lastSoDetailRowForTab = $(this).closest('tr');
+                });
+
+                $(document).on('select2:open select2:select', '#soDetailsBody .so-material', function () {
+                    lastSoDetailRowForTab = $(this).closest('tr');
+                });
+
+                // When a material is selected, remember the row so the next Tab goes to this row's Qty.
+                $(document).on('select2:select', '#soDetailsBody .so-material', function () {
+                    pendingSoQtyFocusRow = $(this).closest('tr');
+                });
+
+                // Capture-phase handler: Select2 sometimes stops keydown bubbling.
+                // This ensures Tab from the Select2 search/select UI moves to Qty in the correct row.
+                document.addEventListener('keydown', function (e) {
+                    try {
+                        if (!e || e.key !== 'Tab' || e.shiftKey) {
+                            return;
+                        }
+
+                        if (!document.getElementById('salesOrderForm')) {
+                            return;
+                        }
+
+                        // If a modal is open, keep default tabbing inside the modal.
+                        if (document.querySelectorAll('.modal.in').length > 0) {
+                            return;
+                        }
+
+                        // If a material was just selected in a new/detail row, force the next Tab
+                        // to go to that row's Qty (dynamic focus behaviour requested).
+                        if (pendingSoQtyFocusRow && pendingSoQtyFocusRow.length) {
+                            if (focusSoQtyInRow(pendingSoQtyFocusRow)) {
+                                pendingSoQtyFocusRow = null;
+                                e.preventDefault();
+                                e.stopPropagation();
+                                return;
+                            }
+                        }
+
+                        var ae = document.activeElement;
+                        if (!ae) {
+                            return;
+                        }
+
+                        var $ae = $(ae);
+                        var inSelect2 = $ae.hasClass('select2-search__field') ||
+                            $ae.closest('.select2-container').length > 0 ||
+                            $ae.closest('.select2-dropdown').length > 0;
+
+                        if (!inSelect2) {
+                            return;
+                        }
+
+                        // Only override for the detail grid material select2.
+                        // If a select2 is open, and the last interacted row is known, focus its Qty.
+                        var $targetRow = null;
+                        if (pendingSoQtyFocusRow && pendingSoQtyFocusRow.length) {
+                            $targetRow = pendingSoQtyFocusRow;
+                        } else if (lastSoDetailRowForTab && lastSoDetailRowForTab.length) {
+                            $targetRow = lastSoDetailRowForTab;
+                        }
+
+                        if ($targetRow && $targetRow.length) {
+                            if (focusSoQtyInRow($targetRow)) {
+                                pendingSoQtyFocusRow = null;
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        }
+                    } catch (ex) {
+                        // swallow to avoid breaking other key handling
+                    }
+                }, true);
+
+                function focusSoQtyInRow($row) {
+                    if (!$row || !$row.length) {
+                        return false;
+                    }
+                    var $qty = $row.find('.so-qty:enabled:visible:first');
+                    if ($qty.length) {
+                        $qty.focus();
+                        if (typeof $qty[0].select === 'function') {
+                            $qty[0].select();
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+
+                function focusFirstSoQty() {
+                    var $qty = $('#soDetailsBody .so-qty:enabled:visible:first');
+                    if ($qty.length) {
+                        $qty.focus();
+                        if (typeof $qty[0].select === 'function') {
+                            $qty[0].select();
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+
+                $(document).on('keydown.soTabStart', function (e) {
+                    if (!e || e.key !== 'Tab' || e.shiftKey) {
+                        return;
+                    }
+
+                    if (!$('#salesOrderForm').length) {
+                        return;
+                    }
+
+                    // If a modal is open, keep default tabbing inside the modal.
+                    if ($('.modal.in:visible').length) {
+                        return;
+                    }
+
+                    // If Tab is pressed while focus is inside the Material select2 control,
+                    // move to Qty in the SAME row (prevents jumping back to previous row).
+                    var ae = document.activeElement;
+                    if (ae) {
+                        var $ae = $(ae);
+                        var $soRow = $ae.closest('#soDetailsBody tr');
+
+                        if (!$soRow.length) {
+                            // Select2 search input may live outside the table; use the open container to resolve row.
+                            var $open = $('.select2-container--open');
+                            if ($open.length) {
+                                $soRow = $open.closest('#soDetailsBody tr');
+                            }
+                        }
+
+                        if (!$soRow.length && lastSoDetailRowForTab && lastSoDetailRowForTab.length) {
+                            $soRow = lastSoDetailRowForTab;
+                        }
+
+                        if ($soRow.length) {
+                            var inMaterialSelect2 = $ae.closest('.select2-container').length > 0 ||
+                                $ae.hasClass('select2-selection__rendered') ||
+                                $ae.hasClass('select2-search__field');
+
+                            if (inMaterialSelect2) {
+                                if (focusSoQtyInRow($soRow)) {
+                                    e.preventDefault();
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    var hasFocusOnField = ae && ae !== document.body && ae !== document.documentElement;
+
+                    // When nothing meaningful is focused (click on empty space) the browser tabs from the top.
+                    // Instead, start tabbing from the Qty column in the details grid.
+                    if (!hasFocusOnField) {
+                        if (focusFirstSoQty()) {
+                            e.preventDefault();
+                        }
+                    }
+                });
+
                 $('#customerDropdown').on('change', function () {
                     var id = $(this).val();
                     if (!id) {
