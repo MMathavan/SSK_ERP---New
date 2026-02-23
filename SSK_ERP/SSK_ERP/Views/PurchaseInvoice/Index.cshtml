@@ -258,12 +258,10 @@
                         <i class="fa fa-plus-circle"></i> Add Purchase Invoice
                     </button>
                     <div id="piAddMenu" class="pi-add-menu">
-                        <!--
                         <button type="button" id="piAddDirect" class="pi-add-menu-btn">
                             <i class="fa fa-edit"></i>
                             <span>Direct</span>
                         </button>
-                        -->
                         <button type="button" id="piAddUpload" class="pi-add-menu-btn">
                             <i class="fa fa-upload"></i>
                             <span>Upload</span>
@@ -600,11 +598,9 @@
                 }
             });
 
-            /*
             $('#piAddDirect').on('click', function () {
                 window.location.href = '@Url.Action("Form", "PurchaseInvoice")';
             });
-            */
 
             $('#piAddUpload').on('click', function () {
                 window.location.href = '@Url.Action("Index", "PurchaseInvoiceUpload")';

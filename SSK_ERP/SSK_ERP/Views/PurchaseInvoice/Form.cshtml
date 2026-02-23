@@ -368,6 +368,16 @@
         display: none;
     }
 
+    .pi-row-action-btn {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
     .form-control.is-invalid {
         border-color: #dc3545;
         box-shadow: 0 0 0 0.2rem rgba(220,53,69,0.15);
@@ -499,7 +509,13 @@
                                 <th style="width: 100px;">PTR</th>
                                 <th style="width: 100px;">MRP</th>
                                 <th style="width: 120px;">Amount</th>
-                                <th style="width: 100px;">Action</th>
+                                <th style="width: 100px;">
+                                    <div class="d-flex justify-content-center">
+                                        <button type="button" id="piHeaderAddRow" class="btn btn-success btn-sm pi-row-action-btn" title="Add Row">
+                                            <i class="fa fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="invoiceDetailsBody">
@@ -692,6 +708,11 @@
              $('#btnCalculateTax').click(function() {
                  calculateRemoteTax();
              });
+             
+             // Header add-row button (+)
+            $('#piHeaderAddRow').on('click', function () {
+                addRow();
+            });
         });
 
         function loadMaterials() {
@@ -832,16 +853,17 @@
             tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm pi-amount text-end" readonly>').val(data ? data.Amount : '')));
             
             // Actions
-            var actionTd = $('<td>');
-            var btnAdd = $('<button type="button" class="btn btn-success btn-sm me-1"><i class="fa fa-plus"></i></button>').click(function() { addRow(); });
-            var btnDel = $('<button type="button" class="btn btn-danger btn-sm"><i class="fa fa-minus"></i></button>').click(function() { 
+            var actionTd = $('<td class="text-center">');
+            var actionWrap = $('<div class="d-flex justify-content-center">');
+            var btnDel = $('<button type="button" class="btn btn-danger btn-sm pi-row-action-btn"><i class="fa fa-minus"></i></button>').click(function() { 
                 if($('#invoiceDetailsBody tr').length > 1) {
                     $(this).closest('tr').remove();
                     updateIndices();
                     calculateLocalTotals(); // Helper 
                 }
             });
-            actionTd.append(btnAdd).append(btnDel);
+            actionWrap.append(btnDel);
+            actionTd.append(actionWrap);
             tr.append(actionTd);
             
             tbody.append(tr);

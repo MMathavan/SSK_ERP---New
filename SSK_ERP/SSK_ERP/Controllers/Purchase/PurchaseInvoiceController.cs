@@ -427,7 +427,11 @@ namespace SSK_ERP.Controllers.Purchase
                 master.COMPYID = compyId;
                 master.SDPTID = 0;
                 master.REGSTRID = PurchaseInvoiceRegisterId;
-                master.TRANBTYPE = 0;
+                if (!isEdit)
+                {
+                    // Direct entry from PurchaseInvoice/Form
+                    master.TRANBTYPE = 1;
+                }
                 master.EXPRTSTATUS = 0;
                 master.TRANTIME = DateTime.Now;
                 if (string.IsNullOrWhiteSpace(master.TRANREFNO))
