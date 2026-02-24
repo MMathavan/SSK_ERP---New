@@ -134,6 +134,23 @@
             text-align: center;
         }
 
+        .inv-blank-row td {
+            height: 14px;
+            border: none !important;
+        }
+
+        .inv-blank-row td:first-child {
+            border-left: 1px solid #000 !important;
+        }
+
+        .inv-blank-row td:last-child {
+            border-right: 1px solid #000 !important;
+        }
+
+        .inv-blank-row.inv-blank-row-last td {
+            border-bottom: 1px solid #000 !important;
+        }
+
         .text-right {
             text-align: right;
         }
@@ -225,6 +242,11 @@
 
             @@page {
                 margin: 5mm 5mm 5mm 5mm;
+            }
+
+            .totals-row,
+            .footer-row {
+                page-break-inside: avoid;
             }
         }
     </style>
@@ -413,6 +435,20 @@
                                 <td class="text-right">@item.Amount.ToString("0.00")</td>
                                 <td class="text-right">@item.NetAmount.ToString("0.00")</td>
                             </tr>
+                        }
+
+                        @if (isLastPage && pageItems.Count < rowsPerPage)
+                        {
+                            var blankCount = rowsPerPage - pageItems.Count;
+                            for (int bi = 0; bi < blankCount; bi++)
+                            {
+                                <tr class="inv-blank-row @(bi == blankCount - 1 ? "inv-blank-row-last" : "")">
+                                    @for (int c = 0; c < 18; c++)
+                                    {
+                                        <td>&nbsp;</td>
+                                    }
+                                </tr>
+                            }
                         }
 
                         @if (totalPages > 1)
