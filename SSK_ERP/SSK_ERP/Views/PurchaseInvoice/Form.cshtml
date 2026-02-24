@@ -442,17 +442,16 @@
                         </div>
                         @Html.HiddenFor(m => m.TRANSTATETYPE, new { id = "stateTypeDropdown" })
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label class="control-label">PO Number</label>
-                            @if (ViewBag.IsEditMode == true && !string.IsNullOrEmpty(ViewBag.PoNumberForDisplay))
-                            {
-                                <input type="text" class="form-control" value="@ViewBag.PoNumberForDisplay" readonly="readonly" style="background-color: #f5f5f5;" />
-                            }
-                            else
-                            {
-                                <input type="text" class="form-control" placeholder="PO Number (from upload)" readonly="readonly" style="background-color: #f5f5f5;" />
-                            }
+                            @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control", placeholder = "PO Number" })
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label class="control-label">Credit Days</label>
+                            @Html.TextBoxFor(m => m.TRAN_CRDPRDT, new { @class = "form-control", type = "number", min = "0", step = "1" })
                         </div>
                     </div>
                 </div>
@@ -602,7 +601,7 @@
              
              // 2. Select2 Init
              $('#supplierDropdown').select2({ width: '100%' });
-             $('#poDropdown').select2({ width: '100%' });
+
 
              // 3. Supplier Change
              $('#supplierDropdown').on('change', function() {

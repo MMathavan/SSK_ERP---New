@@ -436,7 +436,12 @@ namespace SSK_ERP.Controllers.Purchase
                 master.TRANTIME = DateTime.Now;
                 if (string.IsNullOrWhiteSpace(master.TRANREFNO))
                 {
-                    master.TRANREFNO = "-";
+                    master.TRANREFNO = !string.IsNullOrWhiteSpace(master.TRANPONUM) ? master.TRANPONUM : "-";
+                }
+
+                if (string.IsNullOrWhiteSpace(master.TRANPONUM))
+                {
+                    master.TRANPONUM = "-";
                 }
 
                 if (isEdit)
@@ -453,7 +458,9 @@ namespace SSK_ERP.Controllers.Purchase
                     existing.TRANREFID = master.TRANREFID;
                     existing.TRANREFNAME = master.TRANREFNAME;
                     existing.TRANSTATETYPE = master.TRANSTATETYPE;
-                    // existing.TRANREFNO = master.TRANREFNO; // PO Number - Not updated in edit mode (comes from upload)
+                    existing.TRANREFNO = master.TRANREFNO;
+                    existing.TRANPONUM = master.TRANPONUM;
+                    existing.TRAN_CRDPRDT = master.TRAN_CRDPRDT;
                     existing.TRANRMKS = master.TRANRMKS;
                     existing.DISPSTATUS = master.DISPSTATUS;
                     existing.LMUSRID = userName;

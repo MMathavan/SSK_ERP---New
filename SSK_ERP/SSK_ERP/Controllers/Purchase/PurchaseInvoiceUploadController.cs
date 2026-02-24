@@ -2566,6 +2566,7 @@ namespace SSK_ERP.Controllers.Purchase
                     {
                         createdMaster.CUSRID = userNameForTran;
                         createdMaster.LMUSRID = userNameForTran;
+                        createdMaster.TRAN_CRDPRDT = 0;
                         db.SaveChanges();
                     }
                 }
