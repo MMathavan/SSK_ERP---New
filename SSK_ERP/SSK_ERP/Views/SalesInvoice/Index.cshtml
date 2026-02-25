@@ -35,6 +35,69 @@
         gap: 15px;
     }
 
+    .si-add-btn {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        border: none;
+        padding: 12px 20px;
+        border-radius: 25px;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(238, 90, 36, 0.4);
+    }
+
+    .si-add-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(238, 90, 36, 0.6);
+        color: white;
+    }
+
+    .si-add-menu-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .si-add-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 10px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 8px 0;
+        min-width: 220px;
+        z-index: 1050;
+        display: none;
+    }
+
+    .si-add-menu.show {
+        display: block;
+    }
+
+    .si-add-menu-btn {
+        width: 100%;
+        border: none;
+        background: transparent;
+        padding: 10px 18px;
+        text-align: left;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #333333;
+    }
+
+    .si-add-menu-btn i {
+        width: 18px;
+        text-align: center;
+    }
+
+    .si-add-menu-btn:hover {
+        background-color: #f5f7ff;
+        color: #111111;
+    }
+
     .si-table-container {
         padding: 30px;
         background: white;
@@ -149,6 +212,17 @@
                     <i class="fa fa-file-invoice"></i>
                     Sales Invoice
                 </h1>
+                <div class="si-add-menu-wrapper">
+                    <button type="button" id="addSalesInvoiceBtn" class="btn si-add-btn">
+                        <i class="fa fa-plus-circle"></i> Add Sales Invoice
+                    </button>
+                    <div id="addSalesInvoiceMenu" class="si-add-menu">
+                        <button type="button" id="btnAddFromSalesOrderOthers" class="si-add-menu-btn">
+                            <i class="bi bi-activity"></i>
+                            <span> Sales Order (Others)</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -338,6 +412,24 @@
                 $('#fromDate').val('');
                 $('#toDate').val('');
                 table.ajax.reload();
+            });
+
+            var addMenu = $('#addSalesInvoiceMenu');
+
+            $('#addSalesInvoiceBtn').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                addMenu.toggleClass('show');
+            });
+
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('.si-add-menu-wrapper').length) {
+                    addMenu.removeClass('show');
+                }
+            });
+
+            $('#btnAddFromSalesOrderOthers').on('click', function () {
+                window.location.href = '@Url.Action("Index", "SalesOrder")';
             });
         });
 
