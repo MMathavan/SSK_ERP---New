@@ -321,6 +321,10 @@ namespace SSK_ERP.Controllers
                 master.SDPTID = 0;
                 master.REGSTRID = SalesOrderRegisterId;
                 master.TRANBTYPE = 0;
+                if (master.TRANETYPE != 0 && master.TRANETYPE != 1)
+                {
+                    master.TRANETYPE = 0;
+                }
                 master.EXPRTSTATUS = 0;
                 master.TRANTIME = DateTime.Now;
                 if (string.IsNullOrWhiteSpace(master.TRANREFNO))
@@ -350,6 +354,7 @@ namespace SSK_ERP.Controllers
                     existing.TRANREFID = master.TRANREFID;
                     existing.TRANREFNAME = master.TRANREFNAME;
                     existing.TRANSTATETYPE = master.TRANSTATETYPE;
+                    existing.TRANETYPE = master.TRANETYPE;
                     existing.TRANRMKS = master.TRANRMKS;
                     existing.DISPSTATUS = master.DISPSTATUS;
                     existing.LMUSRID = userName;
@@ -448,6 +453,7 @@ namespace SSK_ERP.Controllers
                         t.TRANDATE,
                         t.TRANNO,
                         t.TRANREFNO,
+                        t.TRANETYPE,
                         CustomerName = t.TRANREFNAME,
                         Amount = t.TRANNAMT,
                         Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled",

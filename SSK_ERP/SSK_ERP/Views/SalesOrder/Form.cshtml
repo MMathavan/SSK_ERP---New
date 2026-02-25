@@ -423,7 +423,7 @@
                     </div>
                 </div>
 
-                <!-- Row 2: Customer/Supplier / Status (2-column layout) -->
+                <!-- Row 2: Customer/Supplier / Status / Type -->
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
@@ -445,12 +445,37 @@
                         </div>
                         @Html.HiddenFor(m => m.TRANSTATETYPE, new { id = "stateTypeDropdown" })
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label>Status</label>
-                            @Html.DropDownListFor(m => m.DISPSTATUS, ViewBag.StatusList as SelectList, new { @class = "form-control", id = "statusDropdown" })
+
+                    @if (isPoFromSalesOrder)
+                    {
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Status</label>
+                                @Html.DropDownListFor(m => m.DISPSTATUS, ViewBag.StatusList as SelectList, new { @class = "form-control", id = "statusDropdown" })
+                            </div>
                         </div>
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Status</label>
+                                @Html.DropDownListFor(m => m.DISPSTATUS, ViewBag.StatusList as SelectList, new { @class = "form-control", id = "statusDropdown" })
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Type</label>
+                                @Html.DropDownListFor(m => m.TRANETYPE,
+                                    new List<SelectListItem>
+                                    {
+                                        new SelectListItem { Text = "Regular", Value = "0" },
+                                        new SelectListItem { Text = "Others", Value = "1" }
+                                    },
+                                    new { @class = "form-control", id = "tranTypeDropdown" })
+                            </div>
+                        </div>
+                    }
                 </div>
 
                 <!-- From Row 3: Location blocks -->

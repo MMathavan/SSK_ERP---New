@@ -60,6 +60,10 @@ namespace SSK_ERP.Models
         [Column("TRANSTATETYPE")]
         public short TRANSTATETYPE { get; set; }
 
+        [Required]
+        [Column("TRANETYPE")]
+        public int TRANETYPE { get; set; }
+
         [MaxLength(25)]
         [Column("TRANREFNO")]
         public string TRANREFNO { get; set; }

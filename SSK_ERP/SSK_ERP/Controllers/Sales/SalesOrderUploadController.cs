@@ -1097,6 +1097,7 @@ namespace SSK_ERP.Controllers
                     {
                         createdMaster.CUSRID = userNameForTran;
                         createdMaster.LMUSRID = userNameForTran;
+                        createdMaster.TRANETYPE = 0;
                         db.SaveChanges();
                     }
                 }
