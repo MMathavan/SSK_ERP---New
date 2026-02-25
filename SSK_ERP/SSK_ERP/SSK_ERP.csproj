@@ -323,6 +323,7 @@
     <Compile Include="Controllers\Sales\SalesOrderController.cs" />
     <Compile Include="Controllers\Sales\SalesOrderUploadController.cs" />
     <Compile Include="Controllers\Sales\SalesInvoiceController.cs" />
+    <Compile Include="Controllers\Sales\SalesInvoiceFromSalesOrderOthersController.cs" />
     <Compile Include="Controllers\Sales\SalesReturnController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseOrderController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseInvoiceController.cs" />
@@ -1174,6 +1175,7 @@
     <Content Include="Views\CreditNoteEInvoice\Index.cshtml" />
     <Content Include="Views\CreateDirectPurchaseReturn\Direct.cshtml" />
     <Content Include="Views\CreateDirectSalesReturn\Direct.cshtml" />
+    <Content Include="Views\SalesInvoiceFromSalesOrderOthers\Form.cshtml" />
     <EntityDeploy Include="Data\SSK_ERP.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
       <LastGenOutput>SSK_ERP.Designer.cs</LastGenOutput>

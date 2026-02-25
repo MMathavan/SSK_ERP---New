@@ -194,6 +194,14 @@ namespace SSK_ERP
                 namespaces: new[] { "SSK_ERP.Controllers" }
             );
 
+            // Explicit route for SalesInvoiceFromSalesOrderOthers under main controllers namespace
+            routes.MapRoute(
+                name: "SalesInvoiceFromSalesOrderOthers",
+                url: "SalesInvoiceFromSalesOrderOthers/{action}/{id}",
+                defaults: new { controller = "SalesInvoiceFromSalesOrderOthers", action = "Form", id = UrlParameter.Optional },
+                namespaces: new[] { "SSK_ERP.Controllers" }
+            );
+
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",
