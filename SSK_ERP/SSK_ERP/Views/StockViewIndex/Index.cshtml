@@ -98,6 +98,81 @@
                 }
             }
 
+            function escapeHtml(v) {
+                if (v === null || v === undefined) return '';
+                return (v + '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function renderGrid(rows) {
+                var $wrap = $('#stockViewContent');
+                $wrap.empty();
+
+                if (!rows || rows.length === 0) {
+                    $wrap.html('<div class="text-muted">No data found.</div>');
+                    return;
+                }
+
+                var cols = [];
+                var colMap = {};
+                rows.forEach(function (r) {
+                    if (!r) return;
+                    Object.keys(r).forEach(function (k) {
+                        if (!colMap[k]) {
+                            colMap[k] = true;
+                            cols.push(k);
+                        }
+                    });
+                });
+
+                if (cols.length === 0) {
+                    $wrap.html('<div class="text-muted">No columns returned.</div>');
+                    return;
+                }
+
+                var html = '';
+                html += '<div class="table-responsive">';
+                html += '<table class="table table-bordered table-striped table-sm">';
+                html += '<thead><tr>';
+                cols.forEach(function (c) {
+                    html += '<th>' + escapeHtml(c) + '</th>';
+                });
+                html += '</tr></thead>';
+                html += '<tbody>';
+
+                rows.forEach(function (r) {
+                    html += '<tr>';
+                    cols.forEach(function (c) {
+                        var v = (r && typeof r[c] !== 'undefined') ? r[c] : '';
+                        html += '<td>' + escapeHtml(v) + '</td>';
+                    });
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div>';
+                $wrap.html(html);
+            }
+
+            function loadStockSummary(fromDate, toDate) {
+                $('#stockViewContent').html('<div class="text-muted">Loading...</div>');
+
+                $.get('@Url.Action("GetStockSummary", "StockViewIndex")', { fromDate: fromDate, toDate: toDate }, function (res) {
+                    if (!res || res.success !== true) {
+                        var msg = (res && res.message) ? res.message : 'Failed to load stock summary.';
+                        $('#stockViewContent').html('<div class="text-danger">' + escapeHtml(msg) + '</div>');
+                        return;
+                    }
+
+                    renderGrid(res.data || []);
+                }).fail(function () {
+                    $('#stockViewContent').html('<div class="text-danger">Failed to load stock summary.</div>');
+                });
+            }
+
             var today = new Date();
             if (!$('#fromDate').val()) {
                 $('#fromDate').val(toDateInputValue(today));
@@ -138,12 +213,20 @@
                 }
 
                 updateFilterStatus();
+
+                if (fromDate && toDate) {
+                    loadStockSummary(fromDate, toDate);
+                } else {
+                    $('#stockViewContent').html('<div class="text-muted">Select From/To date and click Filter.</div>');
+                }
             });
 
             $('#clearBtn').on('click', function () {
                 $('#fromDate').val('');
                 $('#toDate').val('');
                 updateFilterStatus();
+
+                $('#stockViewContent').html('<div class="text-muted">Select From/To date and click Filter.</div>');
             });
         });
     </script>
