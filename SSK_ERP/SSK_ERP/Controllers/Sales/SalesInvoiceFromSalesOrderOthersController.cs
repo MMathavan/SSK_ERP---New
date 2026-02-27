@@ -343,17 +343,96 @@ namespace SSK_ERP.Controllers
         {
             try
             {
-                var bills = db.TransactionMasters
-                    .Where(t => t.REGSTRID == SalesOrderRegisterId && t.TRANETYPE == 1 && t.TRANREFID == customerId)
-                    .OrderByDescending(t => t.TRANDATE)
-                    .ThenByDescending(t => t.TRANMID)
-                    .Select(t => new
+                var bills = new List<object>();
+
+                var conn = db.Database.Connection;
+                var wasClosed = conn.State == ConnectionState.Closed;
+                if (wasClosed)
+                {
+                    conn.Open();
+                }
+
+                try
+                {
+                    using (var cmd = conn.CreateCommand())
                     {
-                        SalesOrderId = t.TRANMID,
-                        BillNo = t.TRANREFNO,
-                        TranDNo = t.TRANDNO
-                    })
-                    .ToList();
+                        cmd.CommandText = "dbo.PR_SONODETAILS";
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.Add(new SqlParameter("@Tranrefid", customerId));
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            int GetOrd(params string[] names)
+                            {
+                                for (int i = 0; i < names.Length; i++)
+                                {
+                                    try
+                                    {
+                                        return reader.GetOrdinal(names[i]);
+                                    }
+                                    catch
+                                    {
+                                        // ignore
+                                    }
+                                }
+                                return -1;
+                            }
+
+                            var ordSoId = GetOrd("SalesOrderId", "TRANMID", "SOID", "SONOID", "ID");
+                            var ordBillNo = GetOrd("BillNo", "sorefno", "SOREFNO", "TRANREFNO", "BILLNO", "SONO", "SOBILLNO");
+                            var ordTranDNo = GetOrd("TranDNo", "TRANDNO", "DNO", "SODNO");
+
+                            while (reader.Read())
+                            {
+                                int soId = 0;
+                                if (ordSoId >= 0 && !reader.IsDBNull(ordSoId))
+                                {
+                                    soId = Convert.ToInt32(reader.GetValue(ordSoId));
+                                }
+                                else if (ordSoId < 0 && reader.FieldCount > 0 && !reader.IsDBNull(0))
+                                {
+                                    // Fallback: if SP returns TRANMID as the 1st column without a known name.
+                                    try
+                                    {
+                                        var raw = reader.GetValue(0);
+                                        if (raw != null)
+                                        {
+                                            soId = Convert.ToInt32(raw);
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // ignore
+                                    }
+                                }
+
+                                string billNo = string.Empty;
+                                if (ordBillNo >= 0 && !reader.IsDBNull(ordBillNo))
+                                {
+                                    billNo = Convert.ToString(reader.GetValue(ordBillNo));
+                                }
+
+                                string tranDNo = string.Empty;
+                                if (ordTranDNo >= 0 && !reader.IsDBNull(ordTranDNo))
+                                {
+                                    tranDNo = Convert.ToString(reader.GetValue(ordTranDNo));
+                                }
+
+                                if (soId > 0)
+                                {
+                                    bills.Add(new { SalesOrderId = soId, BillNo = billNo, TranDNo = tranDNo });
+                                }
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    if (wasClosed && conn.State != ConnectionState.Closed)
+                    {
+                        conn.Close();
+                    }
+                }
 
                 return Json(new { success = true, data = bills }, JsonRequestBehavior.AllowGet);
             }
