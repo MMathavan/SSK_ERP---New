@@ -281,6 +281,7 @@
     <Compile Include="Controllers\ErrorController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ComingSoonController.cs" />
+    <Compile Include="Controllers\StockViewIndexController.cs" />
     <Compile Include="Controllers\Masters\AccountGroupMasterController.cs" />
     <Compile Include="Controllers\Masters\AccountHeadMasterController.cs" />
     <Compile Include="Controllers\Masters\CommonController.cs" />
@@ -1176,6 +1177,7 @@
     <Content Include="Views\CreateDirectPurchaseReturn\Direct.cshtml" />
     <Content Include="Views\CreateDirectSalesReturn\Direct.cshtml" />
     <Content Include="Views\SalesInvoiceFromSalesOrderOthers\Form.cshtml" />
+    <Content Include="Views\StockViewIndex\Index.cshtml" />
     <EntityDeploy Include="Data\SSK_ERP.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
       <LastGenOutput>SSK_ERP.Designer.cs</LastGenOutput>
