@@ -358,6 +358,7 @@
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
                             var hasPo = row['HasPo'] === true || row['HasPo'] === 'true';
+                            var hasSi = row['HasSi'] === true || row['HasSi'] === 'true';
                             var tranType = row['TRANETYPE'];
                             if (tranType === null || tranType === undefined || tranType === '') {
                                 tranType = 0;
@@ -372,7 +373,11 @@
                             var poUrl = '@Url.Action("PoForm", "PurchaseOrder", new { area = "" })' + '?id=' + id;
                             var printUrl = '@Url.Action("Print", "SalesOrder")' + '?id=' + id;
 
-                            if (!hasPo) {
+                            if (hasSi) {
+                                html += '<span class="badge bg-warning text-dark">SI Created</span>&nbsp;';
+                                html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                            }
+                            else if (!hasPo) {
                                 html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>&nbsp;';
                                 if (canCreatePo && tranType !== 1) {
                                     html += '<a href="' + poUrl + '" class="btn btn-action btn-edit" style="background: linear-gradient(135deg,#74b9ff,#0984e3); color:#fff;"><i class="fa fa-file-text-o"></i> PO</a>&nbsp;';

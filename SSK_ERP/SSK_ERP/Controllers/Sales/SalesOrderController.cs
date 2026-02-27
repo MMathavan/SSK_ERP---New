@@ -15,6 +15,7 @@ namespace SSK_ERP.Controllers
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesOrderRegisterId = 1;
         private const int PurchaseRegisterId = 2;
+        private const int SalesInvoiceRegisterId = 20;
 
         [Authorize(Roles = "SalesOrderIndex")]
         public ActionResult Index()
@@ -158,6 +159,14 @@ namespace SSK_ERP.Controllers
                 if (model == null)
                 {
                     TempData["ErrorMessage"] = "Sales Order not found.";
+                    return RedirectToAction("Index");
+                }
+
+                // Prevent editing a Sales Order once a Sales Invoice has been created for it
+                bool hasSi = db.TransactionMasters.Any(t => t.REGSTRID == SalesInvoiceRegisterId && t.TRANLMID == model.TRANMID);
+                if (hasSi)
+                {
+                    TempData["ErrorMessage"] = "This Sales Order already has a Sales Invoice and cannot be edited.";
                     return RedirectToAction("Index");
                 }
 
@@ -446,6 +455,14 @@ namespace SSK_ERP.Controllers
 
                 var poLinkSet = new HashSet<int>(linkedTranIds.Cast<int>());
 
+                // Preload all Sales Orders that already have a Sales Invoice
+                var salesInvoiceLinkedIds = db.TransactionMasters
+                    .Where(si => si.REGSTRID == SalesInvoiceRegisterId && si.TRANLMID > 0)
+                    .Select(si => si.TRANLMID)
+                    .ToList();
+
+                var siLinkSet = new HashSet<int>(salesInvoiceLinkedIds.Cast<int>());
+
                 var data = masters
                     .Select(t => new
                     {
@@ -457,7 +474,8 @@ namespace SSK_ERP.Controllers
                         CustomerName = t.TRANREFNAME,
                         Amount = t.TRANNAMT,
                         Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled",
-                        HasPo = poLinkSet.Contains(t.TRANMID)
+                        HasPo = poLinkSet.Contains(t.TRANMID),
+                        HasSi = siLinkSet.Contains(t.TRANMID)
                     })
                     .ToList();
 
@@ -532,6 +550,13 @@ namespace SSK_ERP.Controllers
                 if (hasPo)
                 {
                     return Json("Cannot delete this Sales Order because a PO has already been created.");
+                }
+
+                // Prevent deleting a Sales Order once a Sales Invoice has been created for it
+                bool hasSi = db.TransactionMasters.Any(t => t.REGSTRID == SalesInvoiceRegisterId && t.TRANLMID == existing.TRANMID);
+                if (hasSi)
+                {
+                    return Json("Cannot delete this Sales Order because a Sales Invoice has already been created.");
                 }
 
                 var details = db.TransactionDetails.Where(d => d.TRANMID == existing.TRANMID).ToList();

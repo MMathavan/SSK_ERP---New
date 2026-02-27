@@ -168,10 +168,11 @@
             </h2>
         </div>
         <div class="form-body">
-            @using (Html.BeginForm("CreateFromPurchase", "SalesInvoice", FormMethod.Post, new { id = "siFromPurchaseForm" }))
+            @using (Html.BeginForm((Model != null && Model.SalesTranMid > 0) ? "Form" : "CreateFromPurchase", "SalesInvoice", FormMethod.Post, new { id = "siFromPurchaseForm" }))
             {
                 @Html.AntiForgeryToken()
                 @Html.HiddenFor(m => m.PurchaseTranMid)
+                @Html.HiddenFor(m => m.SalesTranMid)
                 @Html.HiddenFor(m => m.StateType, new { id = "siStateType" })
 
                 <div class="section-title">

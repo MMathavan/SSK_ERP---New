@@ -142,6 +142,30 @@
         height: 32px;
     }
 
+    .so-detail-table .select2-container {
+        width: 100% !important;
+    }
+
+    .so-detail-table .select2-container .select2-selection--single {
+        height: 32px;
+    }
+
+    .so-tax-table {
+        margin-bottom: 0;
+    }
+
+    .so-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .so-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 150px;
+        white-space: nowrap;
+    }
+
     .form-control.is-invalid {
         border-color: #dc3545;
         box-shadow: 0 0 0 0.2rem rgba(220,53,69,0.15);
@@ -151,11 +175,9 @@
 <div class="main-container">
     <div class="form-container">
         <div class="form-header">
-            <h1 class="form-title">
-                <i class="fa fa-file-invoice"></i>
-                Sales Invoice (From Sales Order - Others)
-                <span style="font-size: 0.6em; opacity: 0.8; margin-left: 10px;">#@(string.IsNullOrEmpty(Model.TRANDNO) ? "New" : Model.TRANDNO)</span>
-            </h1>
+            <h2 class="form-title">
+                <span>Sales Invoice From Sales Order (Others)</span>
+            </h2>
         </div>
 
         <div class="form-body">
@@ -166,10 +188,19 @@
                 @Html.HiddenFor(m => m.TRANNO)
                 @Html.HiddenFor(m => m.TRANDNO)
 
+                if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger" role="alert">@TempData["ErrorMessage"]</div>
+                }
+                if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success" role="alert">@TempData["SuccessMessage"]</div>
+                }
+
                 <input type="hidden" id="salesOrderId" name="salesOrderId" value="0" />
 
                 <div class="section-title">
-                    <i class="fa fa-info-circle"></i> Invoice Details
+                    <span>Invoice Details</span>
                 </div>
 
                 <div class="row">
@@ -226,7 +257,9 @@
                     </div>
                 </div>
 
-                <div class="section-title">Customer Address</div>
+                <div class="section-title">
+                    <span>Customer Details</span>
+                </div>
 
                 <div class="row">
                     <div class="col-md-12">
@@ -257,31 +290,106 @@
                     </div>
                 </div>
 
-                <div class="section-title">Item Details</div>
+                <div class="section-title">
+                    <span>Item Details</span>
+                </div>
 
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle so-detail-table">
                         <thead>
                             <tr>
-                                <th style="width: 50px;">S.No</th>
-                                <th style="width: 200px;">Material</th>
-                                <th style="width: 150px;">HSN Code</th>
-                                <th style="width: 100px;">Batch No</th>
-                                <th style="width: 120px;">Exp Date</th>
-                                <th style="width: 120px;">Packing</th>
-                                <th style="width: 80px;">No of Boxes</th>
-                                <th style="width: 80px;">Qty</th>
-                                <th style="width: 100px;">Price Unit</th>
-                                <th style="width: 100px;">PTR</th>
-                                <th style="width: 100px;">MRP</th>
-                                <th style="width: 120px;">Amount</th>
+                                <th style="width:40px;" class="text-center">
+                                    <input type="checkbox" id="chkAll" />
+                                </th>
+                                <th style="width:50px;" class="text-center">S.No</th>
+                                <th style="width:200px;">Material</th>
+                                <th style="width:120px;">HSN Code</th>
+                                <th style="width:110px;">Batch No</th>
+                                <th style="width:120px;">Exp Date</th>
+                                <th style="width:120px;">Packing</th>
+                                <th style="width:80px;" class="text-end">No of Boxes</th>
+                                <th style="width:80px;" class="text-end">Qty</th>
+                                <th style="width:100px;" class="text-end">Price Unit</th>
+                                <th style="width:100px;" class="text-end">PTR</th>
+                                <th style="width:100px;" class="text-end">MRP</th>
+                                <th style="width:120px;" class="text-end">Amount</th>
                             </tr>
                         </thead>
                         <tbody id="invoiceDetailsBody"></tbody>
                     </table>
                 </div>
 
-                <div class="section-title">Remarks</div>
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered so-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="siTaxToggle">
+                                        <i class="fa fa-plus-square"></i> TAX
+                                    </button>
+                                </td>
+                                <td class="so-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    <input type="text" id="siGrossAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">CGST</td>
+                                <td>
+                                    <input type="text" id="siCgstAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">SGST</td>
+                                <td>
+                                    <input type="text" id="siSgstAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">IGST</td>
+                                <td>
+                                    <input type="text" id="siIgstAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Discount Amount</td>
+                                <td>
+                                    <input type="text" id="siDiscountAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Courier Charges</td>
+                                <td>
+                                    <input type="text" id="siCourierAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Selected Net Amount</td>
+                                <td>
+                                    <input type="text" id="selectedTotal" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="so-tax-summary-label">Invoice Amount</td>
+                                <td>
+                                    <input type="text" id="siInvoiceAmt" class="form-control text-end" readonly="readonly" value="0.00" />
+                                </td>
+                            </tr>
+                        </table>
+                        <input type="hidden" id="siTaxDataJson" name="TaxFactorsJson" value="" />
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    <span>Remarks</span>
+                </div>
                 <div class="row">
                     <div class="col-md-12">
                         @Html.TextAreaFor(m => m.TRANRMKS, new { @class = "form-control", rows = 3 })
@@ -291,31 +399,158 @@
                 <div class="form-actions mt-3">
                     <a href="@Url.Action("Index", "SalesInvoice")" class="btn btn-secondary">Back</a>
                     <input type="hidden" id="detailRowsJson" name="detailRowsJson" />
-                    <button type="button" id="btnSave" class="btn btn-primary">Save</button>
+                    <button type="submit" id="btnSave" class="btn btn-primary">Save</button>
                 </div>
             }
         </div>
     </div>
 </div>
 
-@section Scripts {
+<div class="modal fade" id="siTaxModal" tabindex="-1" role="dialog" aria-labelledby="siTaxModalLabel" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="siTaxModalLabel">
+                    <i class="fa fa-calculator"></i> Tax Calculation
+                </h5>
+                <button type="button" class="close" id="siTaxCloseHeader" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <button type="button" class="btn btn-primary btn-sm" id="siAddTaxRow">
+                            <i class="fa fa-plus"></i> Add Row
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="siTaxTable">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width:5%">
+                                </th>
+                                <th style="width:30%">Cost Factor</th>
+                                <th style="width:20%">Expression</th>
+                                <th style="width:15%">Mode</th>
+                                <th style="width:15%">Value</th>
+                                <th style="width:15%">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="siTaxTableBody">
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-light">
+                                <td colspan="5" class="text-end"><strong>Total Add Amount:</strong></td>
+                                <td><strong id="siTotalAddAmount">0.00</strong></td>
+                            </tr>
+                            <tr class="bg-light">
+                                <td colspan="5" class="text-end"><strong>Total Less Amount:</strong></td>
+                                <td><strong id="siTotalLessAmount">0.00</strong></td>
+                            </tr>
+                            <tr class="bg-light">
+                                <td colspan="5" class="text-end"><strong>Total Tax Amount:</strong></td>
+                                <td><strong id="siTotalTaxAmount">0.00</strong></td>
+                            </tr>
+                            <tr class="bg-success text-white">
+                                <td colspan="5" class="text-end"><strong>Grand Total (Net + Tax):</strong></td>
+                                <td><strong id="siGrandTotal">0.00</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="siTaxCloseFooter" data-dismiss="modal">
+                    <i class="fa fa-times"></i> Close
+                </button>
+                <button type="button" class="btn btn-primary" id="siApplyTax">
+                    <i class="fa fa-check"></i> Apply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         var packingOptionsHtml = '<option value=""></option>';
 
+        function parseDecimal(val) {
+            var n = parseFloat(val);
+            return isNaN(n) ? 0 : n;
+        }
+
+        var siCostFactorOptionsHtml = '<option value="">-- Select Cost Factor --</option>';
+        var siTaxData = [];
+        var siCostFactorMeta = {};
+        var siCostFactorLoaded = false;
+
+        var isLoadingEdit = false;
+        var suppressCustomerChange = false;
+        var suppressBillChange = false;
+
+        function getInvoiceIdFromUrl() {
+            try {
+                var path = (window.location && window.location.pathname) ? window.location.pathname : '';
+                if (!path) return 0;
+                var parts = path.split('/').filter(function (p) { return p && p.trim() !== ''; });
+                if (!parts || parts.length === 0) return 0;
+                var last = parts[parts.length - 1];
+                var n = parseInt(last, 10);
+                return isNaN(n) ? 0 : n;
+            } catch (e) {
+                return 0;
+            }
+        }
+
         $(document).ready(function () {
+            var serverErrorMsg = '@(TempData["ErrorMessage"] != null ? HttpUtility.JavaScriptStringEncode(TempData["ErrorMessage"].ToString()) : "")';
+            var serverSuccessMsg = '@(TempData["SuccessMessage"] != null ? HttpUtility.JavaScriptStringEncode(TempData["SuccessMessage"].ToString()) : "")';
+            if (typeof Swal !== 'undefined' && Swal.fire) {
+                if (serverErrorMsg) {
+                    Swal.fire({ title: 'Error', text: serverErrorMsg, icon: 'error' });
+                } else if (serverSuccessMsg) {
+                    Swal.fire({ title: 'Success', text: serverSuccessMsg, icon: 'success' });
+                }
+            }
+
             $('#customerDropdown').select2({ width: '100%', placeholder: '-- Select Customer --' });
             $('#billNoDropdown').select2({ width: '100%', placeholder: '-- Select Bill No --' });
 
-            loadPackings();
-            loadCustomers();
+            var invoiceId = parseInt($('#TRANMID').val() || '0', 10);
+            if (invoiceId <= 0) {
+                invoiceId = getInvoiceIdFromUrl();
+                if (invoiceId > 0) {
+                    $('#TRANMID').val(invoiceId);
+                }
+            }
+            if (invoiceId > 0) {
+                isLoadingEdit = true;
+                loadPackings(function () {
+                    loadCustomers(function () {
+                        loadInvoiceData(invoiceId);
+                    });
+                });
+            } else {
+                loadPackings();
+                loadCustomers();
+            }
 
             $('#customerDropdown').on('change', function () {
+                if (suppressCustomerChange) {
+                    suppressCustomerChange = false;
+                    return;
+                }
                 var customerId = parseInt($(this).val() || '0', 10);
                 $('#tranRefId').val(customerId);
                 $('#tranRefName').val($('#customerDropdown option:selected').text());
                 $('#billNoDropdown').empty().trigger('change');
-                clearHeaderAndGrid();
+                if (!isLoadingEdit) {
+                    clearHeaderAndGrid();
+                }
 
                 if (customerId > 0) {
                     loadBillNos(customerId);
@@ -323,11 +558,19 @@
             });
 
             $('#billNoDropdown').on('change', function () {
+                if (suppressBillChange) {
+                    suppressBillChange = false;
+                    return;
+                }
                 var soId = parseInt($(this).val() || '0', 10);
                 $('#salesOrderId').val(soId);
-                clearHeaderAndGrid();
+                if (!isLoadingEdit) {
+                    clearHeaderAndGrid();
+                }
 
-                if (soId > 0) {
+                var invoiceId = parseInt($('#TRANMID').val() || '0', 10);
+                // Only load Sales Order rows for NEW invoices. In edit, always keep saved invoice rows.
+                if (soId > 0 && !isLoadingEdit && invoiceId <= 0) {
                     loadSalesOrderData(soId);
                 }
             });
@@ -335,36 +578,197 @@
             $(document).on('input', '.row-rate, .row-actualrate', function () {
                 var $tr = $(this).closest('tr');
                 recalcRow($tr);
+                recalcTotals();
+                updateManualSummaryFromRows(siTaxData);
             });
 
-            $('#btnSave').on('click', function () {
-                if (!validateForm()) {
+            $('#chkAll').on('change', function () {
+                var isChecked = $(this).is(':checked');
+                $('#invoiceDetailsBody .row-select').prop('checked', isChecked);
+                recalcTotals();
+                updateManualSummaryFromRows(siTaxData);
+            });
+
+            $(document).on('change', '#invoiceDetailsBody .row-select', function () {
+                var total = $('#invoiceDetailsBody .row-select').length;
+                var checked = $('#invoiceDetailsBody .row-select:checked').length;
+                $('#chkAll').prop('checked', total > 0 && total === checked);
+
+                recalcTotals();
+                updateManualSummaryFromRows(siTaxData);
+            });
+
+            $('#siTaxToggle').on('click', function () {
+                openSiTaxModal();
+            });
+
+            $('#siTaxCloseHeader, #siTaxCloseFooter').on('click', function () {
+                $('#siTaxModal').modal('hide');
+            });
+
+            $('#siAddTaxRow').on('click', function () {
+                addSiTaxRow();
+            });
+
+            $(document).on('click', '.si-tax-row-delete', function () {
+                var $rows = $('#siTaxTableBody tr');
+                if ($rows.length > 1) {
+                    $(this).closest('tr').remove();
+                } else {
+                    $(this).closest('tr').find('select').prop('selectedIndex', 0);
+                    $(this).closest('tr').find('.si-tax-value').val('0.000');
+                    $(this).closest('tr').find('.si-tax-amount').val('0.00');
+                }
+                recalcSiTaxTotals();
+                refreshSiCostFactorDropdowns();
+            });
+
+            $(document).on('change keyup', '.si-tax-type, .si-tax-mode, .si-tax-value', function () {
+                recalcSiTaxTotals();
+            });
+
+            $(document).on('change', '.si-cost-factor', function () {
+                refreshSiCostFactorDropdowns();
+            });
+
+            $('#siApplyTax').on('click', function () {
+                siTaxData = collectSiTaxData();
+                $('#siTaxDataJson').val(JSON.stringify(siTaxData));
+
+                updateManualSummaryFromRows(siTaxData);
+
+                $('#siTaxModal').modal('hide');
+            });
+
+            $(document).on('change', '.row-packing', function () {
+                var $tr = $(this).closest('tr');
+                var materialId = parseInt($tr.find('.row-materialid').val() || '0', 10);
+                var packingId = parseInt($(this).val() || '0', 10);
+
+                var $batch = $tr.find('.row-batch');
+                $batch.empty();
+                $batch.append('<option value=""></option>');
+
+                if (materialId <= 0 || packingId <= 0) {
                     return;
                 }
 
-                var rows = [];
-                $('#invoiceDetailsBody tr').each(function () {
-                    var $tr = $(this);
-                    var materialId = parseInt($tr.find('.row-materialid').val() || '0', 10);
-                    var qty = parseFloat($tr.find('.row-qty').val() || '0');
-                    var rate = parseFloat($tr.find('.row-rate').val() || '0');
-                    var actualRate = parseFloat($tr.find('.row-actualrate').val() || '0');
-                    var amount = parseFloat($tr.find('.row-amount').val() || '0');
+                $.get('@Url.Action("GetBatches", "SalesInvoiceFromSalesOrderOthers")', { materialId: materialId, packingId: packingId }, function (res) {
+                    if (!res || !res.success) {
+                        return;
+                    }
 
-                    if (materialId > 0 && qty > 0) {
-                        rows.push({
-                            MaterialId: materialId,
-                            Qty: qty,
-                            Rate: rate,
-                            ActualRate: actualRate,
-                            Amount: amount
-                        });
+                    var list = res.data || [];
+                    list.forEach(function (b) {
+                        $batch.append('<option value="' + b.BatchId + '">' + (b.BatchNo || '') + '</option>');
+                    });
+
+                    if (list.length > 0) {
+                        $batch.val(list[0].BatchId);
+
+                        var $exp = $tr.find('.row-expdate');
+                        if ($exp.length && (!$exp.val() || ($exp.val() + '').trim() === '') && list[0].ExpiryDate) {
+                            var dt = new Date(list[0].ExpiryDate);
+                            if (!isNaN(dt.getTime())) {
+                                var mm = (dt.getMonth() + 1).toString().padStart(2, '0');
+                                var dd = dt.getDate().toString().padStart(2, '0');
+                                $exp.val(dt.getFullYear() + '-' + mm + '-' + dd);
+                            }
+                        }
                     }
                 });
-
-                $('#detailRowsJson').val(JSON.stringify(rows));
-                $('#salesInvoiceOthersForm').submit();
             });
+
+            $('#salesInvoiceOthersForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var doSubmit = function () {
+                    if (!validateForm()) {
+                        if (typeof Swal !== 'undefined' && Swal.fire) {
+                            Swal.fire({
+                                title: 'Required',
+                                text: 'Please select Customer, Bill No and ensure item rows are loaded.',
+                                icon: 'warning'
+                            });
+                        } else {
+                            alert('Please select Customer, Bill No and ensure item rows are loaded.');
+                        }
+                        return;
+                    }
+
+                    var rows = [];
+                    $('#invoiceDetailsBody tr').each(function () {
+                        var $tr = $(this);
+                        var isSelected = $tr.find('.row-select').is(':checked');
+                        if (!isSelected) {
+                            return;
+                        }
+                        var materialId = parseInt($tr.find('.row-materialid').val() || '0', 10);
+                        var qty = parseFloat($tr.find('.row-qty').val() || '0');
+                        var rate = parseFloat($tr.find('.row-rate').val() || '0');
+                        var actualRate = parseFloat($tr.find('.row-actualrate').val() || '0');
+                        var amount = parseFloat($tr.find('.row-amount').val() || '0');
+                        var packingId = parseInt($tr.find('.row-packing').val() || '0', 10);
+                        var boxQty = parseFloat($tr.find('.row-boxqty').val() || '0');
+                        var batchNo = ($tr.find('.row-batch option:selected').text() || '').trim();
+                        var expDate = ($tr.find('.row-expdate').val() || '').trim();
+                        var ptr = parseFloat($tr.find('.row-ptr').val() || '0');
+                        var mrp = parseFloat($tr.find('.row-mrp').val() || '0');
+
+                        if (materialId > 0 && qty > 0) {
+                            rows.push({
+                                MaterialId: materialId,
+                                Qty: qty,
+                                Rate: rate,
+                                ActualRate: actualRate,
+                                Amount: amount,
+                                BatchNo: batchNo,
+                                ExpiryDate: expDate,
+                                PackingId: packingId,
+                                BoxQty: boxQty,
+                                Ptr: ptr,
+                                Mrp: mrp
+                            });
+                        }
+                    });
+
+                    if (rows.length === 0) {
+                        if (typeof Swal !== 'undefined' && Swal.fire) {
+                            Swal.fire({
+                                title: 'No Items Selected',
+                                text: 'Please select at least one row to save.',
+                                icon: 'warning'
+                            });
+                        } else {
+                            alert('Please select at least one row to save.');
+                        }
+                        return;
+                    }
+
+                    $('#detailRowsJson').val(JSON.stringify(rows));
+                    document.getElementById('salesInvoiceOthersForm').submit();
+                };
+
+                if (typeof Swal !== 'undefined' && Swal.fire) {
+                    Swal.fire({
+                        title: 'Confirm Save',
+                        text: 'Do you want to save this Sales Invoice?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, Save',
+                        cancelButtonText: 'Cancel'
+                    }).then(function (result) {
+                        if (result && result.isConfirmed) {
+                            doSubmit();
+                        }
+                    });
+                } else {
+                    if (confirm('Do you want to save this Sales Invoice?')) {
+                        doSubmit();
+                    }
+                }
+            });
+
         });
 
         function validateForm() {
@@ -379,7 +783,8 @@
             }
 
             var soId = parseInt($('#salesOrderId').val() || '0', 10);
-            if (soId <= 0) {
+            var invoiceId = parseInt($('#TRANMID').val() || '0', 10);
+            if (invoiceId <= 0 && soId <= 0) {
                 isValid = false;
                 $('#billNoDropdown').next('.select2').find('.select2-selection').addClass('is-invalid');
             } else {
@@ -403,11 +808,271 @@
             $('#custCountry').val('');
             $('#invoiceDetailsBody').empty();
             $('#stateTypeDropdown').val('0');
+
+            $('#chkAll').prop('checked', false);
+
+            recalcTotals();
+            updateManualSummaryFromRows([]);
         }
 
-        function loadPackings() {
+        function loadSiCostFactors(callback) {
+            if (siCostFactorLoaded) {
+                if (typeof callback === 'function') {
+                    callback();
+                }
+                return;
+            }
+
+            $.getJSON('@Url.Action("GetCostFactorsForSalesInvoice", "SalesInvoice")')
+                .done(function (resp) {
+                    if (!resp || resp.success === false) {
+                        return;
+                    }
+
+                    siCostFactorOptionsHtml = '<option value="">-- Select Cost Factor --</option>';
+                    siCostFactorMeta = {};
+
+                    $.each(resp.items || [], function (idx, item) {
+                        if (!item) return;
+                        var id = item.id;
+                        var name = item.name || '';
+                        siCostFactorOptionsHtml += '<option value="' + id + '">' + name + '</option>';
+                        siCostFactorMeta[id] = {
+                            belongsTo: typeof item.belongsTo !== 'undefined' ? item.belongsTo : null,
+                            desc: name
+                        };
+                    });
+
+                    $('#siTaxTableBody .si-cost-factor').each(function () {
+                        var prevVal = $(this).val();
+                        $(this).html(siCostFactorOptionsHtml);
+                        if (prevVal) {
+                            $(this).val(prevVal);
+                        }
+                    });
+
+                    siCostFactorLoaded = true;
+                })
+                .always(function () {
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
+                });
+        }
+
+        function refreshSiCostFactorDropdowns() {
+            var usedIds = [];
+
+            $('#siTaxTableBody .si-cost-factor').each(function () {
+                var val = $(this).val();
+                if (val && $.inArray(val, usedIds) === -1) {
+                    usedIds.push(val);
+                }
+            });
+
+            $('#siTaxTableBody .si-cost-factor').each(function () {
+                var $select = $(this);
+                var currentVal = $select.val();
+
+                var $wrapper = $('<select>' + siCostFactorOptionsHtml + '</select>');
+                $wrapper.find('option').each(function () {
+                    var val = $(this).attr('value');
+                    if (val && val !== currentVal && $.inArray(val, usedIds) !== -1) {
+                        $(this).remove();
+                    }
+                });
+
+                $select.html($wrapper.html());
+
+                if (currentVal && $select.find('option[value="' + currentVal + '"]').length > 0) {
+                    $select.val(currentVal);
+                } else {
+                    $select.val('');
+                }
+            });
+        }
+
+        function enforceSiUniqueCostFactors() {
+            var seen = {};
+
+            $('#siTaxTableBody .si-cost-factor').each(function () {
+                var $sel = $(this);
+                var val = $sel.val();
+                if (val && seen[val]) {
+                    $sel.val('');
+                } else if (val) {
+                    seen[val] = true;
+                }
+            });
+
+            refreshSiCostFactorDropdowns();
+        }
+
+        function getSiGrossAmount() {
+            var net = parseDecimal($('#selectedTotal').val() || '0');
+            return net;
+        }
+
+        function recalcSiTaxTotals() {
+            var netBase = getSiGrossAmount();
+            var totalTax = 0;
+            var totalAdd = 0;
+            var totalLess = 0;
+
+            $('#siTaxTableBody tr').each(function () {
+                var $row = $(this);
+                var type = $row.find('.si-tax-type').val();
+                var mode = $row.find('.si-tax-mode').val();
+                var rawVal = $.trim($row.find('.si-tax-value').val() || '0');
+                var expr = parseDecimal(rawVal);
+
+                var baseAmount = 0;
+                if (type === 'Value') {
+                    baseAmount = expr;
+                } else {
+                    baseAmount = (netBase * expr) / 100.0;
+                }
+
+                var signedAmount = baseAmount;
+                if (mode === '-') {
+                    signedAmount = -baseAmount;
+                    totalLess += baseAmount;
+                } else {
+                    totalAdd += baseAmount;
+                }
+
+                $row.find('.si-tax-amount').val(signedAmount.toFixed(2));
+                totalTax += signedAmount;
+            });
+
+            $('#siTotalAddAmount').text(totalAdd.toFixed(2));
+            $('#siTotalLessAmount').text(totalLess.toFixed(2));
+            $('#siTotalTaxAmount').text(totalTax.toFixed(2));
+            $('#siGrandTotal').text((netBase + totalTax).toFixed(2));
+        }
+
+        function addSiTaxRow() {
+            var $row = $('<tr>' +
+                '<td class="text-center">' +
+                '    <button type="button" class="btn btn-danger btn-sm si-tax-row-delete" title="Remove"><i class="fa fa-trash"></i></button>' +
+                '</td>' +
+                '<td>' +
+                '    <select class="form-control si-cost-factor"></select>' +
+                '</td>' +
+                '<td>' +
+                '    <select class="form-control si-tax-type">' +
+                '        <option value="%">%</option>' +
+                '        <option value="Value">Value</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td>' +
+                '    <select class="form-control si-tax-mode">' +
+                '        <option value="+">+</option>' +
+                '        <option value="-">-</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td>' +
+                '    <input type="text" class="form-control text-end si-tax-value" value="0.000" />' +
+                '</td>' +
+                '<td>' +
+                '    <input type="text" class="form-control text-end si-tax-amount" value="0.00" readonly="readonly" />' +
+                '</td>' +
+                '</tr>');
+
+            $row.find('.si-cost-factor').html(siCostFactorOptionsHtml);
+            $('#siTaxTableBody').append($row);
+            refreshSiCostFactorDropdowns();
+            recalcSiTaxTotals();
+        }
+
+        function openSiTaxModal() {
+            loadSiCostFactors(function () {
+                if ($('#siTaxTableBody tr').length === 0) {
+                    addSiTaxRow();
+                }
+                enforceSiUniqueCostFactors();
+                recalcSiTaxTotals();
+                $('#siTaxModal').modal('show');
+            });
+        }
+
+        function collectSiTaxData() {
+            var rows = [];
+            $('#siTaxTableBody tr').each(function () {
+                var $row = $(this);
+                var costFactorId = parseInt($row.find('.si-cost-factor').val() || '0', 10);
+                var type = $row.find('.si-tax-type').val();
+                var mode = $row.find('.si-tax-mode').val();
+                var exprVal = parseDecimal($row.find('.si-tax-value').val() || '0');
+                var amountVal = parseDecimal($row.find('.si-tax-amount').val() || '0');
+
+                if (costFactorId > 0) {
+                    rows.push({
+                        CostFactorId: costFactorId,
+                        ExpressionType: type,
+                        Mode: mode,
+                        ExpressionValue: exprVal,
+                        Amount: amountVal
+                    });
+                }
+            });
+
+            return rows;
+        }
+
+        function updateManualSummaryFromRows(rows) {
+            var discount = 0;
+            var courier = 0;
+            var totalManual = 0;
+
+            if (rows && rows.length) {
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    if (!r) continue;
+
+                    var amt = parseDecimal(r.Amount);
+                    if (!amt) continue;
+
+                    totalManual += amt;
+
+                    var cfId = r.CostFactorId;
+                    var meta = siCostFactorMeta[cfId];
+                    if (meta) {
+                        var belongs = meta.belongsTo;
+                        var desc = (meta.desc || '').toString().toUpperCase();
+
+                        var isCourier = (belongs === 8 || belongs === '8') || desc.indexOf('COURIER') >= 0;
+                        var isDiscount = ((belongs === 0 || belongs === '0') || desc.indexOf('DISCOUNT') >= 0) && !isCourier;
+
+                        if (isDiscount) {
+                            discount += amt;
+                        }
+
+                        if (isCourier) {
+                            courier += amt;
+                        }
+                    }
+                }
+            }
+
+            var baseNet = parseDecimal($('#selectedTotal').val() || '0');
+
+            $('#siDiscountAmt').val(discount.toFixed(2));
+            $('#siCourierAmt').val(courier.toFixed(2));
+            $('#siInvoiceAmt').val((baseNet + totalManual).toFixed(2));
+
+            var $discRow = $('#siDiscountAmt').closest('tr');
+            var $courRow = $('#siCourierAmt').closest('tr');
+            $discRow.toggle(Math.abs(discount) > 0.004);
+            $courRow.toggle(Math.abs(courier) > 0.004);
+        }
+
+        function loadPackings(callback) {
             $.get('@Url.Action("GetPackings", "SalesInvoiceFromSalesOrderOthers")', function (res) {
                 if (!res || !res.success) {
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
                     return;
                 }
 
@@ -416,10 +1081,22 @@
                     html += '<option value="' + p.Id + '">' + (p.Name || '') + '</option>';
                 });
                 packingOptionsHtml = html;
+
+                $('.row-packing').each(function () {
+                    var cur = $(this).val();
+                    $(this).html(packingOptionsHtml);
+                    if (cur) {
+                        $(this).val(cur);
+                    }
+                });
+
+                if (typeof callback === 'function') {
+                    callback();
+                }
             });
         }
 
-        function loadCustomers() {
+        function loadCustomers(callback) {
             $.get('@Url.Action("GetCustomers", "SalesInvoiceFromSalesOrderOthers")', function (res) {
                 if (!res || !res.success) {
                     return;
@@ -433,11 +1110,17 @@
                     $ddl.append('<option value="' + c.Id + '">' + (c.Name || '') + '</option>');
                 });
 
-                $ddl.trigger('change');
+                if (!isLoadingEdit) {
+                    $ddl.trigger('change');
+                }
+
+                if (typeof callback === 'function') {
+                    callback();
+                }
             });
         }
 
-        function loadBillNos(customerId) {
+        function loadBillNos(customerId, callback) {
             $.get('@Url.Action("GetBillNos", "SalesInvoiceFromSalesOrderOthers")', { customerId: customerId }, function (res) {
                 if (!res || !res.success) {
                     return;
@@ -465,7 +1148,175 @@
                     }
                 });
 
-                $ddl.trigger('change');
+                if (typeof callback === 'function') {
+                    callback(res);
+                }
+
+                if (!isLoadingEdit) {
+                    $ddl.trigger('change');
+                }
+            });
+        }
+
+        function toIsoDate(val) {
+            if (!val) return '';
+            // Handle ASP.NET JSON date format: /Date(1772044200000)/
+            if (typeof val === 'string' && val.indexOf('/Date(') === 0) {
+                var ms = parseInt(val.substr(6), 10);
+                if (!isNaN(ms)) {
+                    val = ms;
+                }
+            }
+
+            var dt = new Date(val);
+            if (isNaN(dt.getTime())) return '';
+            var mm = (dt.getMonth() + 1).toString().padStart(2, '0');
+            var dd = dt.getDate().toString().padStart(2, '0');
+            return dt.getFullYear() + '-' + mm + '-' + dd;
+        }
+
+        function loadInvoiceData(invoiceId) {
+            $.get('@Url.Action("GetInvoiceData", "SalesInvoiceFromSalesOrderOthers")', { invoiceId: invoiceId }, function (res) {
+                if (!res || !res.success) {
+                    isLoadingEdit = false;
+                    return;
+                }
+
+                var h = res.header || {};
+                var items = res.items || [];
+                var taxJson = res.taxFactorsJson || '';
+
+                $('#salesOrderId').val((h.SalesOrderId !== undefined && h.SalesOrderId !== null) ? h.SalesOrderId : 0);
+                $('#tranRefId').val((h.CustomerId !== undefined && h.CustomerId !== null) ? h.CustomerId : 0);
+                $('#tranRefName').val(h.CustomerName || '');
+
+                $('#custNameOrAddr').val(h.CustomerName || h.Address1 || '');
+                $('#custAddress1').val(h.Address1 || '');
+                $('#custCity').val(h.City || '');
+                $('#custState').val(h.State || '');
+                $('#custPincode').val(h.Pincode || '');
+                $('#custCountry').val(h.Country || '');
+                $('#stateTypeDropdown').val((h.StateType !== undefined && h.StateType !== null) ? h.StateType : 0);
+
+                suppressCustomerChange = true;
+                $('#customerDropdown').val(h.CustomerId || '').trigger('change.select2');
+
+                // Load saved Tax popup data (manual cost factors) if available
+                try {
+                    if (taxJson && (taxJson + '').trim() !== '') {
+                        siTaxData = JSON.parse(taxJson);
+                    } else {
+                        siTaxData = [];
+                    }
+                } catch (e) {
+                    siTaxData = [];
+                }
+
+                $('#siTaxDataJson').val(siTaxData && siTaxData.length ? JSON.stringify(siTaxData) : '');
+                loadSiCostFactors(function () {
+                    renderSiTaxRows(siTaxData);
+                    updateManualSummaryFromRows(siTaxData);
+                });
+
+                // Render rows immediately so edit grid is not blocked by Bill No loading.
+                renderInvoiceRows(items);
+                recalcTotals();
+                updateManualSummaryFromRows(siTaxData);
+                var totalRows = $('#invoiceDetailsBody .row-select').length;
+                var checkedRows = $('#invoiceDetailsBody .row-select:checked').length;
+                $('#chkAll').prop('checked', totalRows > 0 && totalRows === checkedRows);
+
+                loadBillNos(h.CustomerId || 0, function () {
+                    if (h.SalesOrderId) {
+                        suppressBillChange = true;
+                        $('#billNoDropdown').val(h.SalesOrderId).trigger('change.select2');
+                        $('#salesOrderId').val(h.SalesOrderId);
+                    }
+
+                    isLoadingEdit = false;
+                });
+            });
+        }
+
+        function renderSiTaxRows(rows) {
+            var $tbody = $('#siTaxTableBody');
+            $tbody.empty();
+
+            if (!rows || !rows.length) {
+                return;
+            }
+
+            rows.forEach(function (r) {
+                if (!r) return;
+                addSiTaxRow();
+                var $tr = $tbody.find('tr:last');
+                $tr.find('.si-cost-factor').val(String(r.CostFactorId || '')).trigger('change');
+                $tr.find('.si-tax-type').val(r.ExpressionType || '%');
+                $tr.find('.si-tax-mode').val(r.Mode || '+');
+                $tr.find('.si-tax-value').val((r.ExpressionValue !== undefined && r.ExpressionValue !== null) ? r.ExpressionValue : '0.000');
+            });
+
+            enforceSiUniqueCostFactors();
+            recalcSiTaxTotals();
+        }
+
+        function renderInvoiceRows(items) {
+            var tbody = $('#invoiceDetailsBody');
+            tbody.empty();
+
+            (items || []).forEach(function (itm, idx) {
+                var tr = $('<tr>');
+                tr.attr('data-cgst', itm.CgstRate || 0);
+                tr.attr('data-sgst', itm.SgstRate || 0);
+                tr.attr('data-igst', itm.IgstRate || 0);
+
+                // Create flow does not send IsSelected; default to checked to preserve existing behavior.
+                var isSelected = (itm.IsSelected === undefined || itm.IsSelected === null)
+                    ? true
+                    : (itm.IsSelected === true || itm.IsSelected === 'true');
+                tr.append('<td class="text-center"><input type="checkbox" class="row-select" ' + (isSelected ? 'checked="checked"' : '') + ' /></td>');
+                tr.append('<td class="text-center">' + (idx + 1) + '</td>');
+                tr.append('<td><input type="hidden" class="row-materialid" value="' + (itm.MaterialId || 0) + '" /><input type="text" class="form-control form-control-sm" value="' + (itm.MaterialName || '') + '" readonly="readonly" /></td>');
+                tr.append('<td><input type="text" class="form-control form-control-sm" value="' + (itm.HsnCode || '') + '" readonly="readonly" /></td>');
+                tr.append('<td><select class="form-control form-control-sm row-batch"><option value="">' + (itm.BatchNo || '') + '</option></select></td>');
+                tr.append('<td><input type="date" class="form-control form-control-sm row-expdate" value="' + toIsoDate(itm.ExpiryDate) + '" /></td>');
+                tr.append('<td><select class="form-control form-control-sm row-packing">' + (packingOptionsHtml || '<option value=""></option>') + '</select></td>');
+                tr.append('<td><input type="number" class="form-control form-control-sm text-end row-boxqty" value="' + (itm.BoxQty || 0) + '" min="0" step="1" /></td>');
+                tr.append('<td><input type="number" class="form-control form-control-sm text-end row-qty" value="' + (itm.Qty || 0) + '" min="0" step="0.001" readonly="readonly" /></td>');
+                tr.append('<td><input type="hidden" class="row-actualrate" value="' + (parseDecimal(itm.ActualRate) || 0).toFixed(2) + '" /><input type="number" class="form-control form-control-sm text-end row-rate" value="' + (parseDecimal(itm.Rate) || 0).toFixed(2) + '" min="0" step="0.01" /></td>');
+                tr.append('<td><input type="number" class="form-control form-control-sm text-end row-ptr" value="' + (parseDecimal(itm.Ptr) || 0).toFixed(2) + '" min="0" step="0.01" /></td>');
+                tr.append('<td><input type="number" class="form-control form-control-sm text-end row-mrp" value="' + (parseDecimal(itm.Mrp) || 0).toFixed(2) + '" min="0" step="0.01" /></td>');
+                tr.append('<td><input type="text" class="form-control form-control-sm text-end row-amount" value="' + (parseDecimal(itm.Amount) || 0).toFixed(2) + '" readonly="readonly" /></td>');
+
+                tbody.append(tr);
+
+                var packingId = parseInt(itm.PackingId || '0', 10);
+                if (packingId > 0) {
+                    tr.find('.row-packing').val(packingId);
+                }
+
+                var materialId = parseInt(itm.MaterialId || '0', 10);
+                if (materialId > 0 && packingId > 0) {
+                    $.get('@Url.Action("GetBatches", "SalesInvoiceFromSalesOrderOthers")', { materialId: materialId, packingId: packingId }, function (bres) {
+                        if (!bres || !bres.success) {
+                            return;
+                        }
+
+                        var $batch = tr.find('.row-batch');
+                        $batch.empty();
+                        $batch.append('<option value=""></option>');
+                        (bres.data || []).forEach(function (b) {
+                            $batch.append('<option value="' + b.BatchId + '">' + (b.BatchNo || '') + '</option>');
+                        });
+
+                        var batchText = (itm.BatchNo || '').trim();
+                        if (batchText !== '') {
+                            $batch.find('option').filter(function () {
+                                return (($(this).text() || '').trim() === batchText);
+                            }).prop('selected', true);
+                        }
+                    });
+                }
             });
         }
 
@@ -489,31 +1340,89 @@
 
                 (res.items || []).forEach(function (itm, idx) {
                     var tr = $('<tr>');
+                    tr.attr('data-cgst', itm.CgstRate || 0);
+                    tr.attr('data-sgst', itm.SgstRate || 0);
+                    tr.attr('data-igst', itm.IgstRate || 0);
+                    tr.append('<td class="text-center"><input type="checkbox" class="row-select" checked="checked" /></td>');
                     tr.append('<td class="text-center">' + (idx + 1) + '</td>');
                     tr.append('<td><input type="hidden" class="row-materialid" value="' + itm.MaterialId + '" /><input type="text" class="form-control form-control-sm" value="' + (itm.MaterialName || '') + '" readonly="readonly" /></td>');
                     tr.append('<td><input type="text" class="form-control form-control-sm" value="' + (itm.HsnCode || '') + '" readonly="readonly" /></td>');
-                    tr.append('<td><input type="text" class="form-control form-control-sm" value="" readonly="readonly" /></td>');
-                    tr.append('<td><input type="date" class="form-control form-control-sm" value="" /></td>');
-                    tr.append('<td><select class="form-control form-control-sm">' + (packingOptionsHtml || '<option value=""></option>') + '</select></td>');
-                    tr.append('<td><input type="number" class="form-control form-control-sm text-end" value="" min="0" step="1" /></td>');
+                    tr.append('<td><select class="form-control form-control-sm row-batch"><option value=""></option></select></td>');
+                    tr.append('<td><input type="date" class="form-control form-control-sm row-expdate" value="" /></td>');
+                    tr.append('<td><select class="form-control form-control-sm row-packing">' + (packingOptionsHtml || '<option value=""></option>') + '</select></td>');
+                    tr.append('<td><input type="number" class="form-control form-control-sm text-end row-boxqty" value="0" min="0" step="1" /></td>');
                     tr.append('<td><input type="number" class="form-control form-control-sm text-end row-qty" value="' + (itm.Qty || 0) + '" min="0" step="0.001" readonly="readonly" /></td>');
-                    tr.append('<td><input type="number" class="form-control form-control-sm text-end row-rate" value="" min="0" step="0.01" /></td>');
-                    tr.append('<td><input type="number" class="form-control form-control-sm text-end row-actualrate" value="" min="0" step="0.01" /></td>');
-                    tr.append('<td><input type="number" class="form-control form-control-sm text-end" value="" min="0" step="0.01" /></td>');
+                    tr.append('<td><input type="hidden" class="row-actualrate" value="0.00" /><input type="number" class="form-control form-control-sm text-end row-rate" value="' + (itm.Rate || 0).toFixed(2) + '" min="0" step="0.01" /></td>');
+                    tr.append('<td><input type="number" class="form-control form-control-sm text-end row-ptr" value="0.00" min="0" step="0.01" /></td>');
+                    tr.append('<td><input type="number" class="form-control form-control-sm text-end row-mrp" value="0.00" min="0" step="0.01" /></td>');
                     tr.append('<td><input type="text" class="form-control form-control-sm text-end row-amount" value="0.00" readonly="readonly" /></td>');
                     tbody.append(tr);
+
+                    recalcRow(tr);
                 });
+
+                recalcTotals();
+                updateManualSummaryFromRows([]);
+
+                $('#chkAll').prop('checked', (res.items || []).length > 0);
             });
         }
 
         function recalcRow($tr) {
-            var qty = parseFloat($tr.find('.row-qty').val() || '0');
-            var rate = parseFloat($tr.find('.row-rate').val() || '0');
+            var qty = parseDecimal($tr.find('.row-qty').val() || '0');
+            var rate = parseDecimal($tr.find('.row-rate').val() || '0');
             if (isNaN(qty)) qty = 0;
             if (isNaN(rate)) rate = 0;
 
             var amount = qty * rate;
             $tr.find('.row-amount').val(amount.toFixed(2));
+        }
+
+        function recalcTotals() {
+            var stateType = parseInt($('#stateTypeDropdown').val() || '0', 10);
+
+            var gross = 0;
+            var cgst = 0;
+            var sgst = 0;
+            var igst = 0;
+
+            $('#invoiceDetailsBody tr').each(function () {
+                var $tr = $(this);
+
+                var isSelected = $tr.find('.row-select').is(':checked');
+                if (!isSelected) return;
+
+                var amt = parseDecimal($tr.find('.row-amount').val() || '0');
+                if (amt <= 0) return;
+
+                var cgstRate = parseDecimal($tr.data('cgst') || '0');
+                var sgstRate = parseDecimal($tr.data('sgst') || '0');
+                var igstRate = parseDecimal($tr.data('igst') || '0');
+
+                gross += amt;
+
+                if (stateType === 0) {
+                    if (cgstRate > 0) {
+                        cgst += Math.round(((amt * cgstRate) / 100) * 100) / 100;
+                    }
+                    if (sgstRate > 0) {
+                        sgst += Math.round(((amt * sgstRate) / 100) * 100) / 100;
+                    }
+                } else {
+                    if (igstRate > 0) {
+                        igst += Math.round(((amt * igstRate) / 100) * 100) / 100;
+                    }
+                }
+            });
+
+            var net = gross + cgst + sgst + igst;
+
+            $('#siGrossAmt').val(gross.toFixed(2));
+            $('#siCgstAmt').val(cgst.toFixed(2));
+            $('#siSgstAmt').val(sgst.toFixed(2));
+            $('#siIgstAmt').val(igst.toFixed(2));
+            $('#selectedTotal').val(net.toFixed(2));
+            $('#siInvoiceAmt').val(net.toFixed(2));
         }
     </script>
 }

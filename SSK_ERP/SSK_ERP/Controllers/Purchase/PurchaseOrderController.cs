@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Web.Mvc;
 using Newtonsoft.Json;
@@ -52,22 +53,71 @@ namespace SSK_ERP.Controllers.Purchase
             }
 
             var detailRows = new List<PurchaseOrderDetailRow>();
-            var details = db.TransactionDetails
+
+            var poDetails = db.TransactionDetails
                 .Where(d => d.TRANMID == master.TRANMID)
                 .OrderBy(d => d.TRANDID)
                 .ToList();
 
-            foreach (var d in details)
+            bool isLinkedToSalesOrder = master.TRANLMID > 0;
+            if (isLinkedToSalesOrder)
             {
-                detailRows.Add(new PurchaseOrderDetailRow
+                var soDetails = db.TransactionDetails
+                    .Where(d => d.TRANMID == master.TRANLMID)
+                    .OrderBy(d => d.TRANDID)
+                    .ToList();
+
+                // Build a multi-set of PO rows to match against, so duplicates are handled.
+                var poKeyCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (var d in poDetails)
                 {
-                    MaterialId = d.TRANDREFID,
-                    Qty = d.TRANDQTY,
-                    Rate = d.TRANDRATE,
-                    Amount = d.TRANDGAMT,
-                    ProfitPercent = d.TRANDMTRLPRFT,
-                    ActualRate = d.TRANDARATE
-                });
+                    var key = string.Concat(d.TRANDREFID, "|", d.TRANDQTY.ToString(CultureInfo.InvariantCulture), "|", d.TRANDRATE.ToString(CultureInfo.InvariantCulture));
+                    if (poKeyCounts.ContainsKey(key))
+                    {
+                        poKeyCounts[key]++;
+                    }
+                    else
+                    {
+                        poKeyCounts[key] = 1;
+                    }
+                }
+
+                foreach (var d in soDetails)
+                {
+                    var key = string.Concat(d.TRANDREFID, "|", d.TRANDQTY.ToString(CultureInfo.InvariantCulture), "|", d.TRANDRATE.ToString(CultureInfo.InvariantCulture));
+                    bool selected = false;
+                    if (poKeyCounts.TryGetValue(key, out var cnt) && cnt > 0)
+                    {
+                        selected = true;
+                        poKeyCounts[key] = cnt - 1;
+                    }
+
+                    detailRows.Add(new PurchaseOrderDetailRow
+                    {
+                        MaterialId = d.TRANDREFID,
+                        Qty = d.TRANDQTY,
+                        Rate = d.TRANDRATE,
+                        Amount = d.TRANDGAMT,
+                        ProfitPercent = d.TRANDMTRLPRFT,
+                        ActualRate = d.TRANDARATE,
+                        IsSelected = selected
+                    });
+                }
+            }
+            else
+            {
+                foreach (var d in poDetails)
+                {
+                    detailRows.Add(new PurchaseOrderDetailRow
+                    {
+                        MaterialId = d.TRANDREFID,
+                        Qty = d.TRANDQTY,
+                        Rate = d.TRANDRATE,
+                        Amount = d.TRANDGAMT,
+                        ProfitPercent = d.TRANDMTRLPRFT,
+                        ActualRate = d.TRANDARATE
+                    });
+                }
             }
 
             ViewBag.StatusList = new SelectList(
@@ -82,10 +132,11 @@ namespace SSK_ERP.Controllers.Purchase
             );
 
             // Determine whether this PO is linked to a Supplier or a Customer.
+            // For PO-from-SalesOrder, always treat dropdown as Supplier list.
             var linkedSupplier = db.SupplierMasters
                 .FirstOrDefault(s => s.CATEID == master.TRANREFID && (s.DISPSTATUS == 0 || s.DISPSTATUS == null));
 
-            if (linkedSupplier != null)
+            if (isLinkedToSalesOrder || linkedSupplier != null)
             {
                 // Supplier-based PO (new flow). Populate dropdown with suppliers and treat as PO-from-Sales (Supplier Name).
                 var supplierList = db.SupplierMasters
@@ -343,21 +394,9 @@ namespace SSK_ERP.Controllers.Purchase
                     .Where(d => d != null && d.MaterialId > 0 && d.Qty > 0 && d.Rate >= 0)
                     .ToList();
 
-                var sourceDetails = db.TransactionDetails
-                    .Where(d => d.TRANMID == source.TRANMID)
-                    .OrderBy(d => d.TRANDID)
-                    .ToList();
-
-                for (int i = 0; i < details.Count && i < sourceDetails.Count; i++)
-                {
-                    details[i].MaterialId = sourceDetails[i].TRANDREFID;
-                }
-
-                details = details.Take(sourceDetails.Count).ToList();
-
                 if (!details.Any())
                 {
-                    TempData["ErrorMessage"] = "Please add at least one detail row.";
+                    TempData["ErrorMessage"] = "Please select at least one item row.";
                     return RedirectToAction("PoForm", new { id = master.TRANLMID });
                 }
 
@@ -984,6 +1023,7 @@ namespace SSK_ERP.Controllers.Purchase
             public decimal Amount { get; set; }
             public decimal ProfitPercent { get; set; }
             public decimal ActualRate { get; set; }
+            public bool IsSelected { get; set; }
         }
 
         protected override void Dispose(bool disposing)

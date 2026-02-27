@@ -587,6 +587,10 @@
                     <table class="table table-sm table-bordered align-middle so-detail-table">
                         <thead>
                             <tr>
+                                @if (isPoFromSalesOrder)
+                                {
+                                    <th style="width: 40px;" class="text-center"><input type="checkbox" id="soSelectAllRows" checked="checked" /></th>
+                                }
                                 <th style="width: 60px;">S.No</th>
                                 <th style="width: 220px;">Material</th>
                                 <th style="width: 200px;">Material Group</th>
@@ -599,6 +603,10 @@
                         </thead>
                         <tbody id="soDetailsBody">
                             <tr>
+                                @if (isPoFromSalesOrder)
+                                {
+                                    <td class="text-center"><input type="checkbox" class="so-row-select" checked="checked" /></td>
+                                }
                                 <td class="text-center so-row-index">1</td>
                                 <td>
                                     <select class="form-control form-control-sm so-material select2" @(isPoFromSalesOrder ? "disabled=\"disabled\"" : "")>
@@ -1046,6 +1054,14 @@
                 $.each(initialSoDetails, function (index, item) {
                     if (!item) return;
                     var $row = $template.clone();
+
+                    if (isPoFromSalesOrder) {
+                        var isSelected = true;
+                        if (typeof item.IsSelected !== 'undefined' && item.IsSelected !== null) {
+                            isSelected = !!item.IsSelected;
+                        }
+                        $row.find('.so-row-select').prop('checked', isSelected);
+                    }
                     $row.find('.so-material').val(String(item.MaterialId || ''));
 
                     var groupId = soMaterialGroupMap[item.MaterialId];
@@ -1082,6 +1098,12 @@
                 updateSoRowNumbers();
                 recalcSoGross();
                 soDetailsInitialized = true;
+
+                if (isPoFromSalesOrder) {
+                    var all = $('#soDetailsBody .so-row-select').length;
+                    var checkedCount = $('#soDetailsBody .so-row-select:checked').length;
+                    $('#soSelectAllRows').prop('checked', all > 0 && checkedCount === all);
+                }
             }
 
             function loadCostFactors() {
@@ -1249,8 +1271,17 @@
 
             function recalcSoGross() {
                 var gross = 0;
-                $('#soDetailsBody .so-amount').each(function () {
-                    var v = parseFloat($(this).val());
+                $('#soDetailsBody tr').each(function () {
+                    var $tr = $(this);
+
+                    if (isPoFromSalesOrder) {
+                        var isSelected = $tr.find('.so-row-select').is(':checked');
+                        if (!isSelected) {
+                            return;
+                        }
+                    }
+
+                    var v = parseFloat($tr.find('.so-amount').val());
                     if (!isNaN(v)) gross += v;
                 });
 
@@ -1409,6 +1440,14 @@
                 var rows = [];
                 $('#soDetailsBody tr').each(function () {
                     var $row = $(this);
+
+                    if (isPoFromSalesOrder) {
+                        var isSelected = $row.find('.so-row-select').is(':checked');
+                        if (!isSelected) {
+                            return;
+                        }
+                    }
+
                     var materialId = parseInt($row.find('.so-material').val() || '0', 10);
                     var qty = parseFloat($row.find('.so-qty').val() || '0');
                     var rate = parseFloat($row.find('.so-rate').val() || '0');
@@ -1471,9 +1510,17 @@
 
                 var hasDetail = false;
                 var hasInvalidDetail = false;
+                var hasSelectedDetail = false;
 
                 $('#soDetailsBody tr').each(function () {
                     var $row = $(this);
+                    var rowSelected = true;
+                    if (isPoFromSalesOrder) {
+                        rowSelected = $row.find('.so-row-select').is(':checked');
+                        if (!rowSelected) {
+                            return;
+                        }
+                    }
                     var materialId = parseInt($row.find('.so-material').val() || '0', 10);
                     var qty = parseFloat($row.find('.so-qty').val() || '0');
                     var actualRate = parseFloat($row.find('.so-actual-rate').val() || '0');
@@ -1496,6 +1543,9 @@
 
                     if (rowValid) {
                         hasDetail = true;
+                        if (rowSelected) {
+                            hasSelectedDetail = true;
+                        }
                     } else {
                         hasInvalidDetail = true;
                         isValid = false;
@@ -1504,6 +1554,11 @@
 
                 if (!hasDetail) {
                     alert('Please enter at least one detail row with Material and Qty.');
+                    isValid = false;
+                }
+
+                if (isPoFromSalesOrder && !hasSelectedDetail) {
+                    alert('Please select at least one item row to save.');
                     isValid = false;
                 }
 
@@ -1570,6 +1625,21 @@
                 loadMaterialAndGroupData();
                 loadCostFactors();
                 initCustomerSelect();
+
+                if (isPoFromSalesOrder) {
+                    $('#soSelectAllRows').on('change', function () {
+                        var checked = $(this).is(':checked');
+                        $('#soDetailsBody .so-row-select').prop('checked', checked);
+                        recalcSoGross();
+                    });
+
+                    $(document).on('change', '#soDetailsBody .so-row-select', function () {
+                        var all = $('#soDetailsBody .so-row-select').length;
+                        var checkedCount = $('#soDetailsBody .so-row-select:checked').length;
+                        $('#soSelectAllRows').prop('checked', all > 0 && checkedCount === all);
+                        recalcSoGross();
+                    });
+                }
 
                 var lastSoDetailRowForTab = null;
                 var pendingSoQtyFocusRow = null;

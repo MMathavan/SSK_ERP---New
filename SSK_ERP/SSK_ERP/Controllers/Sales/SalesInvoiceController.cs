@@ -15,6 +15,7 @@ namespace SSK_ERP.Controllers
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesInvoiceRegisterId = 20;
         private const int PurchaseInvoiceRegisterId = 18;
+        private const int SalesOrderRegisterId = 1;
 
         private class SalesInvoiceListRow
         {
@@ -549,6 +550,15 @@ namespace SSK_ERP.Controllers
                 return RedirectToAction("Index");
             }
 
+            if (sales.TRANLMID > 0)
+            {
+                var linked = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == sales.TRANLMID);
+                if (linked != null && linked.REGSTRID == SalesOrderRegisterId)
+                {
+                    return RedirectToAction("Form", "SalesInvoiceFromSalesOrderOthers", new { id = sales.TRANMID });
+                }
+            }
+
             TransactionMaster purchase = null;
             if (sales.TRANLMID > 0)
             {
@@ -786,11 +796,17 @@ namespace SSK_ERP.Controllers
                     .Where(p => packIds.Contains(p.PACKMID))
                     .ToDictionary(p => p.PACKMID, p => p);
 
-                int count = Math.Min(salesDetails.Count, purchaseDetails.Count);
-                for (int i = 0; i < count; i++)
+                // Map invoice rows to purchase rows using TRANDAID (purchase TRANDID).
+                var salesByPurchaseDetailId = salesDetails
+                    .Where(d => d.TRANDAID > 0)
+                    .GroupBy(d => d.TRANDAID)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                foreach (var p in purchaseDetails)
                 {
-                    var s = salesDetails[i];
-                    var p = purchaseDetails[i];
+                    salesByPurchaseDetailId.TryGetValue(p.TRANDID, out var s);
+                    bool selected = s != null;
+
                     var batch = batchInfos.FirstOrDefault(b => b.TRANDID == p.TRANDID);
 
                     materials.TryGetValue(p.TRANDREFID, out var material);
@@ -825,30 +841,33 @@ namespace SSK_ERP.Controllers
                         mrp = batch.TRANBMRP;
                     }
 
-                    decimal gross = s.TRANDGAMT > 0
-                        ? s.TRANDGAMT
-                        : (s.TRANDNAMT > 0 ? s.TRANDNAMT : s.TRANDQTY * s.TRANDRATE);
+                    // If not selected (not part of invoice), show default values derived from purchase with 5% markup.
+                    decimal qty = selected ? s.TRANDQTY : p.TRANDQTY;
+                    decimal rate = selected ? s.TRANDRATE : Math.Round(p.TRANDRATE * 1.05m, 2);
+                    decimal amount = selected
+                        ? (s.TRANDGAMT > 0 ? s.TRANDGAMT : Math.Round(qty * rate, 2))
+                        : Math.Round(qty * rate, 2);
 
                     items.Add(new SalesInvoiceFromPurchaseItemViewModel
                     {
                         PurchaseTranDetailId = p.TRANDID,
-                        MaterialId = s.TRANDREFID,
-                        MaterialName = s.TRANDREFNAME,
+                        MaterialId = p.TRANDREFID,
+                        MaterialName = p.TRANDREFNAME,
                         HsnCode = hsnCode,
                         BatchNo = batch != null ? batch.TRANBDNO : null,
                         ExpiryDate = batch != null ? batch.TRANBEXPDATE : null,
                         PackingName = packingName,
                         PackingId = packingId,
                         BoxQty = boxQty,
-                        Qty = s.TRANDQTY,
-                        Rate = s.TRANDRATE,
+                        Qty = qty,
+                        Rate = rate,
                         Ptr = ptr,
                         Mrp = mrp,
-                        Amount = gross,
+                        Amount = amount,
                         CgstRate = cgstRate,
                         SgstRate = sgstRate,
                         IgstRate = igstRate,
-                        Selected = true
+                        Selected = selected
                     });
                 }
             }
@@ -912,7 +931,7 @@ namespace SSK_ERP.Controllers
             decimal sgstAmount = 0m;
             decimal igstAmount = 0m;
 
-            foreach (var itm in items)
+            foreach (var itm in items.Where(i => i != null && i.Selected))
             {
                 var amt = itm.Amount;
                 grossAmount += amt;
@@ -1008,6 +1027,13 @@ namespace SSK_ERP.Controllers
                 "Text",
                 model.Status.ToString());
 
+            // If this invoice is created from Purchase Invoice, use the same view used for CreateFromPurchase
+            // so row selection checkboxes are available during edit.
+            if (model.PurchaseTranMid > 0)
+            {
+                return View("CreateFromPurchase", model);
+            }
+
             return View(model);
         }
 
@@ -1067,6 +1093,260 @@ namespace SSK_ERP.Controllers
                     .Where(d => d.TRANMID == existing.TRANMID)
                     .OrderBy(d => d.TRANDID)
                     .ToList();
+
+                // If this Sales Invoice is linked to a Purchase Invoice, allow checkbox-based add/remove rows
+                // by rebuilding TransactionDetails from the selected items.
+                if (existing.TRANLMID > 0)
+                {
+                    var linkedPurchase = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == existing.TRANLMID && t.REGSTRID == PurchaseInvoiceRegisterId);
+                    if (linkedPurchase != null)
+                    {
+                        var allItems = model.Items ?? new List<SalesInvoiceFromPurchaseItemViewModel>();
+
+                        var selectedItems = allItems
+                            .Select((item, index) => new { Item = item, Index = index })
+                            .Where(x => x.Item != null && x.Item.Selected && x.Item.MaterialId > 0 && x.Item.Qty > 0)
+                            .ToList();
+
+                        if (!selectedItems.Any())
+                        {
+                            TempData["ErrorMessage"] = "Please select at least one item for the Sales Invoice.";
+                            return RedirectToAction("Form", new { id = existing.TRANMID });
+                        }
+
+                        // Remove old batch + details
+                        try
+                        {
+                            var oldDetailIds = details.Select(d => d.TRANDID).ToList();
+                            if (oldDetailIds.Any())
+                            {
+                                var idList = string.Join(",", oldDetailIds);
+                                db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN (" + idList + ")");
+                            }
+                        }
+                        catch
+                        {
+                        }
+
+                        db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONDETAIL WHERE TRANMID = @p0", existing.TRANMID);
+                        db.SaveChanges();
+
+                        // Load purchase details for fallback linking
+                        var purchaseDetailsForLink = db.TransactionDetails
+                            .Where(d => d.TRANMID == linkedPurchase.TRANMID)
+                            .OrderBy(d => d.TRANDID)
+                            .ToList();
+
+                        var materialIds2 = selectedItems.Select(x => x.Item.MaterialId).Distinct().ToList();
+                        var materialMap2 = db.MaterialMasters
+                            .Where(m => materialIds2.Contains(m.MTRLID))
+                            .ToDictionary(m => m.MTRLID, m => m);
+
+                        var hsnIds2 = materialMap2.Values
+                            .Where(m => m.HSNID > 0)
+                            .Select(m => m.HSNID)
+                            .Distinct()
+                            .ToList();
+
+                        var hsnMap2 = db.HSNCodeMasters
+                            .Where(h => hsnIds2.Contains(h.HSNID))
+                            .ToDictionary(h => h.HSNID, h => h);
+
+                        short tranStateType2 = existing.TRANSTATETYPE;
+
+                        decimal totalGross2 = 0m;
+                        decimal totalCgst2 = 0m;
+                        decimal totalSgst2 = 0m;
+                        decimal totalIgst2 = 0m;
+                        decimal totalNet2 = 0m;
+
+                        var batchInsertPairs = new List<Tuple<SalesInvoiceFromPurchaseItemViewModel, TransactionDetail>>();
+
+                        foreach (var selected in selectedItems)
+                        {
+                            var itm = selected.Item;
+                            int rowIndex = selected.Index;
+
+                            decimal qty = itm.Qty;
+                            decimal rate = itm.Rate;
+                            decimal gross = Math.Round(qty * rate, 2);
+
+                            materialMap2.TryGetValue(itm.MaterialId, out var material);
+                            int hsnId = material != null ? material.HSNID : 0;
+                            hsnMap2.TryGetValue(hsnId, out var hsn);
+
+                            string refNo2 = material != null ? material.MTRLCODE : string.Empty;
+                            string refName2 = material != null ? material.MTRLDESC : (itm.MaterialName ?? string.Empty);
+
+                            decimal cgstAmt = 0m;
+                            decimal sgstAmt = 0m;
+                            decimal igstAmt = 0m;
+
+                            if (hsn != null)
+                            {
+                                if (tranStateType2 == 0)
+                                {
+                                    if (hsn.CGSTEXPRN > 0) cgstAmt = Math.Round((gross * hsn.CGSTEXPRN) / 100m, 2);
+                                    if (hsn.SGSTEXPRN > 0) sgstAmt = Math.Round((gross * hsn.SGSTEXPRN) / 100m, 2);
+                                }
+                                else
+                                {
+                                    if (hsn.IGSTEXPRN > 0) igstAmt = Math.Round((gross * hsn.IGSTEXPRN) / 100m, 2);
+                                }
+                            }
+
+                            decimal net = gross + cgstAmt + sgstAmt + igstAmt;
+
+                            totalGross2 += gross;
+                            totalCgst2 += cgstAmt;
+                            totalSgst2 += sgstAmt;
+                            totalIgst2 += igstAmt;
+                            totalNet2 += net;
+
+                            int packMid = itm.PackingId ?? 0;
+
+                            int purchaseDetailId = itm.PurchaseTranDetailId;
+                            if (purchaseDetailId <= 0 && purchaseDetailsForLink != null && purchaseDetailsForLink.Count > rowIndex)
+                            {
+                                purchaseDetailId = purchaseDetailsForLink[rowIndex].TRANDID;
+                            }
+
+                            var newDetail = new TransactionDetail
+                            {
+                                TRANMID = existing.TRANMID,
+                                TRANDREFID = itm.MaterialId,
+                                TRANDREFNO = refNo2,
+                                TRANDREFNAME = refName2,
+                                TRANDMTRLPRFT = 0,
+                                HSNID = hsnId,
+                                PACKMID = packMid,
+                                TRANDQTY = qty,
+                                TRANDRATE = rate,
+                                TRANDARATE = rate,
+                                TRANDGAMT = gross,
+                                TRANDCGSTAMT = cgstAmt,
+                                TRANDSGSTAMT = sgstAmt,
+                                TRANDIGSTAMT = igstAmt,
+                                TRANDNAMT = net,
+                                TRANDAID = purchaseDetailId,
+                                TRANDNARTN = null,
+                                TRANDRMKS = null
+                            };
+
+                            db.TransactionDetails.Add(newDetail);
+                            batchInsertPairs.Add(Tuple.Create(itm, newDetail));
+                        }
+
+                        existing.TRANGAMT = totalGross2;
+                        existing.TRANCGSTAMT = totalCgst2;
+                        existing.TRANSGSTAMT = totalSgst2;
+                        existing.TRANIGSTAMT = totalIgst2;
+                        existing.TRANNAMT = totalNet2;
+                        existing.TRANAMTWRDS = ConvertAmountToWords(totalNet2);
+
+                        db.SaveChanges();
+
+                        // Reinsert batch details for the new invoice details
+                        try
+                        {
+                            if (batchInsertPairs.Any())
+                            {
+                                // Load purchase batch rows once
+                                var pDetailIds = batchInsertPairs
+                                    .Select(x => x.Item1.PurchaseTranDetailId)
+                                    .Where(x => x > 0)
+                                    .Distinct()
+                                    .ToList();
+
+                                var purchaseBatchInfos = new List<PurchaseBatchInfoLocal>();
+                                if (pDetailIds.Any())
+                                {
+                                    var idList = string.Join(",", pDetailIds);
+                                    var sql = @"SELECT TRANDID, TRANBDNO, TRANBEXPDATE, PACKMID, TRANBQTY, TRANBPTRRATE, TRANBMRP 
+                                                 FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN (" + idList + ")";
+                                    purchaseBatchInfos = db.Database.SqlQuery<PurchaseBatchInfoLocal>(sql).ToList();
+                                }
+
+                                var queryInsertBatch = @"INSERT INTO TRANSACTIONBATCHDETAIL (
+                                    TRANDID, AMTRLID, HSNID, STKBID, TRANBDNO, TRANBEXPDATE, PACKMID, 
+                                    TRANPQTY, TRANBQTY, TRANBRATE, TRANBPTRRATE, TRANBMRP, 
+                                    TRANBGAMT, TRANBCGSTEXPRN, TRANBSGSTEXPRN, TRANBIGSTEXPRN, 
+                                    TRANBCGSTAMT, TRANBSGSTAMT, TRANBIGSTAMT, TRANBNAMT, 
+                                    TRANBPID, TRANDPID, TRANPTQTY
+                                ) VALUES (
+                                    @p0, @p1, @p2, @p3, @p4, @p5, @p6,
+                                    @p7, @p8, @p9, @p10, @p11,
+                                    @p12, @p13, @p14, @p15,
+                                    @p16, @p17, @p18, @p19,
+                                    @p20, @p21, @p22
+                                )";
+
+                                foreach (var pair in batchInsertPairs)
+                                {
+                                    var itm = pair.Item1;
+                                    var d = pair.Item2;
+
+                                    if (d == null || d.TRANDID <= 0 || itm == null || itm.PurchaseTranDetailId <= 0)
+                                    {
+                                        continue;
+                                    }
+
+                                    var pb = purchaseBatchInfos.FirstOrDefault(b => b.TRANDID == itm.PurchaseTranDetailId);
+                                    if (pb == null)
+                                    {
+                                        continue;
+                                    }
+
+                                    decimal cgstExpr = 0m;
+                                    decimal sgstExpr = 0m;
+                                    decimal igstExpr = 0m;
+                                    if (d.HSNID > 0 && hsnMap2.TryGetValue(d.HSNID, out var hsnForBatch))
+                                    {
+                                        cgstExpr = hsnForBatch.CGSTEXPRN;
+                                        sgstExpr = hsnForBatch.SGSTEXPRN;
+                                        igstExpr = hsnForBatch.IGSTEXPRN;
+                                    }
+
+                                    db.Database.ExecuteSqlCommand(
+                                        queryInsertBatch,
+                                        d.TRANDID,
+                                        d.TRANDREFID,
+                                        d.HSNID,
+                                        0,
+                                        pb.TRANBDNO,
+                                        pb.TRANBEXPDATE,
+                                        pb.PACKMID ?? (int?)null,
+                                        0,
+                                        pb.TRANBQTY,
+                                        d.TRANDRATE,
+                                        pb.TRANBPTRRATE,
+                                        pb.TRANBMRP,
+                                        d.TRANDGAMT,
+                                        cgstExpr,
+                                        sgstExpr,
+                                        igstExpr,
+                                        d.TRANDCGSTAMT,
+                                        d.TRANDSGSTAMT,
+                                        d.TRANDIGSTAMT,
+                                        d.TRANDNAMT,
+                                        0,
+                                        0,
+                                        0
+                                    );
+                                }
+                            }
+                        }
+                        catch
+                        {
+                        }
+
+                        // Continue to manual tax factor logic below (uses model.TaxFactorsJson)
+                        details = db.TransactionDetails
+                            .Where(d => d.TRANMID == existing.TRANMID)
+                            .OrderBy(d => d.TRANDID)
+                            .ToList();
+                    }
+                }
 
                 short tranStateType = existing.TRANSTATETYPE;
 
@@ -1592,6 +1872,32 @@ namespace SSK_ERP.Controllers
                 List<PurchaseBatchInfoLocal> batchInfos = null;
                 List<TransactionDetail> purchaseDetails = null;
 
+                List<PurchaseBatchInfoLocal> salesBatchInfos = null;
+                Dictionary<int, PackingMaster> salesPackMap = null;
+
+                var salesDetailIds = details.Select(d => d.TRANDID).ToList();
+                salesBatchInfos = new List<PurchaseBatchInfoLocal>();
+                if (salesDetailIds.Any())
+                {
+                    var idList = string.Join(",", salesDetailIds);
+                    var sql = @"SELECT TRANDID, TRANBDNO, TRANBEXPDATE, PACKMID, TRANBQTY, TRANBPTRRATE, TRANBMRP 
+                             FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN (" + idList + ")";
+                    salesBatchInfos = db.Database.SqlQuery<PurchaseBatchInfoLocal>(sql).ToList();
+
+                    var salesPackIds = salesBatchInfos
+                        .Where(b => b.PACKMID.HasValue)
+                        .Select(b => b.PACKMID.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (salesPackIds.Any())
+                    {
+                        salesPackMap = db.PackingMasters
+                            .Where(p => salesPackIds.Contains(p.PACKMID))
+                            .ToDictionary(p => p.PACKMID, p => p);
+                    }
+                }
+
                 if (purchase != null)
                 {
                     purchaseDetails = db.TransactionDetails
@@ -1663,6 +1969,10 @@ namespace SSK_ERP.Controllers
                     {
                         batch = batchInfos.FirstOrDefault(b => b.TRANDID == p.TRANDID);
                     }
+                    else if (salesBatchInfos != null)
+                    {
+                        batch = salesBatchInfos.FirstOrDefault(b => b.TRANDID == s.TRANDID);
+                    }
 
                     int materialId = p != null ? p.TRANDREFID : s.TRANDREFID;
 
@@ -1699,6 +2009,10 @@ namespace SSK_ERP.Controllers
                     if (batch != null && packMap != null && batch.PACKMID.HasValue)
                     {
                         packMap.TryGetValue(batch.PACKMID.Value, out pack);
+                    }
+                    else if (batch != null && salesPackMap != null && batch.PACKMID.HasValue)
+                    {
+                        salesPackMap.TryGetValue(batch.PACKMID.Value, out pack);
                     }
                     else if (s.PACKMID > 0)
                     {
