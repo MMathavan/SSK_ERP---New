@@ -2223,6 +2223,7 @@ namespace SSK_ERP.Controllers
                     CgstAmount = master.TRANCGSTAMT,
                     SgstAmount = master.TRANSGSTAMT,
                     IgstAmount = master.TRANIGSTAMT,
+                    RoundOffAmount = master.TRANROAMT ?? 0m,
                     SalesOrderNo = salesOrderNo,
                     SalesOrderDate = salesOrderDate,
                     PurchaseInvoiceNo = purchaseInvoiceNo,
@@ -2968,6 +2969,7 @@ namespace SSK_ERP.Controllers
         public decimal CgstAmount { get; set; }
         public decimal SgstAmount { get; set; }
         public decimal IgstAmount { get; set; }
+        public decimal RoundOffAmount { get; set; }
         public string SalesOrderNo { get; set; }
         public DateTime? SalesOrderDate { get; set; }
         public string PurchaseInvoiceNo { get; set; }

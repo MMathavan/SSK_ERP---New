@@ -18,7 +18,8 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: 500;
             padding: 10px;
             background: #f5f5f5;
         }
@@ -57,50 +58,50 @@
 
         .comp-name {
             font-weight: 700;
-            font-size: 18px;
+            font-size: 20px;
         }
 
         .comp-addr {
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.15;
         }
 
         .gst-title {
             text-align: center;
             font-weight: 700;
-            font-size: 16px;
+            font-size: 18px;
             margin-top: 4px;
         }
 
         .inv-small-text {
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .inv-border-box {
             border: 1px solid #000;
             padding: 2px 4px;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .party-heading {
             text-align: left;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             margin-bottom: 2px;
         }
 
         .party-name {
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 600;
         }
 
         .party-addr {
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.15;
         }
 
         .party-gst {
-            font-size: 12px;
+            font-size: 14px;
             margin-top: 2px;
         }
 
@@ -108,7 +109,7 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 3px;
-            font-size: 11px;
+            font-size: 13px;
         }
 
         .inv-info-table th,
@@ -121,7 +122,8 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 2px;
-            font-size: 11px;
+            font-size: 13px;
+            table-layout: fixed;
         }
 
         .inv-items-table th,
@@ -131,25 +133,12 @@
         }
 
         .inv-items-table th {
-            font-weight: 600;
+            font-weight: 700;
             text-align: center;
         }
 
         .inv-blank-row td {
             height: 14px;
-            border: none !important;
-        }
-
-        .inv-blank-row td:first-child {
-            border-left: 1px solid #000 !important;
-        }
-
-        .inv-blank-row td:last-child {
-            border-right: 1px solid #000 !important;
-        }
-
-        .inv-blank-row.inv-blank-row-last td {
-            border-bottom: 1px solid #000 !important;
         }
 
         .text-right {
@@ -162,7 +151,7 @@
 
         .totals-row {
             margin-top: 2px;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         .totals-row table {
@@ -177,7 +166,7 @@
 
         .footer-row {
             margin-top: 2px;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         .footer-row table {
@@ -196,7 +185,7 @@
         }
 
         .grand-total-box {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
             text-align: center;
         }
@@ -211,13 +200,13 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 6px 14px;
-            background: #444;
+            padding: 6px 12px;
+            background: #007bff;
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 15px;
         }
 
         .print-button:hover {
@@ -387,21 +376,21 @@
                         }
                         <tr>
                             <th style="width: 3%;">S.No</th>
-                            <th style="width: 5%;">Div</th>
-                            <th style="width: 20%;">Product Name</th>
-                            <th style="width: 7%;">Pack</th>
-                            <th style="width: 5%;">Qty.</th>
-                            <th style="width: 8%;">Batch</th>
-                            <th style="width: 6%;">Exp</th>
-                            <th style="width: 6%;">HSN</th>
-                            <th style="width: 6%;">Rate</th>
-                            <th style="width: 6%;">PTR</th>
-                            <th style="width: 6%;">M.R.P</th>
+                            <th style="width: 6%;">Div</th>
+                            <th style="width: 16%;">Product Name</th>
+                            <th style="width: 5%;">Pack</th>
+                            <th style="width: 3%;">Qty.</th>
+                            <th style="width: 6%;">Batch</th>
+                            <th style="width: 5%;">Exp</th>
+                            <th style="width: 5%;">HSN</th>
+                            <th style="width: 5%;">Rate</th>
+                            <th style="width: 5%;">PTR</th>
+                            <th style="width: 5%;">M.R.P</th>
                             <th style="width: 5%;">DIS1</th>
-                            <th style="width: 5%;">DIS%</th>
-                            <th style="width: 6%;">D_AMT</th>
-                            <th style="width: 5%;">SGST</th>
-                            <th style="width: 5%;">CGST</th>
+                            <th style="width: 4%;">DIS%</th>
+                            <th style="width: 5%;">D_AMT</th>
+                            <th style="width: 4%;">SGST</th>
+                            <th style="width: 4%;">CGST</th>
                             <th style="width: 7%;">Amount</th>
                             <th style="width: 7%;">Net</th>
                         </tr>
@@ -475,21 +464,21 @@
                 <thead>
                     <tr>
                         <th style="width: 3%;">S.No</th>
-                        <th style="width: 5%;">Div</th>
-                        <th style="width: 20%;">Product Name</th>
-                        <th style="width: 7%;">Pack</th>
-                        <th style="width: 5%;">Qty.</th>
-                        <th style="width: 8%;">Batch</th>
-                        <th style="width: 6%;">Exp</th>
-                        <th style="width: 6%;">HSN</th>
-                        <th style="width: 6%;">Rate</th>
-                        <th style="width: 6%;">PTR</th>
-                        <th style="width: 6%;">M.R.P</th>
+                        <th style="width: 6%;">Div</th>
+                        <th style="width: 16%;">Product Name</th>
+                        <th style="width: 5%;">Pack</th>
+                        <th style="width: 3%;">Qty.</th>
+                        <th style="width: 6%;">Batch</th>
+                        <th style="width: 5%;">Exp</th>
+                        <th style="width: 5%;">HSN</th>
+                        <th style="width: 5%;">Rate</th>
+                        <th style="width: 5%;">PTR</th>
+                        <th style="width: 5%;">M.R.P</th>
                         <th style="width: 5%;">DIS1</th>
-                        <th style="width: 5%;">DIS%</th>
-                        <th style="width: 6%;">D_AMT</th>
-                        <th style="width: 5%;">SGST</th>
-                        <th style="width: 5%;">CGST</th>
+                        <th style="width: 4%;">DIS%</th>
+                        <th style="width: 5%;">D_AMT</th>
+                        <th style="width: 4%;">SGST</th>
+                        <th style="width: 4%;">CGST</th>
                         <th style="width: 7%;">Amount</th>
                         <th style="width: 7%;">Net</th>
                     </tr>
@@ -506,7 +495,7 @@
             <table>
                 <tr>
                     <td style="width: 70%; vertical-align: top;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                             <thead>
                                 <tr>
                                     <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;">CLASS</td>
@@ -564,7 +553,7 @@
                         </table>
                     </td>
                     <td style="width: 30%; vertical-align: top;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                             <tr>
                                 <td colspan="4" style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">
                                     TOTAL @Model.GrossAmount.ToString("0.00")
@@ -603,8 +592,8 @@
                             <tr>
                                 <td style="border: 1px solid #000; padding: 2px 4px;">Courier Charges :-</td>
                                 <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.CourierCharges.ToString("0.00")</td>
-                                <td style="border: 1px solid #000; padding: 2px 4px;"></td>
-                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right"></td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;">Round Off</td>
+                                <td style="border: 1px solid #000; padding: 2px 4px;" class="text-right">@Model.RoundOffAmount.ToString("0.000")</td>
                             </tr>
                         </table>
                     </td>
