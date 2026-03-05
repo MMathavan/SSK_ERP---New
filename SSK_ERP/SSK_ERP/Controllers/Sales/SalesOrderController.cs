@@ -356,14 +356,6 @@ namespace SSK_ERP.Controllers
                         return RedirectToAction("Index");
                     }
 
-                    // Prevent editing a Sales Order once a PO has been created for it
-                    bool hasPo = db.TransactionMasters.Any(t => t.REGSTRID == PurchaseRegisterId && t.TRANLMID == existing.TRANMID);
-                    if (hasPo)
-                    {
-                        TempData["ErrorMessage"] = "This Sales Order already has a PO and cannot be edited.";
-                        return RedirectToAction("Index");
-                    }
-
                     existing.TRANDATE = master.TRANDATE;
                     existing.TRANTIME = master.TRANTIME;
                     existing.TRANREFID = master.TRANREFID;
