@@ -1076,6 +1076,19 @@ namespace SSK_ERP.Controllers
                         workingMaster.TRANNAMT = totalNet;
                         db.SaveChanges();
                     }
+
+                    try
+                    {
+                        var raw = workingMaster.TRANNAMT;
+                        var rounded = Math.Round(raw, 0, MidpointRounding.AwayFromZero);
+                        workingMaster.TRANROAMT = Math.Round(rounded - raw, 3, MidpointRounding.AwayFromZero);
+                        workingMaster.TRANNAMT = rounded;
+                        workingMaster.TRANAMTWRDS = ConvertAmountToWords(workingMaster.TRANNAMT);
+                        db.SaveChanges();
+                    }
+                    catch
+                    {
+                    }
                 }
                 catch
                 {
@@ -1118,6 +1131,108 @@ namespace SSK_ERP.Controllers
             string fyPart = string.Format("{0:00}-{1:00}", startYear % 100, endYear % 100);
             string runningPart = tranNo.ToString("D5");
             return fyPart + "/A" + runningPart;
+        }
+
+        private string ConvertAmountToWords(decimal amount)
+        {
+            try
+            {
+                string[] ones = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine" };
+                string[] teens = { "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
+                string[] tens = { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
+
+                if (amount == 0)
+                {
+                    return "Zero Rupees Only";
+                }
+
+                int rupees = (int)amount;
+                int paise = (int)((amount - rupees) * 100);
+
+                string words = string.Empty;
+
+                if (rupees > 0)
+                {
+                    words = NumberToWords(rupees, ones, teens, tens) + " Rupees";
+                }
+
+                if (paise > 0)
+                {
+                    if (!string.IsNullOrEmpty(words))
+                    {
+                        words += " and ";
+                    }
+                    words += NumberToWords(paise, ones, teens, tens) + " Paise";
+                }
+
+                words += " Only";
+                return words;
+            }
+            catch
+            {
+                return amount.ToString("0.00");
+            }
+        }
+
+        private string NumberToWords(int number, string[] ones, string[] teens, string[] tens)
+        {
+            if (number == 0)
+            {
+                return "Zero";
+            }
+
+            if (number < 0)
+            {
+                return "Minus " + NumberToWords(Math.Abs(number), ones, teens, tens);
+            }
+
+            string words = "";
+
+            if ((number / 10000000) > 0)
+            {
+                words += NumberToWords(number / 10000000, ones, teens, tens) + " Crore ";
+                number %= 10000000;
+            }
+
+            if ((number / 100000) > 0)
+            {
+                words += NumberToWords(number / 100000, ones, teens, tens) + " Lakh ";
+                number %= 100000;
+            }
+
+            if ((number / 1000) > 0)
+            {
+                words += NumberToWords(number / 1000, ones, teens, tens) + " Thousand ";
+                number %= 1000;
+            }
+
+            if ((number / 100) > 0)
+            {
+                words += NumberToWords(number / 100, ones, teens, tens) + " Hundred ";
+                number %= 100;
+            }
+
+            if (number > 0)
+            {
+                if (number < 10)
+                {
+                    words += ones[number];
+                }
+                else if (number < 20)
+                {
+                    words += teens[number - 10];
+                }
+                else
+                {
+                    words += tens[number / 10];
+                    if ((number % 10) > 0)
+                    {
+                        words += " " + ones[number % 10];
+                    }
+                }
+            }
+
+            return words.Trim();
         }
     }
 }

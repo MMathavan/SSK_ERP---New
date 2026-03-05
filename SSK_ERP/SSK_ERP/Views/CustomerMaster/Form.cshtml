@@ -421,7 +421,7 @@
             });
             
             // Auto-format customer name to title case
-            $('#CATENAME, #CATEDNAME, #CATEPNAME').on('blur', function() {
+            $('#CATEPNAME').on('blur', function() {
                 this.value = this.value.replace(/\w\S*/g, function(txt) {
                     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
                 });

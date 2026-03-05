@@ -379,6 +379,10 @@
         </div>
 
         <div class="form-body">
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+            }
             @{
                 var formAction = ViewBag.FormAction as string ?? "savedata";
                 var formController = ViewBag.FormController as string ?? "SalesOrder";
@@ -386,6 +390,7 @@
             @using (Html.BeginForm(formAction, formController, FormMethod.Post, new { id = "salesOrderForm" }))
             {
                 @Html.AntiForgeryToken()
+                @Html.ValidationSummary(true, "", new { @class = "text-danger" })
                 @Html.HiddenFor(m => m.TRANMID)
                 @Html.HiddenFor(m => m.TRANLMID)
 

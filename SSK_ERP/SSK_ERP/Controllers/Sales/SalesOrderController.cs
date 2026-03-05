@@ -258,11 +258,10 @@ namespace SSK_ERP.Controllers
         [Authorize(Roles = "SalesOrderCreate,SalesOrderEdit")]
         public ActionResult savedata(TransactionMaster master, string detailRowsJson)
         {
+            bool isEdit = master != null && master.TRANMID > 0 &&
+                          db.TransactionMasters.Any(t => t.TRANMID == master.TRANMID && t.REGSTRID == SalesOrderRegisterId);
             try
             {
-                bool isEdit = master.TRANMID > 0 &&
-                              db.TransactionMasters.Any(t => t.TRANMID == master.TRANMID && t.REGSTRID == SalesOrderRegisterId);
-
                 if (isEdit)
                 {
                     if (!User.IsInRole("SalesOrderEdit"))
@@ -326,6 +325,13 @@ namespace SSK_ERP.Controllers
                 }
 
                 master.TRANSTATETYPE = tranStateType;
+
+                if (!string.IsNullOrWhiteSpace(master.TRANREFNO) && master.TRANREFNO.Trim().Length > 100)
+                {
+                    TempData["ErrorMessage"] = "Bill No cannot be greater than 100 characters.";
+                    return RedirectToAction("Form", new { id = isEdit ? (int?)master.TRANMID : null });
+                }
+
                 master.COMPYID = compyId;
                 master.SDPTID = 0;
                 master.REGSTRID = SalesOrderRegisterId;
@@ -410,7 +416,7 @@ namespace SSK_ERP.Controllers
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] = ex.Message;
-                return RedirectToAction("Index");
+                return RedirectToAction("Form", new { id = isEdit ? (int?)master.TRANMID : null });
             }
         }
 

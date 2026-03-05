@@ -403,6 +403,13 @@
                             </tr>
                             <tr>
                                 <td></td>
+                                <td class="so-tax-summary-label">Round Off</td>
+                                <td>
+                                    <input type="text" id="siRoundOffAmt" class="form-control text-end" readonly="readonly" value="@((Math.Round(Model.NetAmount, 0, MidpointRounding.AwayFromZero) - Model.NetAmount).ToString("0.000"))" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
                                 <td class="so-tax-summary-label">Invoice Amount</td>
                                 <td>
                                     <input type="text" id="siInvoiceAmt" class="form-control text-end" readonly="readonly" value="@Model.NetAmount.ToString("0.00")" />
@@ -762,12 +769,28 @@
 
             $('#siDiscountAmt').val(discount.toFixed(2));
             $('#siCourierAmt').val(courier.toFixed(2));
-            $('#siInvoiceAmt').val((baseNet + totalManual).toFixed(2));
+            var invoiceRaw = baseNet + totalManual;
+            $('#siInvoiceAmt').data('raw', invoiceRaw).val(invoiceRaw.toFixed(2));
+            updateInvoiceRoundOff();
 
             var $discRow = $('#siDiscountAmt').closest('tr');
             var $courRow = $('#siCourierAmt').closest('tr');
             $discRow.toggle(Math.abs(discount) > 0.004);
             $courRow.toggle(Math.abs(courier) > 0.004);
+        }
+
+        function updateInvoiceRoundOff() {
+            var $inv = $('#siInvoiceAmt');
+            var raw = $inv.data('raw');
+            var inv = (raw !== undefined && raw !== null && raw !== '') ? parseDecimal(raw) : parseDecimal($inv.val() || '0');
+            if (!isFinite(inv)) {
+                $('#siRoundOffAmt').val('0.000');
+                return;
+            }
+            var rounded = Math.round(inv);
+            var ro = rounded - inv;
+            $('#siRoundOffAmt').val(ro.toFixed(3));
+            $inv.val(rounded.toFixed(2));
         }
 
         function recalcSelectedTotal() {
@@ -812,7 +835,10 @@
             $('#siCgstAmt').val(cgst.toFixed(2));
             $('#siSgstAmt').val(sgst.toFixed(2));
             $('#siIgstAmt').val(igst.toFixed(2));
-            $('#selectedTotal').val(net.toFixed(2));
+            $('#selectedTotal').data('raw', net).val(net.toFixed(2));
+
+            $('#siInvoiceAmt').data('raw', net).val(net.toFixed(2));
+            updateInvoiceRoundOff();
         }
 
         function validateSalesInvoiceForm() {

@@ -78,6 +78,8 @@ namespace SSK_ERP.Models
             // Configure MaterialMaster decimal precision
             modelBuilder.Entity<MaterialMaster>().Property(m => m.MTRLPRFT).HasPrecision(18, 2);
 
+            modelBuilder.Entity<TransactionMaster>().Property(t => t.TRANROAMT).HasPrecision(18, 3);
+
             // Keep this:
             modelBuilder.Entity<IdentityUser>().ToTable("AspNetUsers");
 

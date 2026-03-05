@@ -131,7 +131,7 @@
         <div class="dsr-form-header">
             <h1 class="dsr-form-title">
                 <i class="bi bi-repeat"></i>
-                Direct Sales Return
+                Direct Credit Note
                 <span style="font-size: 0.6em; opacity: 0.8; margin-left: 10px;">
                     #@(string.IsNullOrEmpty(Model.TRANDNO) ? "New" : Model.TRANDNO)
                 </span>
@@ -290,6 +290,13 @@
                                 <td class="dsr-tax-summary-label">IGST</td>
                                 <td>
                                     @Html.TextBoxFor(m => m.TRANIGSTAMT, new { @class = "form-control text-end", id = "lblTotalIGST", @readonly = "readonly" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="dsr-tax-summary-label">Round Off</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANROAMT, new { @class = "form-control text-end", id = "lblRoundOff", @readonly = "readonly" })
                                 </td>
                             </tr>
                             <tr>
@@ -651,7 +658,9 @@
                         $('#lblTotalCGST').val(parseFloat(res.cgst || 0).toFixed(2));
                         $('#lblTotalSGST').val(parseFloat(res.sgst || 0).toFixed(2));
                         $('#lblTotalIGST').val(parseFloat(res.igst || 0).toFixed(2));
-                        $('#lblTotalNet').val(parseFloat(res.net || 0).toFixed(2));
+                        var rawNet = parseFloat(res.net || 0);
+                        $('#lblTotalNet').data('raw', rawNet).val(rawNet.toFixed(2));
+                        updateRoundOff();
                     } else {
                         applyDirectTotalsFallback();
                     }
@@ -660,6 +669,20 @@
                     applyDirectTotalsFallback();
                 }
             });
+        }
+
+        function updateRoundOff() {
+            var $net = $('#lblTotalNet');
+            var raw = $net.data('raw');
+            var net = (raw !== undefined && raw !== null && raw !== '') ? parseFloat(raw) : parseFloat($net.val() || 0);
+            if (!isFinite(net)) {
+                $('#lblRoundOff').val('0.000');
+                return;
+            }
+            var rounded = Math.round(net);
+            var ro = rounded - net;
+            $('#lblRoundOff').val(ro.toFixed(3));
+            $net.val(rounded.toFixed(2));
         }
 
         function applyDirectTotalsFallback() {
@@ -673,7 +696,8 @@
             $('#lblTotalCGST').val('0.00');
             $('#lblTotalSGST').val('0.00');
             $('#lblTotalIGST').val('0.00');
-            $('#lblTotalNet').val(gross.toFixed(2));
+            $('#lblTotalNet').data('raw', gross).val(gross.toFixed(2));
+            updateRoundOff();
         }
     </script>
 }

@@ -64,7 +64,7 @@ namespace SSK_ERP.Models
         [Column("TRANETYPE")]
         public int TRANETYPE { get; set; }
 
-        [MaxLength(25)]
+        [MaxLength(100)]
         [Column("TRANREFNO")]
         public string TRANREFNO { get; set; }
 
@@ -134,6 +134,9 @@ namespace SSK_ERP.Models
         [Required]
         [Column("TRANNAMT", TypeName = "numeric")]
         public decimal TRANNAMT { get; set; }
+
+        [Column("TRANROAMT", TypeName = "numeric")]
+        public decimal? TRANROAMT { get; set; }
 
         [MaxLength(250)]
         [Column("TRANAMTWRDS")]

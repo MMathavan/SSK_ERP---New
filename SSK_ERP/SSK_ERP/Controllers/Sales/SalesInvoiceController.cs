@@ -120,6 +120,7 @@ namespace SSK_ERP.Controllers
             public decimal SgstAmount { get; set; }
             public decimal IgstAmount { get; set; }
             public decimal NetAmount { get; set; }
+            public decimal RoundOffAmount { get; set; }
 
             public short Status { get; set; }
             public string Remarks { get; set; }
@@ -417,6 +418,8 @@ namespace SSK_ERP.Controllers
             }
 
             var netAmount = grossAmount + cgstAmount + sgstAmount + igstAmount;
+            var roundedNetAmount = Math.Round(netAmount, 0, MidpointRounding.AwayFromZero);
+            var roundOffAmount = roundedNetAmount - netAmount;
 
             var model = new SalesInvoiceFromPurchaseViewModel
             {
@@ -441,6 +444,7 @@ namespace SSK_ERP.Controllers
                 SgstAmount = sgstAmount,
                 IgstAmount = igstAmount,
                 NetAmount = netAmount,
+                RoundOffAmount = Math.Round(roundOffAmount, 3, MidpointRounding.AwayFromZero),
                 Status = 0,
                 Remarks = null,
                 Items = items
@@ -958,6 +962,8 @@ namespace SSK_ERP.Controllers
             }
 
             decimal netAmount = grossAmount + cgstAmount + sgstAmount + igstAmount;
+            var roundedNetAmount = Math.Round(netAmount, 0, MidpointRounding.AwayFromZero);
+            var roundOffAmount = roundedNetAmount - netAmount;
 
             string taxFactorsJson = null;
             try
@@ -1011,6 +1017,7 @@ namespace SSK_ERP.Controllers
                 SgstAmount = sgstAmount,
                 IgstAmount = igstAmount,
                 NetAmount = netAmount,
+                RoundOffAmount = Math.Round(roundOffAmount, 3, MidpointRounding.AwayFromZero),
                 TaxFactorsJson = taxFactorsJson,
                 Status = sales.DISPSTATUS,
                 Remarks = sales.TRANRMKS,
@@ -1241,8 +1248,10 @@ namespace SSK_ERP.Controllers
                         existing.TRANCGSTAMT = totalCgst2;
                         existing.TRANSGSTAMT = totalSgst2;
                         existing.TRANIGSTAMT = totalIgst2;
-                        existing.TRANNAMT = totalNet2;
-                        existing.TRANAMTWRDS = ConvertAmountToWords(totalNet2);
+                        var roundedNet2 = Math.Round(totalNet2, 0, MidpointRounding.AwayFromZero);
+                        existing.TRANROAMT = Math.Round(roundedNet2 - totalNet2, 3, MidpointRounding.AwayFromZero);
+                        existing.TRANNAMT = roundedNet2;
+                        existing.TRANAMTWRDS = ConvertAmountToWords(existing.TRANNAMT);
 
                         db.SaveChanges();
 
@@ -1438,8 +1447,10 @@ namespace SSK_ERP.Controllers
                 existing.TRANCGSTAMT = totalCgst;
                 existing.TRANSGSTAMT = totalSgst;
                 existing.TRANIGSTAMT = totalIgst;
-                existing.TRANNAMT = totalNet;
-                existing.TRANAMTWRDS = ConvertAmountToWords(totalNet);
+                var roundedNet = Math.Round(totalNet, 0, MidpointRounding.AwayFromZero);
+                existing.TRANROAMT = Math.Round(roundedNet - totalNet, 3, MidpointRounding.AwayFromZero);
+                existing.TRANNAMT = roundedNet;
+                existing.TRANAMTWRDS = ConvertAmountToWords(existing.TRANNAMT);
 
                 db.SaveChanges();
 
@@ -1555,7 +1566,10 @@ namespace SSK_ERP.Controllers
 
                         if (manualTotal != 0m)
                         {
-                            existing.TRANNAMT = totalNet + manualTotal;
+                            var raw = totalNet + manualTotal;
+                            var rounded = Math.Round(raw, 0, MidpointRounding.AwayFromZero);
+                            existing.TRANROAMT = Math.Round(rounded - raw, 3, MidpointRounding.AwayFromZero);
+                            existing.TRANNAMT = rounded;
                             existing.TRANAMTWRDS = ConvertAmountToWords(existing.TRANNAMT);
                             db.SaveChanges();
                         }
@@ -1696,6 +1710,19 @@ namespace SSK_ERP.Controllers
                                 : salesOrder.TRANDNO;
                             salesOrderDate = salesOrder.TRANDATE;
                         }
+                    }
+                }
+
+                // Fallback: Sales Invoice From Sales Order (Others) links Sales Invoice.TRANLMID directly to Sales Order.
+                if (salesOrder == null && master.TRANLMID > 0)
+                {
+                    salesOrder = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == master.TRANLMID && t.REGSTRID == SalesOrderRegisterId);
+                    if (salesOrder != null)
+                    {
+                        salesOrderNo = !string.IsNullOrWhiteSpace(salesOrder.TRANREFNO) && salesOrder.TRANREFNO != "-"
+                            ? salesOrder.TRANREFNO
+                            : salesOrder.TRANDNO;
+                        salesOrderDate = salesOrder.TRANDATE;
                     }
                 }
 
@@ -2622,8 +2649,10 @@ namespace SSK_ERP.Controllers
             master.TRANCGSTAMT = totalCgst;
             master.TRANSGSTAMT = totalSgst;
             master.TRANIGSTAMT = totalIgst;
-            master.TRANNAMT = totalNet;
-            master.TRANAMTWRDS = ConvertAmountToWords(totalNet);
+            var roundedNet = Math.Round(totalNet, 0, MidpointRounding.AwayFromZero);
+            master.TRANROAMT = Math.Round(roundedNet - totalNet, 3, MidpointRounding.AwayFromZero);
+            master.TRANNAMT = roundedNet;
+            master.TRANAMTWRDS = ConvertAmountToWords(master.TRANNAMT);
 
             db.SaveChanges();
 
@@ -2749,7 +2778,10 @@ namespace SSK_ERP.Controllers
                     if (manualTotal != 0m)
                     {
                         // Update master TRANNAMT to include manual cost factors (NET + manualTotal)
-                        master.TRANNAMT = totalNet + manualTotal;
+                        var raw = totalNet + manualTotal;
+                        var rounded = Math.Round(raw, 0, MidpointRounding.AwayFromZero);
+                        master.TRANROAMT = Math.Round(rounded - raw, 3, MidpointRounding.AwayFromZero);
+                        master.TRANNAMT = rounded;
                         master.TRANAMTWRDS = ConvertAmountToWords(master.TRANNAMT);
                         db.SaveChanges();
                     }

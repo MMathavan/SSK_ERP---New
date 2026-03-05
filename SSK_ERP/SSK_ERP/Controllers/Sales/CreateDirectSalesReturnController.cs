@@ -590,9 +590,12 @@ namespace SSK_ERP.Controllers
             master.TRANCGSTAMT = totalCgst;
             master.TRANSGSTAMT = totalSgst;
             master.TRANIGSTAMT = totalIgst;
-            master.TRANNAMT = totalNet;
+            var roundedNet = Math.Round(totalNet, 0, MidpointRounding.AwayFromZero);
+            var roundOff = roundedNet - totalNet;
+            master.TRANROAMT = Math.Round(roundOff, 3, MidpointRounding.AwayFromZero);
+            master.TRANNAMT = roundedNet;
             master.TRANPCOUNT = 0;
-            master.TRANAMTWRDS = ConvertAmountToWords(totalNet);
+            master.TRANAMTWRDS = ConvertAmountToWords(master.TRANNAMT);
         }
 
         private string FormatSalesReturnTrandNo(int tranNo, DateTime tranDate)
