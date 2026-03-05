@@ -212,6 +212,26 @@
             bottom: 10px;
         }
 
+        .bank-details-wrap {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            align-items: center;
+            column-gap: 8px;
+        }
+
+        .bank-details-text {
+            grid-column: 1;
+        }
+
+        .bank-qr {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            grid-column: 2;
+            justify-self: center;
+            margin: 0;
+        }
+
         .print-button {
             position: fixed;
             top: 20px;
@@ -655,11 +675,14 @@
                     </td>
                     <td style="width: 35%; border-right: 1px solid #000;">
                         <div class="terms-title">Bank Details</div>
-                        <div class="terms-body">
-                            Bank Name : HDFC BANK,<br />
-                            Branch : R A Puram<br />
-                            A/c. No. : 50200030798768<br />
-                            RTGS / NEFT IFSC : HDFC0000141
+                        <div class="terms-body bank-details-wrap">
+                            <div class="bank-details-text">
+                                Bank Name : HDFC BANK,<br />
+                                Branch : R A Puram<br />
+                                A/c. No. : 50200030798768<br />
+                                RTGS / NEFT IFSC : HDFC0000141
+                            </div>
+                            <img class="bank-qr" src="@Url.Content("~/Content/images/qrcode_ssk.png")" alt="QR" />
                         </div>
                     </td>
                     <td style="width: 15%; text-align: center; border-right: 1px solid #000;" class="sig-td">
