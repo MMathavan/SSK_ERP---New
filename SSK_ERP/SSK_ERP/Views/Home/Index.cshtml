@@ -440,6 +440,30 @@
     <div class="charts-section" style="margin-top: 30px;">
         <h2 class="section-title" style="margin-bottom: 20px;">Transactions</h2>
 
+        @{
+            var fromDate = ViewBag.FromDate as DateTime?;
+            var toDate = ViewBag.ToDate as DateTime?;
+        }
+
+        <form method="get" action="@Url.Action("Index", "Home")" style="margin-bottom: 18px;">
+            <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;">From Date</div>
+                    <input type="date" name="fromDate" value="@(fromDate.HasValue ? fromDate.Value.ToString("yyyy-MM-dd") : string.Empty)" onchange="this.form.submit();" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
+                </div>
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;">To Date</div>
+                    <input type="date" name="toDate" value="@(toDate.HasValue ? toDate.Value.ToString("yyyy-MM-dd") : string.Empty)" onchange="this.form.submit();" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
+                </div>
+                @if (fromDate.HasValue || toDate.HasValue)
+                {
+                    <div style="padding-bottom:2px;">
+                        <a href="@Url.Action("Index", "Home")" style="display:inline-block; height:38px; line-height:38px; padding:0 14px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; color:#1e293b; font-weight:700; text-decoration:none;">Clear</a>
+                    </div>
+                }
+            </div>
+        </form>
+
         <div class="stats-grid three-cards">
             <div class="stat-card raw-material">
                 <div class="stat-card-header">

@@ -62,11 +62,23 @@ namespace SSK_ERP.Controllers
             return View();
         }
 
-        public ActionResult Index()
+        public ActionResult Index(DateTime? fromDate, DateTime? toDate)
         {
             // Show the same dashboard for all users (Admin or regular users)
             try
             {
+                var hasDateFilter = fromDate.HasValue && toDate.HasValue;
+                DateTime? fromDateValue = null;
+                DateTime? toDateExclusiveValue = null;
+                if (hasDateFilter)
+                {
+                    fromDateValue = fromDate.Value.Date;
+                    toDateExclusiveValue = toDate.Value.Date.AddDays(1);
+                }
+
+                ViewBag.FromDate = fromDateValue;
+                ViewBag.ToDate = hasDateFilter ? toDate.Value.Date : (DateTime?)null;
+
                 // Fetch essential business statistics from database
                 int customersCount = 0, suppliersCount = 0, materialsCount = 0;
 
@@ -95,10 +107,20 @@ namespace SSK_ERP.Controllers
 
                 // New dashboard counts (based on register IDs used by controllers)
                 // Sales Order = 1, Purchase Order = 2, Purchase Invoice = 18, Sales Invoice = 20
-                try { salesOrderCount = _db.TransactionMasters.Count(t => t.REGSTRID == 1 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
-                try { purchaseOrderCount = _db.TransactionMasters.Count(t => t.REGSTRID == 2 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
-                try { purchaseInvoiceCount = _db.TransactionMasters.Count(t => t.REGSTRID == 18 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
-                try { salesInvoiceCount = _db.TransactionMasters.Count(t => t.REGSTRID == 20 && (t.DISPSTATUS == 0 || t.DISPSTATUS == null)); } catch { }
+                try
+                {
+                    var txQuery = _db.TransactionMasters.Where(t => (t.DISPSTATUS == 0 || t.DISPSTATUS == null));
+                    if (hasDateFilter)
+                    {
+                        txQuery = txQuery.Where(t => t.TRANDATE >= fromDateValue.Value && t.TRANDATE < toDateExclusiveValue.Value);
+                    }
+
+                    salesOrderCount = txQuery.Count(t => t.REGSTRID == 1);
+                    purchaseOrderCount = txQuery.Count(t => t.REGSTRID == 2);
+                    purchaseInvoiceCount = txQuery.Count(t => t.REGSTRID == 18);
+                    salesInvoiceCount = txQuery.Count(t => t.REGSTRID == 20);
+                }
+                catch { }
 
                 // Pending Sales Order: Sales order not yet converted to a Purchase Order
                 try
@@ -114,7 +136,17 @@ namespace SSK_ERP.Controllers
                                         AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
                                         AND po.TRANLMID = so.TRANMID
                                   )";
-                    pendingSalesOrderCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    if (hasDateFilter)
+                    {
+                        sql += " AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx";
+                        pendingSalesOrderCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        pendingSalesOrderCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
                 }
                 catch
                 {
@@ -135,7 +167,17 @@ namespace SSK_ERP.Controllers
                                         AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
                                         AND pi.TRANLMID = po.TRANMID
                                   )";
-                    pendingPurchaseOrderCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    if (hasDateFilter)
+                    {
+                        sql += " AND po.TRANDATE >= @FromDate AND po.TRANDATE < @ToDateEx";
+                        pendingPurchaseOrderCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        pendingPurchaseOrderCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
                 }
                 catch
                 {
@@ -160,9 +202,21 @@ namespace SSK_ERP.Controllers
                                        AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
                                        AND pi.TRANLMID = po.TRANMID
                                  )
+                                 {0}
                                ORDER BY po.TRANDATE DESC, po.TRANNO DESC";
 
-                    pendingPurchaseOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND po.TRANDATE >= @FromDate AND po.TRANDATE < @ToDateEx");
+                        pendingPurchaseOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        pendingPurchaseOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
                 }
                 catch
                 {
@@ -187,9 +241,21 @@ namespace SSK_ERP.Controllers
                                        AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
                                        AND po.TRANLMID = so.TRANMID
                                  )
+                                 {0}
                                ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
 
-                    pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx");
+                        pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
                 }
                 catch
                 {
@@ -210,7 +276,17 @@ namespace SSK_ERP.Controllers
                                         AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
                                         AND si.TRANLMID = pi.TRANMID
                                   )";
-                    pendingPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    if (hasDateFilter)
+                    {
+                        sql += " AND pi.TRANDATE >= @FromDate AND pi.TRANDATE < @ToDateEx";
+                        pendingPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        pendingPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
                 }
                 catch
                 {
@@ -235,9 +311,21 @@ namespace SSK_ERP.Controllers
                                        AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
                                        AND si.TRANLMID = pi.TRANMID
                                  )
+                                 {0}
                                ORDER BY pi.TRANDATE DESC, pi.TRANNO DESC";
 
-                    pendingPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND pi.TRANDATE >= @FromDate AND pi.TRANDATE < @ToDateEx");
+                        pendingPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        pendingPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
                 }
                 catch
                 {
@@ -260,7 +348,17 @@ namespace SSK_ERP.Controllers
                                         AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
                                         AND po.TRANLMID = so.TRANMID
                                   )";
-                    pendingSalesInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    if (hasDateFilter)
+                    {
+                        sql += " AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx";
+                        pendingSalesInvoiceCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        pendingSalesInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
                 }
                 catch
                 {
@@ -287,9 +385,21 @@ namespace SSK_ERP.Controllers
                                        AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
                                        AND po.TRANLMID = so.TRANMID
                                  )
+                                 {0}
                                ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
 
-                    pendingSalesInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx");
+                        pendingSalesInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        pendingSalesInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
                 }
                 catch
                 {
@@ -302,6 +412,7 @@ namespace SSK_ERP.Controllers
                     var sql = @"SELECT COUNT(DISTINCT inv.TRANMID)
                                 FROM TRANSACTIONMASTER inv
                                 INNER JOIN TRANSACTIONMASTER po ON po.TRANMID = inv.TRANLMID AND po.REGSTRID = 2
+
                                 INNER JOIN (
                                     SELECT TRANMID, SUM(ISNULL(TRANDQTY, 0)) AS QTY
                                     FROM TRANSACTIONDETAIL
@@ -317,7 +428,17 @@ namespace SSK_ERP.Controllers
                                   AND inv.TRANLMID > 0
                                   AND (inv.DISPSTATUS = 0 OR inv.DISPSTATUS IS NULL)
                                   AND invd.QTY < pod.QTY";
-                    partialPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    if (hasDateFilter)
+                    {
+                        sql += " AND inv.TRANDATE >= @FromDate AND inv.TRANDATE < @ToDateEx";
+                        partialPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        partialPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
                 }
                 catch
                 {
@@ -334,6 +455,7 @@ namespace SSK_ERP.Controllers
                                     ISNULL(inv.TRANNAMT, 0) AS [Amount]
                                FROM TRANSACTIONMASTER inv
                                INNER JOIN TRANSACTIONMASTER po ON po.TRANMID = inv.TRANLMID AND po.REGSTRID = 2
+
                                INNER JOIN (
                                    SELECT TRANMID, SUM(ISNULL(TRANDQTY, 0)) AS QTY
                                    FROM TRANSACTIONDETAIL
@@ -349,9 +471,21 @@ namespace SSK_ERP.Controllers
                                  AND inv.TRANLMID > 0
                                  AND (inv.DISPSTATUS = 0 OR inv.DISPSTATUS IS NULL)
                                  AND invd.QTY < pod.QTY
+                                 {0}
                                ORDER BY inv.TRANDATE DESC, inv.TRANNO DESC";
 
-                    partialPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sql).ToList();
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND inv.TRANDATE >= @FromDate AND inv.TRANDATE < @ToDateEx");
+                        partialPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        partialPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
                 }
                 catch
                 {
