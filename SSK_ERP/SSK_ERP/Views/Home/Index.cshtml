@@ -449,11 +449,14 @@
             <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
                 <div>
                     <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;">From Date</div>
-                    <input type="date" name="fromDate" value="@(fromDate.HasValue ? fromDate.Value.ToString("yyyy-MM-dd") : string.Empty)" onchange="this.form.submit();" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
+                    <input type="date" name="fromDate" value="@(fromDate.HasValue ? fromDate.Value.ToString("yyyy-MM-dd") : string.Empty)" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
                 </div>
                 <div>
                     <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;">To Date</div>
-                    <input type="date" name="toDate" value="@(toDate.HasValue ? toDate.Value.ToString("yyyy-MM-dd") : string.Empty)" onchange="this.form.submit();" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
+                    <input type="date" name="toDate" value="@(toDate.HasValue ? toDate.Value.ToString("yyyy-MM-dd") : string.Empty)" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
+                </div>
+                <div style="padding-bottom:2px;">
+                    <button type="submit" style="display:inline-block; height:38px; line-height:38px; padding:0 14px; border:1px solid #e2e8f0; border-radius:10px; background:#1e293b; color:#fff; font-weight:700; cursor:pointer;">Filter</button>
                 </div>
                 @if (fromDate.HasValue || toDate.HasValue)
                 {
