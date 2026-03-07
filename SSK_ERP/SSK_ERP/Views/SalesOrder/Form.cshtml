@@ -812,6 +812,7 @@
             var soTaxRefreshInProgress = false;
             var isPoFromSalesOrder = @(isPoFromSalesOrder.ToString().ToLower());
             var isPurchaseOrderForm = @(isPurchaseOrderForm.ToString().ToLower());
+            var hasPoForSalesOrder = @((ViewBag.HasPo != null && (bool)ViewBag.HasPo).ToString().ToLower());
 
             function initCustomerSelect() {
                 if (!$.fn.select2) {
@@ -987,22 +988,11 @@
             // Ensure each material can only be selected in one row at a time (for normal Sales Orders).
             function refreshMaterialDropdowns() {
                 if (isPoFromSalesOrder) {
-                    // For PO from Sales Order the materials are fixed and disabled; do not alter behaviour.
                     return;
                 }
-
                 if (!soMaterialList || !soMaterialList.length) {
                     return;
                 }
-
-                // Build a map of how many times each material id is currently selected.
-                var usedMap = {};
-                $('#soDetailsBody .so-material').each(function () {
-                    var v = parseInt($(this).val() || '0', 10);
-                    if (v > 0) {
-                        usedMap[v] = (usedMap[v] || 0) + 1;
-                    }
-                });
 
                 $('#soDetailsBody .so-material').each(function () {
                     var $sel = $(this);
@@ -1019,12 +1009,8 @@
                         var id = item.id;
                         if (!id) return;
 
-                        // Always allow the material already chosen in this row.
-                        // For other rows, hide materials that are already selected somewhere.
-                        if (id === currentVal || !usedMap[id]) {
-                            var name = item.name || '';
-                            optionsHtml += '<option value="' + id + '">' + name + '</option>';
-                        }
+                        var name = item.name || '';
+                        optionsHtml += '<option value="' + id + '">' + name + '</option>';
                     });
 
                     $sel.html(optionsHtml);
@@ -1067,7 +1053,24 @@
                         }
                         $row.find('.so-row-select').prop('checked', isSelected);
                     }
+                    $row.attr('data-so-material-id', String(item.MaterialId || ''));
+                    $row.attr('data-so-detail-id', String(item.DetailId || '0'));
                     $row.find('.so-material').val(String(item.MaterialId || ''));
+
+                    if (!isPoFromSalesOrder && hasPoForSalesOrder) {
+                        var isLocked = false;
+                        if (typeof item.IsLocked !== 'undefined' && item.IsLocked !== null) {
+                            isLocked = !!item.IsLocked;
+                        }
+
+                        if (isLocked) {
+                            $row.attr('data-so-locked', '1');
+                            $row.find('.so-material').prop('disabled', true);
+                            $row.find('.so-qty').prop('readonly', true);
+                            $row.find('.so-rate').prop('readonly', true);
+                            $row.find('.so-actual-rate').prop('readonly', true);
+                        }
+                    }
 
                     var groupId = soMaterialGroupMap[item.MaterialId];
                     if (groupId) {
@@ -1169,6 +1172,14 @@
                 if (isPurchaseOrderForm) {
                     // Do not allow removing material rows on any Purchase Order form
                     return;
+                }
+
+                if (!isPoFromSalesOrder && hasPoForSalesOrder) {
+                    var $currentRow = $(this).closest('tr');
+                    if ($currentRow.attr('data-so-locked') === '1') {
+                        alert('This Sales Order has already been converted to PO. You cannot remove PO material rows. You can only edit Qty/Rate.');
+                        return;
+                    }
                 }
                 var $rows = $('#soDetailsBody tr');
                 if ($rows.length > 1) {
@@ -1454,6 +1465,14 @@
                     }
 
                     var materialId = parseInt($row.find('.so-material').val() || '0', 10);
+                    if (!(materialId > 0)) {
+                        var lockedMat = parseInt($row.attr('data-so-material-id') || '0', 10);
+                        if (lockedMat > 0) {
+                            materialId = lockedMat;
+                        }
+                    }
+
+                    var detailId = parseInt($row.attr('data-so-detail-id') || '0', 10);
                     var qty = parseFloat($row.find('.so-qty').val() || '0');
                     var rate = parseFloat($row.find('.so-rate').val() || '0');
                     var actualRate = parseFloat($row.find('.so-actual-rate').val() || '0');
@@ -1471,6 +1490,7 @@
                         }
 
                         rows.push({
+                            DetailId: detailId,
                             MaterialId: materialId,
                             Qty: qty,
                             Rate: rate,

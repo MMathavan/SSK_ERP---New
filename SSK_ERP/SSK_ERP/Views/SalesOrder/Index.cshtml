@@ -358,6 +358,7 @@
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
                             var hasPo = row['HasPo'] === true || row['HasPo'] === 'true';
+                            var hasPoPartial = row['HasPoPartial'] === true || row['HasPoPartial'] === 'true';
                             var hasSi = row['HasSi'] === true || row['HasSi'] === 'true';
                             var tranType = row['TRANETYPE'];
                             if (tranType === null || tranType === undefined || tranType === '') {
@@ -385,7 +386,12 @@
                                 html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>&nbsp;';
                                 html += '<a href="#" class="btn btn-action btn-delete editor_remove" data-id="' + id + '"><i class="fa fa-trash"></i> Delete</a>';
                             } else {
-                                html += '<span class="badge bg-success">PO Created</span>&nbsp;';
+                                if (hasPoPartial) {
+                                    html += '<span class="badge bg-info text-dark">PO Partially Created</span>&nbsp;';
+                                } else {
+                                    html += '<span class="badge bg-success">PO Created</span>&nbsp;';
+                                }
+                                html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>&nbsp;';
                                 html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
                             }
 

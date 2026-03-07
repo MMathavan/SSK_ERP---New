@@ -67,29 +67,20 @@ namespace SSK_ERP.Controllers.Purchase
                     .OrderBy(d => d.TRANDID)
                     .ToList();
 
-                // Build a multi-set of PO rows to match against, so duplicates are handled.
-                var poKeyCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                foreach (var d in poDetails)
-                {
-                    var key = string.Concat(d.TRANDREFID, "|", d.TRANDQTY.ToString(CultureInfo.InvariantCulture), "|", d.TRANDRATE.ToString(CultureInfo.InvariantCulture));
-                    if (poKeyCounts.ContainsKey(key))
-                    {
-                        poKeyCounts[key]++;
-                    }
-                    else
-                    {
-                        poKeyCounts[key] = 1;
-                    }
-                }
+                // Build a multi-set of PO materials to match against, so duplicates are handled.
+                // NOTE: We match by MaterialId only (not Qty/Rate) so selection remains stable even if Sales Order qty/rate changes later.
+                var poMaterialCounts = poDetails
+                    .GroupBy(d => d.TRANDREFID)
+                    .ToDictionary(g => g.Key, g => g.Count());
 
                 foreach (var d in soDetails)
                 {
-                    var key = string.Concat(d.TRANDREFID, "|", d.TRANDQTY.ToString(CultureInfo.InvariantCulture), "|", d.TRANDRATE.ToString(CultureInfo.InvariantCulture));
                     bool selected = false;
-                    if (poKeyCounts.TryGetValue(key, out var cnt) && cnt > 0)
+
+                    if (poMaterialCounts.TryGetValue(d.TRANDREFID, out var cnt) && cnt > 0)
                     {
                         selected = true;
-                        poKeyCounts[key] = cnt - 1;
+                        poMaterialCounts[d.TRANDREFID] = cnt - 1;
                     }
 
                     detailRows.Add(new PurchaseOrderDetailRow

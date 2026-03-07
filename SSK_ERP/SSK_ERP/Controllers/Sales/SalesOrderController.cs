@@ -146,6 +146,7 @@ namespace SSK_ERP.Controllers
         {
             TransactionMaster model;
             var detailRows = new List<SalesOrderDetailRow>();
+            bool hasPo = false;
 
             if (id.HasValue && id.Value > 0)
             {
@@ -170,17 +171,46 @@ namespace SSK_ERP.Controllers
                     return RedirectToAction("Index");
                 }
 
+                // If a PO is already created for this Sales Order, lock materials that are part of the PO.
+                hasPo = db.TransactionMasters.Any(t => t.REGSTRID == PurchaseRegisterId && t.TRANLMID == model.TRANMID);
+
+                Dictionary<int, int> poMaterialCounts = null;
+                if (hasPo)
+                {
+                    var poMaster = db.TransactionMasters
+                        .Where(t => t.REGSTRID == PurchaseRegisterId && t.TRANLMID == model.TRANMID)
+                        .OrderByDescending(t => t.TRANMID)
+                        .FirstOrDefault();
+
+                    if (poMaster != null)
+                    {
+                        poMaterialCounts = db.TransactionDetails
+                            .Where(d => d.TRANMID == poMaster.TRANMID)
+                            .GroupBy(d => d.TRANDREFID)
+                            .ToDictionary(g => g.Key, g => g.Count());
+                    }
+                }
+
                 var details = db.TransactionDetails.Where(d => d.TRANMID == model.TRANMID).ToList();
                 foreach (var d in details)
                 {
+                    bool isLocked = false;
+                    if (poMaterialCounts != null && poMaterialCounts.TryGetValue(d.TRANDREFID, out var remaining) && remaining > 0)
+                    {
+                        isLocked = true;
+                        poMaterialCounts[d.TRANDREFID] = remaining - 1;
+                    }
+
                     detailRows.Add(new SalesOrderDetailRow
                     {
+                        DetailId = d.TRANDID,
                         MaterialId = d.TRANDREFID,
                         Qty = d.TRANDQTY,
                         Rate = d.TRANDRATE,
                         Amount = d.TRANDGAMT,
                         ProfitPercent = d.TRANDMTRLPRFT,
-                        ActualRate = d.TRANDARATE
+                        ActualRate = d.TRANDARATE,
+                        IsLocked = isLocked
                     });
                 }
             }
@@ -211,6 +241,8 @@ namespace SSK_ERP.Controllers
                 model.TRANNO = nextTranNo;
                 model.TRANDNO = nextTranNo.ToString("D4");
             }
+
+            ViewBag.HasPo = hasPo;
 
             ViewBag.StatusList = new SelectList(
                 new[]
@@ -286,6 +318,89 @@ namespace SSK_ERP.Controllers
                 details = details
                     .Where(d => d != null && d.MaterialId > 0 && d.Qty > 0 && d.Rate >= 0)
                     .ToList();
+
+                // If PO exists for this Sales Order, prevent changing/removing PO-linked material rows.
+                if (isEdit)
+                {
+                    bool hasPo = db.TransactionMasters.Any(t => t.REGSTRID == PurchaseRegisterId && t.TRANLMID == master.TRANMID);
+                    if (hasPo)
+                    {
+                        var poMaster = db.TransactionMasters
+                            .Where(t => t.REGSTRID == PurchaseRegisterId && t.TRANLMID == master.TRANMID)
+                            .OrderByDescending(t => t.TRANMID)
+                            .FirstOrDefault();
+
+                        if (poMaster != null)
+                        {
+                            var requiredCounts = db.TransactionDetails
+                                .Where(d => d.TRANMID == poMaster.TRANMID)
+                                .GroupBy(d => d.TRANDREFID)
+                                .ToDictionary(g => g.Key, g => g.Count());
+
+                            // Full lock: for PO-linked rows, do not allow changing Qty/Rate in Sales Order.
+                            var existingSoDetails = db.TransactionDetails
+                                .Where(d => d.TRANMID == master.TRANMID)
+                                .OrderBy(d => d.TRANDID)
+                                .ToList();
+
+                            var newCounts = details
+                                .GroupBy(d => d.MaterialId)
+                                .ToDictionary(g => g.Key, g => g.Count());
+
+                            foreach (var req in requiredCounts)
+                            {
+                                int materialId = req.Key;
+                                int required = req.Value;
+                                int provided = newCounts.ContainsKey(materialId) ? newCounts[materialId] : 0;
+                                if (provided < required)
+                                {
+                                    TempData["ErrorMessage"] = "This Sales Order has already been converted to PO. You cannot edit or delete PO-generated rows.";
+                                    return RedirectToAction("Form", new { id = master.TRANMID });
+                                }
+                            }
+
+                            // For PO-linked rows, ensure the locked rows remain unchanged in Sales Order (Material/Qty/Rate)
+                            // by comparing the specific existing SalesOrder detail IDs (TRANDID) that were consumed by the PO.
+                            var remainingLockCounts = new Dictionary<int, int>(requiredCounts);
+                            var lockedDetailIds = new List<int>();
+                            foreach (var d in existingSoDetails)
+                            {
+                                if (!remainingLockCounts.TryGetValue(d.TRANDREFID, out var remaining) || remaining <= 0)
+                                {
+                                    continue;
+                                }
+
+                                remainingLockCounts[d.TRANDREFID] = remaining - 1;
+                                lockedDetailIds.Add(d.TRANDID);
+                            }
+
+                            var submittedById = details
+                                .Where(x => x != null && x.DetailId > 0)
+                                .ToDictionary(x => x.DetailId, x => x);
+
+                            foreach (var lockedId in lockedDetailIds)
+                            {
+                                var existingRow = existingSoDetails.FirstOrDefault(x => x.TRANDID == lockedId);
+                                if (existingRow == null)
+                                {
+                                    continue;
+                                }
+
+                                if (!submittedById.TryGetValue(lockedId, out var submittedRow) || submittedRow == null)
+                                {
+                                    TempData["ErrorMessage"] = "This Sales Order has already been converted to PO. PO-generated rows cannot be edited (Material/Qty/Rate) or deleted.";
+                                    return RedirectToAction("Form", new { id = master.TRANMID });
+                                }
+
+                                if (submittedRow.MaterialId != existingRow.TRANDREFID || submittedRow.Qty != existingRow.TRANDQTY || submittedRow.Rate != existingRow.TRANDRATE)
+                                {
+                                    TempData["ErrorMessage"] = "This Sales Order has already been converted to PO. PO-generated rows cannot be edited (Material/Qty/Rate) or deleted.";
+                                    return RedirectToAction("Form", new { id = master.TRANMID });
+                                }
+                            }
+                        }
+                    }
+                }
 
                 if (!details.Any())
                 {
@@ -461,6 +576,99 @@ namespace SSK_ERP.Controllers
 
                 var siLinkSet = new HashSet<int>(salesInvoiceLinkedIds.Cast<int>());
 
+                // Determine PO partial status: PO exists but does not cover all current SalesOrder detail lines.
+                var soIds = masters.Select(m => m.TRANMID).ToList();
+                var linkedPos = db.TransactionMasters
+                    .Where(po => po.REGSTRID == PurchaseRegisterId && po.TRANLMID > 0 && soIds.Contains(po.TRANLMID))
+                    .Select(po => new { po.TRANMID, po.TRANLMID })
+                    .ToList();
+
+                // For each SalesOrder, pick the latest linked PO.
+                var latestPoBySo = linkedPos
+                    .GroupBy(x => x.TRANLMID)
+                    .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.TRANMID).First().TRANMID);
+
+                var poIds = latestPoBySo.Values.Distinct().ToList();
+
+                var soDetailCounts = db.TransactionDetails
+                    .Where(d => soIds.Contains(d.TRANMID))
+                    .GroupBy(d => new { d.TRANMID, d.TRANDREFID })
+                    .Select(g => new { SoId = g.Key.TRANMID, MaterialId = g.Key.TRANDREFID, Cnt = g.Count() })
+                    .ToList();
+
+                var poDetailCounts = new List<PoDetailCountRow>();
+                if (poIds.Any())
+                {
+                    poDetailCounts = db.TransactionDetails
+                        .Where(d => poIds.Contains(d.TRANMID))
+                        .GroupBy(d => new { d.TRANMID, d.TRANDREFID })
+                        .Select(g => new PoDetailCountRow
+                        {
+                            PoId = g.Key.TRANMID,
+                            MaterialId = g.Key.TRANDREFID,
+                            Cnt = g.Count()
+                        })
+                        .ToList();
+                }
+
+                var soCountMap = soDetailCounts
+                    .GroupBy(x => x.SoId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.ToDictionary(x => x.MaterialId, x => x.Cnt)
+                    );
+
+                var poCountMap = new Dictionary<int, Dictionary<int, int>>();
+                foreach (var poId in poIds)
+                {
+                    poCountMap[poId] = new Dictionary<int, int>();
+                }
+
+                foreach (var x in poDetailCounts)
+                {
+                    int poId = x.PoId;
+                    int materialId = x.MaterialId;
+                    int cnt = x.Cnt;
+                    if (!poCountMap.TryGetValue(poId, out var matMap))
+                    {
+                        matMap = new Dictionary<int, int>();
+                        poCountMap[poId] = matMap;
+                    }
+                    matMap[materialId] = cnt;
+                }
+
+                var partialSoSet = new HashSet<int>();
+                foreach (var kv in latestPoBySo)
+                {
+                    int soId = kv.Key;
+                    int poId = kv.Value;
+
+                    if (!soCountMap.TryGetValue(soId, out var soMatCounts) || soMatCounts == null)
+                    {
+                        continue;
+                    }
+
+                    poCountMap.TryGetValue(poId, out var poMatCounts);
+                    poMatCounts = poMatCounts ?? new Dictionary<int, int>();
+
+                    bool isPartial = false;
+                    foreach (var m in soMatCounts)
+                    {
+                        int soCnt = m.Value;
+                        int poCnt = poMatCounts.ContainsKey(m.Key) ? poMatCounts[m.Key] : 0;
+                        if (poCnt < soCnt)
+                        {
+                            isPartial = true;
+                            break;
+                        }
+                    }
+
+                    if (isPartial)
+                    {
+                        partialSoSet.Add(soId);
+                    }
+                }
+
                 var data = masters
                     .Select(t => new
                     {
@@ -473,7 +681,8 @@ namespace SSK_ERP.Controllers
                         Amount = t.TRANNAMT,
                         Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled",
                         HasPo = poLinkSet.Contains(t.TRANMID),
-                        HasSi = siLinkSet.Contains(t.TRANMID)
+                        HasSi = siLinkSet.Contains(t.TRANMID),
+                        HasPoPartial = partialSoSet.Contains(t.TRANMID)
                     })
                     .ToList();
 
@@ -935,12 +1144,21 @@ namespace SSK_ERP.Controllers
 
         private class SalesOrderDetailRow
         {
+            public int DetailId { get; set; }
             public int MaterialId { get; set; }
             public decimal Qty { get; set; }
             public decimal Rate { get; set; }
             public decimal Amount { get; set; }
             public decimal ProfitPercent { get; set; }
             public decimal ActualRate { get; set; }
+            public bool IsLocked { get; set; }
+        }
+
+        private class PoDetailCountRow
+        {
+            public int PoId { get; set; }
+            public int MaterialId { get; set; }
+            public int Cnt { get; set; }
         }
 
         protected override void Dispose(bool disposing)
