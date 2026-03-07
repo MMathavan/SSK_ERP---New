@@ -359,6 +359,7 @@
                             var id = row['TRANMID'];
                             var hasPo = row['HasPo'] === true || row['HasPo'] === 'true';
                             var hasPoPartial = row['HasPoPartial'] === true || row['HasPoPartial'] === 'true';
+                            var hasPi = row['HasPi'] === true || row['HasPi'] === 'true';
                             var hasSi = row['HasSi'] === true || row['HasSi'] === 'true';
                             var tranType = row['TRANETYPE'];
                             if (tranType === null || tranType === undefined || tranType === '') {
@@ -376,6 +377,10 @@
 
                             if (hasSi) {
                                 html += '<span class="badge bg-warning text-dark">SI Created</span>&nbsp;';
+                                html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                            }
+                            else if (hasPi) {
+                                html += '<span class="badge bg-warning text-dark">PI Created</span>&nbsp;';
                                 html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
                             }
                             else if (!hasPo) {

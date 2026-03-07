@@ -15,6 +15,7 @@ namespace SSK_ERP.Controllers
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesOrderRegisterId = 1;
         private const int PurchaseRegisterId = 2;
+        private const int PurchaseInvoiceRegisterId = 18;
         private const int SalesInvoiceRegisterId = 20;
 
         [Authorize(Roles = "SalesOrderIndex")]
@@ -590,6 +591,26 @@ namespace SSK_ERP.Controllers
 
                 var poIds = latestPoBySo.Values.Distinct().ToList();
 
+                // Preload all Purchase Orders that already have a Purchase Invoice
+                var piLinkedPoIds = poIds.Any()
+                    ? db.TransactionMasters
+                        .Where(pi => pi.REGSTRID == PurchaseInvoiceRegisterId && pi.TRANLMID > 0 && poIds.Contains(pi.TRANLMID))
+                        .Select(pi => pi.TRANLMID)
+                        .ToList()
+                    : new List<int>();
+
+                var poWithPiSet = new HashSet<int>(piLinkedPoIds);
+                var soWithPiSet = new HashSet<int>();
+                foreach (var kv in latestPoBySo)
+                {
+                    int soId = kv.Key;
+                    int poId = kv.Value;
+                    if (poWithPiSet.Contains(poId))
+                    {
+                        soWithPiSet.Add(soId);
+                    }
+                }
+
                 var soDetailCounts = db.TransactionDetails
                     .Where(d => soIds.Contains(d.TRANMID))
                     .GroupBy(d => new { d.TRANMID, d.TRANDREFID })
@@ -682,7 +703,8 @@ namespace SSK_ERP.Controllers
                         Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled",
                         HasPo = poLinkSet.Contains(t.TRANMID),
                         HasSi = siLinkSet.Contains(t.TRANMID),
-                        HasPoPartial = partialSoSet.Contains(t.TRANMID)
+                        HasPoPartial = partialSoSet.Contains(t.TRANMID),
+                        HasPi = soWithPiSet.Contains(t.TRANMID)
                     })
                     .ToList();
 
