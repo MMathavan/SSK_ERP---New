@@ -18,6 +18,8 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
             padding: 10px;
             background: #f5f5f5;
         }
@@ -33,73 +35,79 @@
 
         .inv-header-row {
             display: flex;
+            border-top: 1px solid #000;
             border-bottom: 1px solid #000;
-            padding-bottom: 2px;
+            padding-bottom: 1px;
         }
 
         .inv-header-left {
             width: 35%;
-            border-right: 1px solid #000;
-            padding-right: 6px;
+            padding-right: 0;
+            display: flex;
         }
 
         .inv-header-center {
             width: 30%;
-            border-right: 1px solid #000;
-            padding: 0 6px;
+            padding: 0 1px;
+            display: flex;
+            flex-direction: column;
         }
 
         .inv-header-right {
             width: 35%;
-            padding-left: 6px;
+            padding-left: 0;
+            display: flex;
         }
 
         .comp-name {
             font-weight: 700;
-            font-size: 16px;
+            font-size: 20px;
         }
 
         .comp-addr {
-            font-size: 11px;
+            font-size: 14px;
             line-height: 1.15;
         }
 
         .gst-title {
             text-align: center;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 18px;
             margin-top: 4px;
         }
 
         .inv-small-text {
-            font-size: 11px;
+            font-size: 14px;
         }
 
         .inv-border-box {
             border: 1px solid #000;
+            border-top: none;
             padding: 2px 4px;
-            font-size: 11px;
+            font-size: 14px;
+            width: 100%;
+            flex: 1;
         }
 
         .party-heading {
             text-align: left;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 600;
             margin-bottom: 2px;
         }
 
         .party-name {
-            font-size: 12px;
+            font-size: 15px;
             font-weight: 600;
         }
 
         .party-addr {
-            font-size: 11px;
+            font-size: 14px;
             line-height: 1.15;
         }
 
         .party-gst {
-            font-size: 11px;
+            font-size: 14px;
             margin-top: 2px;
         }
 
@@ -107,20 +115,27 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 3px;
-            font-size: 10px;
+            font-size: 13px;
         }
 
         .inv-info-table th,
         .inv-info-table td {
             border: 1px solid #000;
+            border-right: none;
             padding: 1px 3px;
+        }
+
+        .inv-info-table th:last-child,
+        .inv-info-table td:last-child {
+            border-right: 1px solid #000;
         }
 
         .inv-items-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 2px;
-            font-size: 10px;
+            font-size: 13px;
+            table-layout: fixed;
         }
 
         .inv-items-table th,
@@ -130,8 +145,12 @@
         }
 
         .inv-items-table th {
-            font-weight: 600;
+            font-weight: 700;
             text-align: center;
+        }
+
+        .inv-blank-row td {
+            height: 22px;
         }
 
         .text-right {
@@ -144,7 +163,7 @@
 
         .totals-row {
             margin-top: 2px;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         .totals-row table {
@@ -159,7 +178,7 @@
 
         .footer-row {
             margin-top: 2px;
-            font-size: 10px;
+            font-size: 14px;
         }
 
         .footer-row table {
@@ -169,27 +188,73 @@
 
         .footer-row td {
             border: 1px solid #000;
-            padding: 2px 4px;
+            padding: 12px 12px;
             vertical-align: top;
+            min-height: 200px;
+        }
+
+        .page-break {
+            page-break-before: always;
         }
 
         .grand-total-box {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
             text-align: center;
+        }
+
+        .terms-title {
+            font-weight: 700;
+            text-decoration: underline;
+            margin-bottom: 2px;
+        }
+
+        .terms-body {
+            font-weight: 600;
+        }
+
+        .sig-td {
+            position: relative;
+        }
+
+        .sig-cell-bottom {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 10px;
+        }
+
+        .bank-details-wrap {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            align-items: center;
+            column-gap: 8px;
+        }
+
+        .bank-details-text {
+            grid-column: 1;
+        }
+
+        .bank-qr {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            grid-column: 2;
+            justify-self: center;
+            margin: 0;
         }
 
         .print-button {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 6px 14px;
-            background: #444;
+            padding: 6px 12px;
+            background: #007bff;
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 15px;
         }
 
         .print-button:hover {
@@ -215,6 +280,11 @@
 
             @@page {
                 margin: 5mm 5mm 5mm 5mm;
+            }
+
+            .totals-row,
+            .footer-row {
+                page-break-inside: avoid;
             }
         }
     </style>
@@ -257,7 +327,7 @@
             </div>
             <div class="inv-header-center">
                 <div class="gst-title">DEBIT NOTE / GST PURCHASE RETURN</div>
-                <div style="margin-top: 4px;">
+                <div style="margin-top: 4px; margin-right: 0;">
                     <table class="inv-info-table">
                         <tr>
                             <th style="width: 18%;">Invoice No</th>
@@ -321,7 +391,7 @@
 
         @{
             var items = Model.Items ?? new List<SSK_ERP.Controllers.Purchase.PurchaseReturnController.PurchaseReturnPrintItemViewModel>();
-            int rowsPerPage = 26; // maximum item rows per logical page before breaking
+            int rowsPerPage = 17; // maximum item rows per logical page before breaking
             int totalPages = items.Count > 0 ? (int)Math.Ceiling(items.Count / (double)rowsPerPage) : 1;
         }
 
@@ -345,21 +415,21 @@
                         }
                         <tr>
                             <th style="width: 3%;">S.No</th>
-                            <th style="width: 5%;">Mfr</th>
-                            <th style="width: 20%;">Product Name</th>
-                            <th style="width: 7%;">Pack</th>
-                            <th style="width: 5%;">Qty.</th>
-                            <th style="width: 8%;">Batch</th>
-                            <th style="width: 6%;">Exp</th>
-                            <th style="width: 6%;">HSN</th>
-                            <th style="width: 6%;">Rate</th>
-                            <th style="width: 6%;">PTR</th>
-                            <th style="width: 6%;">M.R.P</th>
+                            <th style="width: 6%;">Mfr</th>
+                            <th style="width: 16%;">Product Name</th>
+                            <th style="width: 5%;">Pack</th>
+                            <th style="width: 3%;">Qty.</th>
+                            <th style="width: 6%;">Batch</th>
+                            <th style="width: 5%;">Exp</th>
+                            <th style="width: 5%;">HSN</th>
+                            <th style="width: 5%;">Rate</th>
+                            <th style="width: 5%;">PTR</th>
+                            <th style="width: 5%;">M.R.P</th>
                             <th style="width: 5%;">DIS1</th>
-                            <th style="width: 5%;">DIS%</th>
-                            <th style="width: 6%;">D_AMT</th>
-                            <th style="width: 5%;">SGST</th>
-                            <th style="width: 5%;">CGST</th>
+                            <th style="width: 4%;">DIS%</th>
+                            <th style="width: 5%;">D_AMT</th>
+                            <th style="width: 4%;">SGST</th>
+                            <th style="width: 4%;">CGST</th>
                             <th style="width: 7%;">Amount</th>
                             <th style="width: 7%;">Net</th>
                         </tr>
@@ -396,6 +466,20 @@
                             </tr>
                         }
 
+                        @if (isLastPage && pageItems.Count < rowsPerPage)
+                        {
+                            var blankCount = rowsPerPage - pageItems.Count;
+                            for (int bi = 0; bi < blankCount; bi++)
+                            {
+                                <tr class="inv-blank-row">
+                                    @for (int c = 0; c < 18; c++)
+                                    {
+                                        <td>&nbsp;</td>
+                                    }
+                                </tr>
+                            }
+                        }
+
                         @if (totalPages > 1)
                         {
                             <tr>
@@ -419,21 +503,21 @@
                 <thead>
                     <tr>
                         <th style="width: 3%;">S.No</th>
-                        <th style="width: 5%;">Mfr</th>
-                        <th style="width: 20%;">Product Name</th>
-                        <th style="width: 7%;">Pack</th>
-                        <th style="width: 5%;">Qty.</th>
-                        <th style="width: 8%;">Batch</th>
-                        <th style="width: 6%;">Exp</th>
-                        <th style="width: 6%;">HSN</th>
-                        <th style="width: 6%;">Rate</th>
-                        <th style="width: 6%;">PTR</th>
-                        <th style="width: 6%;">M.R.P</th>
+                        <th style="width: 6%;">Mfr</th>
+                        <th style="width: 16%;">Product Name</th>
+                        <th style="width: 5%;">Pack</th>
+                        <th style="width: 3%;">Qty.</th>
+                        <th style="width: 6%;">Batch</th>
+                        <th style="width: 5%;">Exp</th>
+                        <th style="width: 5%;">HSN</th>
+                        <th style="width: 5%;">Rate</th>
+                        <th style="width: 5%;">PTR</th>
+                        <th style="width: 5%;">M.R.P</th>
                         <th style="width: 5%;">DIS1</th>
-                        <th style="width: 5%;">DIS%</th>
-                        <th style="width: 6%;">D_AMT</th>
-                        <th style="width: 5%;">SGST</th>
-                        <th style="width: 5%;">CGST</th>
+                        <th style="width: 4%;">DIS%</th>
+                        <th style="width: 5%;">D_AMT</th>
+                        <th style="width: 4%;">SGST</th>
+                        <th style="width: 4%;">CGST</th>
                         <th style="width: 7%;">Amount</th>
                         <th style="width: 7%;">Net</th>
                     </tr>
@@ -450,7 +534,7 @@
             <table>
                 <tr>
                     <td style="width: 70%; vertical-align: top;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                             <thead>
                                 <tr>
                                     <td style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;">CLASS</td>
@@ -508,7 +592,7 @@
                         </table>
                     </td>
                     <td style="width: 30%; vertical-align: top;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                             <tr>
                                 <td colspan="4" style="border: 1px solid #000; padding: 2px 4px; font-weight: 600;" class="text-right">
                                     TOTAL @Model.GrossAmount.ToString("0.00")
@@ -586,7 +670,7 @@
                 <tr>
                     <td style="width: 35%; border-right: 1px solid #000;">
                         <div class="terms-title">Terms &amp; Conditions</div>
-                        <div>
+                        <div class="terms-body">
                             Goods once sold will not be taken back or exchanged.<br />
                             All disputes subject to  Jurisdication only.<br />
                             Bills not paid due date will attract 24% interest.
@@ -594,14 +678,19 @@
                     </td>
                     <td style="width: 35%; border-right: 1px solid #000;">
                         <div class="terms-title">Bank Details</div>
-                        <div>
-                            Bank Name : HDFC BANK, Branch : R A Puram A/c. No. : 50200030798768<br />
-                            RTGS / NEFT IFSC : HDFC0000141
+                        <div class="terms-body bank-details-wrap">
+                            <div class="bank-details-text">
+                                Bank Name : HDFC BANK,<br />
+                                Branch : R A Puram<br />
+                                A/c. No. : 50200030798768<br />
+                                RTGS / NEFT IFSC : HDFC0000141
+                            </div>
+                            <img class="bank-qr" src="@Url.Content("~/Content/images/qrcode_ssk.png")" alt="QR" />
                         </div>
                     </td>
-                    <td style="width: 15%; text-align: center; border-right: 1px solid #000;">
-                        <div style="margin-top: 10px;">For @(!string.IsNullOrWhiteSpace(Model.CompanyName) ? Model.CompanyName : "SSK ENTERPRISE")</div>
-                        <div style="margin-top: 18px;">Signature</div>
+                    <td style="width: 15%; text-align: center; border-right: 1px solid #000;" class="sig-td">
+                        <div>For @(!string.IsNullOrWhiteSpace(Model.CompanyName) ? Model.CompanyName : "SSK ENTERPRISE")</div>
+                        <div class="sig-cell-bottom">Signature</div>
                     </td>
                     <td style="width: 15%; text-align: center; vertical-align: middle;">
                         <div><strong>Grand Total</strong></div>

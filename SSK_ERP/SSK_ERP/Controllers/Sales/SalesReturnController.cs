@@ -1054,6 +1054,7 @@ namespace SSK_ERP.Controllers
                     IgstAmount = master.TRANIGSTAMT,
                     TotalDisc = totalDisc,
                     CourierCharges = courierCharges,
+                    RoundOffAmount = master.TRANROAMT ?? 0m,
                     Narration = master.TRANNARTN,
                     Remarks = master.TRANRMKS,
                     UserName = master.LMUSRID,
@@ -1423,6 +1424,7 @@ namespace SSK_ERP.Controllers
             public decimal IgstAmount { get; set; }
             public decimal TotalDisc { get; set; }
             public decimal CourierCharges { get; set; }
+            public decimal RoundOffAmount { get; set; }
             public string Narration { get; set; }
             public string Remarks { get; set; }
             public string UserName { get; set; }
