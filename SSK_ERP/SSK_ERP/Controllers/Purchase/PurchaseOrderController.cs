@@ -491,7 +491,7 @@ namespace SSK_ERP.Controllers.Purchase
                 db.SaveChanges();
 
                 TempData["SuccessMessage"] = "PO created successfully.";
-                return RedirectToAction("Index", "SalesOrder");
+                return RedirectToAction("Index", "PurchaseOrder");
             }
             catch (Exception ex)
             {
