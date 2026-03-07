@@ -190,11 +190,11 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h1 class="pr-header-title">
                     <i class="fa fa-undo"></i>
-                    Purchase Return
+                    Debit Note
                 </h1>
                 <div class="btn-group">
                     <button type="button" class="btn pr-add-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa fa-plus-circle"></i> Add Purchase Return
+                        <i class="fa fa-plus-circle"></i> Add Debit Note
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
@@ -284,7 +284,7 @@
                         if (json && Array.isArray(json.aaData)) return json.aaData;
                         if (Array.isArray(json)) return json;
                         if (json && json.error) {
-                            console.error('Server error while loading Purchase Returns:', json.error);
+                            console.error('Server error while loading Debit Note:', json.error);
                             return [];
                         }
                         return [];
@@ -294,7 +294,7 @@
                             return;
                         }
                         console.error('PurchaseReturn GetAjaxData error:', status, err, xhr && xhr.responseText);
-                        alert('Failed to load Purchase Returns. Please check console for details.');
+                        alert('Failed to load Debit Note. Please check console for details.');
                     }
                 },
                 columns: [
@@ -456,7 +456,7 @@
         });
 
         function deletePurchaseReturn(id) {
-            if (!confirm('Are you sure you want to delete this Purchase Return?')) {
+            if (!confirm('Are you sure you want to delete this Debit Note?')) {
                 return;
             }
 
@@ -473,8 +473,8 @@
                     $('#purchaseReturnTable').DataTable().ajax.reload();
                 },
                 error: function (xhr, status, error) {
-                    console.error('Error deleting Purchase Return:', error, xhr && xhr.responseText);
-                    alert('Failed to delete Purchase Return. Please try again.');
+                    console.error('Error deleting Debit Note:', error, xhr && xhr.responseText);
+                    alert('Failed to delete Debit Note. Please try again.');
                 }
             });
         }
