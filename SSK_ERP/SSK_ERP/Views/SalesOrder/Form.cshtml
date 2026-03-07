@@ -68,8 +68,13 @@
         padding: 12px 15px;
         font-size: 14px;
         transition: all 0.3s ease;
-        background-color: #edf1f7;
+        background-color: #ffffff;
         color: #212529;
+    }
+
+    .form-control[readonly],
+    .form-control:disabled {
+        background-color: #edf1f7;
     }
 
     .form-control:focus {
@@ -160,6 +165,16 @@
 
     .so-detail-table .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 30px;
+    }
+
+    .select2-container--default .select2-selection--single {
+        background-color: #ffffff;
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+    }
+
+    .select2-container--default.select2-container--disabled .select2-selection--single {
+        background-color: #edf1f7;
     }
 
     .so-totals-table th {
@@ -400,29 +415,44 @@
 
                 <!-- Row 1: No / Date / Bill No (3-column layout) -->
                 <div class="row">
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label>No</label>
-                            @Html.HiddenFor(m => m.TRANDNO)
-                            @Html.TextBoxFor(m => m.TRANNO, new { @class = "form-control", @readonly = "readonly" })
+                    @if (Model != null && Model.TRANMID > 0)
+                    {
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>No</label>
+                                @Html.HiddenFor(m => m.TRANDNO)
+                                @Html.TextBoxFor(m => m.TRANNO, new { @class = "form-control", @readonly = "readonly" })
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="form-group">
-                            <label>Date</label>
-                            @Html.TextBoxFor(m => m.TRANDATE, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label>Date</label>
+                                @Html.TextBoxFor(m => m.TRANDATE, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                            </div>
                         </div>
-                    </div>
+                    }
+                    else
+                    {
+                        @Html.HiddenFor(m => m.TRANDNO)
+                        @Html.HiddenFor(m => m.TRANNO)
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label>Date</label>
+                                @Html.TextBoxFor(m => m.TRANDATE, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                            </div>
+                        </div>
+                    }
+
                     <div class="col-md-5">
                         <div class="form-group">
                             <label>Bill No <span class="req">*</span></label>
                             @if (Model != null && Model.TRANMID > 0)
                             {
-                                @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control", @readonly = "readonly" })
+                                @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control", @readonly = "readonly", maxlength = "100" })
                             }
                             else
                             {
-                                @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control" })
+                                @Html.TextBoxFor(m => m.TRANREFNO, new { @class = "form-control", maxlength = "100" })
                             }
                         </div>
                     </div>
@@ -780,7 +810,7 @@
                 <div class="section-title">Remarks</div>
                 <div class="row">
                     <div class="col-md-12">
-                        @Html.TextAreaFor(m => m.TRANRMKS, new { @class = "form-control", rows = 3 })
+                        @Html.TextAreaFor(m => m.TRANRMKS, new { @class = "form-control", rows = 3, maxlength = "100" })
                     </div>
                 </div>
 
