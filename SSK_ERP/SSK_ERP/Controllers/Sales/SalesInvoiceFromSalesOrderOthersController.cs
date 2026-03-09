@@ -1094,6 +1094,16 @@ namespace SSK_ERP.Controllers
                 {
                 }
 
+                try
+                {
+                    db.Database.ExecuteSqlCommand(
+                        "EXEC [dbo].[PR_SALESORDER_OTHERS_INVMID_UPDT] @p0",
+                        workingMaster.TRANMID);
+                }
+                catch
+                {
+                }
+
                 TempData["SuccessMessage"] = isEdit ? "Sales Invoice updated successfully." : "Sales Invoice created successfully.";
                 return RedirectToAction("Index", "SalesInvoice");
             }
