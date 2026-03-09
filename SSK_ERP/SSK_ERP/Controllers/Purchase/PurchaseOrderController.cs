@@ -67,22 +67,86 @@ namespace SSK_ERP.Controllers.Purchase
                     .OrderBy(d => d.TRANDID)
                     .ToList();
 
-                // Build a multi-set of PO materials to match against, so duplicates are handled.
-                // NOTE: We match by MaterialId only (not Qty/Rate) so selection remains stable even if Sales Order qty/rate changes later.
-                var poMaterialCounts = poDetails
-                    .GroupBy(d => d.TRANDREFID)
-                    .ToDictionary(g => g.Key, g => g.Count());
-
-                foreach (var d in soDetails)
+                // Build multi-sets of PO rows to match against, so duplicates are handled.
+                // Prefer exact match by MaterialId+Qty+Rate (so user can switch selection between duplicate materials).
+                // Fallback to MaterialId-only match (so selection remains stable even if Sales Order qty/rate changes later).
+                var poKeyCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                var poMaterialCounts = new Dictionary<int, int>();
+                foreach (var d in poDetails)
                 {
-                    bool selected = false;
+                    var key = string.Concat(
+                        d.TRANDREFID,
+                        "|",
+                        d.TRANDQTY.ToString(CultureInfo.InvariantCulture),
+                        "|",
+                        d.TRANDRATE.ToString(CultureInfo.InvariantCulture)
+                    );
 
-                    if (poMaterialCounts.TryGetValue(d.TRANDREFID, out var cnt) && cnt > 0)
+                    if (poKeyCounts.ContainsKey(key))
                     {
-                        selected = true;
-                        poMaterialCounts[d.TRANDREFID] = cnt - 1;
+                        poKeyCounts[key]++;
+                    }
+                    else
+                    {
+                        poKeyCounts[key] = 1;
                     }
 
+                    if (poMaterialCounts.ContainsKey(d.TRANDREFID))
+                    {
+                        poMaterialCounts[d.TRANDREFID]++;
+                    }
+                    else
+                    {
+                        poMaterialCounts[d.TRANDREFID] = 1;
+                    }
+                }
+
+                // Two-pass selection:
+                // 1) Exact match by MaterialId+Qty+Rate across ALL SO rows.
+                // 2) Fallback by MaterialId-only for remaining counts.
+                var selectedByIndex = new bool[soDetails.Count];
+
+                for (int i = 0; i < soDetails.Count; i++)
+                {
+                    var d = soDetails[i];
+                    var soKey = string.Concat(
+                        d.TRANDREFID,
+                        "|",
+                        d.TRANDQTY.ToString(CultureInfo.InvariantCulture),
+                        "|",
+                        d.TRANDRATE.ToString(CultureInfo.InvariantCulture)
+                    );
+
+                    if (poKeyCounts.TryGetValue(soKey, out var keyCnt) && keyCnt > 0)
+                    {
+                        selectedByIndex[i] = true;
+                        poKeyCounts[soKey] = keyCnt - 1;
+
+                        if (poMaterialCounts.TryGetValue(d.TRANDREFID, out var matCnt) && matCnt > 0)
+                        {
+                            poMaterialCounts[d.TRANDREFID] = matCnt - 1;
+                        }
+                    }
+                }
+
+                for (int i = 0; i < soDetails.Count; i++)
+                {
+                    if (selectedByIndex[i])
+                    {
+                        continue;
+                    }
+
+                    var d = soDetails[i];
+                    if (poMaterialCounts.TryGetValue(d.TRANDREFID, out var cnt) && cnt > 0)
+                    {
+                        selectedByIndex[i] = true;
+                        poMaterialCounts[d.TRANDREFID] = cnt - 1;
+                    }
+                }
+
+                for (int i = 0; i < soDetails.Count; i++)
+                {
+                    var d = soDetails[i];
                     detailRows.Add(new PurchaseOrderDetailRow
                     {
                         MaterialId = d.TRANDREFID,
@@ -91,7 +155,7 @@ namespace SSK_ERP.Controllers.Purchase
                         Amount = d.TRANDGAMT,
                         ProfitPercent = d.TRANDMTRLPRFT,
                         ActualRate = d.TRANDARATE,
-                        IsSelected = selected
+                        IsSelected = selectedByIndex[i]
                     });
                 }
             }
@@ -385,6 +449,13 @@ namespace SSK_ERP.Controllers.Purchase
                     .Where(d => d != null && d.MaterialId > 0 && d.Qty > 0 && d.Rate >= 0)
                     .ToList();
 
+                if (master.TRANLMID > 0)
+                {
+                    details = details
+                        .Where(d => d.IsSelected)
+                        .ToList();
+                }
+
                 if (!details.Any())
                 {
                     TempData["ErrorMessage"] = "Please select at least one item row.";
@@ -556,6 +627,13 @@ namespace SSK_ERP.Controllers.Purchase
                 details = details
                     .Where(d => d != null && d.MaterialId > 0 && d.Qty > 0 && d.Rate >= 0)
                     .ToList();
+
+                if (existing.TRANLMID > 0)
+                {
+                    details = details
+                        .Where(d => d.IsSelected)
+                        .ToList();
+                }
 
                 if (!details.Any())
                 {

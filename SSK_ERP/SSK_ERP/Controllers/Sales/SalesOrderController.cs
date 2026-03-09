@@ -175,6 +175,7 @@ namespace SSK_ERP.Controllers
                 // If a PO is already created for this Sales Order, lock materials that are part of the PO.
                 hasPo = db.TransactionMasters.Any(t => t.REGSTRID == PurchaseRegisterId && t.TRANLMID == model.TRANMID);
 
+                Dictionary<string, int> poKeyCounts = null;
                 Dictionary<int, int> poMaterialCounts = null;
                 if (hasPo)
                 {
@@ -185,23 +186,89 @@ namespace SSK_ERP.Controllers
 
                     if (poMaster != null)
                     {
-                        poMaterialCounts = db.TransactionDetails
+                        var poDetails = db.TransactionDetails
                             .Where(d => d.TRANMID == poMaster.TRANMID)
-                            .GroupBy(d => d.TRANDREFID)
-                            .ToDictionary(g => g.Key, g => g.Count());
+                            .OrderBy(d => d.TRANDID)
+                            .ToList();
+
+                        poKeyCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        poMaterialCounts = new Dictionary<int, int>();
+                        foreach (var d in poDetails)
+                        {
+                            var key = BuildRowKey(d.TRANDREFID, d.TRANDQTY, d.TRANDRATE);
+
+                            if (poKeyCounts.ContainsKey(key))
+                            {
+                                poKeyCounts[key]++;
+                            }
+                            else
+                            {
+                                poKeyCounts[key] = 1;
+                            }
+
+                            if (poMaterialCounts.ContainsKey(d.TRANDREFID))
+                            {
+                                poMaterialCounts[d.TRANDREFID]++;
+                            }
+                            else
+                            {
+                                poMaterialCounts[d.TRANDREFID] = 1;
+                            }
+                        }
                     }
                 }
 
-                var details = db.TransactionDetails.Where(d => d.TRANMID == model.TRANMID).ToList();
-                foreach (var d in details)
-                {
-                    bool isLocked = false;
-                    if (poMaterialCounts != null && poMaterialCounts.TryGetValue(d.TRANDREFID, out var remaining) && remaining > 0)
-                    {
-                        isLocked = true;
-                        poMaterialCounts[d.TRANDREFID] = remaining - 1;
-                    }
+                var details = db.TransactionDetails
+                    .Where(d => d.TRANMID == model.TRANMID)
+                    .OrderBy(d => d.TRANDID)
+                    .ToList();
 
+                // Two-pass lock:
+                // 1) Exact match by MaterialId+Qty+Rate across ALL SO rows
+                // 2) Fallback by MaterialId-only for remaining counts
+                var lockedByIndex = new bool[details.Count];
+
+                if (poKeyCounts != null)
+                {
+                    for (int i = 0; i < details.Count; i++)
+                    {
+                        var d = details[i];
+                        var soKey = BuildRowKey(d.TRANDREFID, d.TRANDQTY, d.TRANDRATE);
+
+                        if (poKeyCounts.TryGetValue(soKey, out var keyRemaining) && keyRemaining > 0)
+                        {
+                            lockedByIndex[i] = true;
+                            poKeyCounts[soKey] = keyRemaining - 1;
+
+                            if (poMaterialCounts != null && poMaterialCounts.TryGetValue(d.TRANDREFID, out var matRemaining) && matRemaining > 0)
+                            {
+                                poMaterialCounts[d.TRANDREFID] = matRemaining - 1;
+                            }
+                        }
+                    }
+                }
+
+                if (poMaterialCounts != null)
+                {
+                    for (int i = 0; i < details.Count; i++)
+                    {
+                        if (lockedByIndex[i])
+                        {
+                            continue;
+                        }
+
+                        var d = details[i];
+                        if (poMaterialCounts.TryGetValue(d.TRANDREFID, out var remaining) && remaining > 0)
+                        {
+                            lockedByIndex[i] = true;
+                            poMaterialCounts[d.TRANDREFID] = remaining - 1;
+                        }
+                    }
+                }
+
+                for (int i = 0; i < details.Count; i++)
+                {
+                    var d = details[i];
                     detailRows.Add(new SalesOrderDetailRow
                     {
                         DetailId = d.TRANDID,
@@ -211,7 +278,7 @@ namespace SSK_ERP.Controllers
                         Amount = d.TRANDGAMT,
                         ProfitPercent = d.TRANDMTRLPRFT,
                         ActualRate = d.TRANDARATE,
-                        IsLocked = isLocked
+                        IsLocked = lockedByIndex[i]
                     });
                 }
             }
@@ -333,10 +400,35 @@ namespace SSK_ERP.Controllers
 
                         if (poMaster != null)
                         {
-                            var requiredCounts = db.TransactionDetails
+                            var poDetails = db.TransactionDetails
                                 .Where(d => d.TRANMID == poMaster.TRANMID)
-                                .GroupBy(d => d.TRANDREFID)
-                                .ToDictionary(g => g.Key, g => g.Count());
+                                .OrderBy(d => d.TRANDID)
+                                .ToList();
+
+                            var requiredKeyCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                            var requiredMaterialCounts = new Dictionary<int, int>();
+                            foreach (var d in poDetails)
+                            {
+                                var key = BuildRowKey(d.TRANDREFID, d.TRANDQTY, d.TRANDRATE);
+
+                                if (requiredKeyCounts.ContainsKey(key))
+                                {
+                                    requiredKeyCounts[key]++;
+                                }
+                                else
+                                {
+                                    requiredKeyCounts[key] = 1;
+                                }
+
+                                if (requiredMaterialCounts.ContainsKey(d.TRANDREFID))
+                                {
+                                    requiredMaterialCounts[d.TRANDREFID]++;
+                                }
+                                else
+                                {
+                                    requiredMaterialCounts[d.TRANDREFID] = 1;
+                                }
+                            }
 
                             // Full lock: for PO-linked rows, do not allow changing Qty/Rate in Sales Order.
                             var existingSoDetails = db.TransactionDetails
@@ -344,16 +436,14 @@ namespace SSK_ERP.Controllers
                                 .OrderBy(d => d.TRANDID)
                                 .ToList();
 
-                            var newCounts = details
-                                .GroupBy(d => d.MaterialId)
-                                .ToDictionary(g => g.Key, g => g.Count());
+                            var newKeyCounts = details
+                                .GroupBy(d => BuildRowKey(d.MaterialId, d.Qty, d.Rate))
+                                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
 
-                            foreach (var req in requiredCounts)
+                            foreach (var req in requiredKeyCounts)
                             {
-                                int materialId = req.Key;
-                                int required = req.Value;
-                                int provided = newCounts.ContainsKey(materialId) ? newCounts[materialId] : 0;
-                                if (provided < required)
+                                int provided = newKeyCounts.ContainsKey(req.Key) ? newKeyCounts[req.Key] : 0;
+                                if (provided < req.Value)
                                 {
                                     TempData["ErrorMessage"] = "This Sales Order has already been converted to PO. You cannot edit or delete PO-generated rows.";
                                     return RedirectToAction("Form", new { id = master.TRANMID });
@@ -362,17 +452,45 @@ namespace SSK_ERP.Controllers
 
                             // For PO-linked rows, ensure the locked rows remain unchanged in Sales Order (Material/Qty/Rate)
                             // by comparing the specific existing SalesOrder detail IDs (TRANDID) that were consumed by the PO.
-                            var remainingLockCounts = new Dictionary<int, int>(requiredCounts);
+                            var remainingLockKeyCounts = new Dictionary<string, int>(requiredKeyCounts, StringComparer.OrdinalIgnoreCase);
+                            var remainingLockMaterialCounts = new Dictionary<int, int>(requiredMaterialCounts);
                             var lockedDetailIds = new List<int>();
-                            foreach (var d in existingSoDetails)
+                            var lockedIndex = new bool[existingSoDetails.Count];
+
+                            // Pass 1: exact key match
+                            for (int i = 0; i < existingSoDetails.Count; i++)
                             {
-                                if (!remainingLockCounts.TryGetValue(d.TRANDREFID, out var remaining) || remaining <= 0)
+                                var d = existingSoDetails[i];
+                                var soKey = BuildRowKey(d.TRANDREFID, d.TRANDQTY, d.TRANDRATE);
+
+                                if (remainingLockKeyCounts.TryGetValue(soKey, out var keyRemaining) && keyRemaining > 0)
+                                {
+                                    lockedIndex[i] = true;
+                                    remainingLockKeyCounts[soKey] = keyRemaining - 1;
+                                    lockedDetailIds.Add(d.TRANDID);
+
+                                    if (remainingLockMaterialCounts.TryGetValue(d.TRANDREFID, out var matRemaining) && matRemaining > 0)
+                                    {
+                                        remainingLockMaterialCounts[d.TRANDREFID] = matRemaining - 1;
+                                    }
+                                }
+                            }
+
+                            // Pass 2: fallback by material
+                            for (int i = 0; i < existingSoDetails.Count; i++)
+                            {
+                                if (lockedIndex[i])
                                 {
                                     continue;
                                 }
 
-                                remainingLockCounts[d.TRANDREFID] = remaining - 1;
-                                lockedDetailIds.Add(d.TRANDID);
+                                var d = existingSoDetails[i];
+                                if (remainingLockMaterialCounts.TryGetValue(d.TRANDREFID, out var remaining) && remaining > 0)
+                                {
+                                    lockedIndex[i] = true;
+                                    remainingLockMaterialCounts[d.TRANDREFID] = remaining - 1;
+                                    lockedDetailIds.Add(d.TRANDID);
+                                }
                             }
 
                             var submittedById = details
@@ -1181,6 +1299,23 @@ namespace SSK_ERP.Controllers
             public int PoId { get; set; }
             public int MaterialId { get; set; }
             public int Cnt { get; set; }
+        }
+
+        private static string BuildRowKey(int materialId, decimal qty, decimal rate)
+        {
+            return string.Concat(
+                materialId,
+                "|",
+                NormalizeDecimalKey(qty),
+                "|",
+                NormalizeDecimalKey(rate)
+            );
+        }
+
+        private static string NormalizeDecimalKey(decimal value)
+        {
+            // avoid false mismatches like 96 vs 96.00
+            return value.ToString("0.########", CultureInfo.InvariantCulture);
         }
 
         protected override void Dispose(bool disposing)

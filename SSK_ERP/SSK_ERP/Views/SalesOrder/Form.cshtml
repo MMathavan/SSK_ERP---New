@@ -1487,11 +1487,9 @@
                 $('#soDetailsBody tr').each(function () {
                     var $row = $(this);
 
+                    var isSelected = true;
                     if (isPoFromSalesOrder) {
-                        var isSelected = $row.find('.so-row-select').is(':checked');
-                        if (!isSelected) {
-                            return;
-                        }
+                        isSelected = $row.find('.so-row-select').is(':checked');
                     }
 
                     var materialId = parseInt($row.find('.so-material').val() || '0', 10);
@@ -1526,7 +1524,8 @@
                             Rate: rate,
                             Amount: amount,
                             ProfitPercent: isNaN(profitPercent) ? 0 : profitPercent,
-                            ActualRate: isNaN(actualRate) ? 0 : actualRate
+                            ActualRate: isNaN(actualRate) ? 0 : actualRate,
+                            IsSelected: !!isSelected
                         });
                     }
                 });
