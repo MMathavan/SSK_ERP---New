@@ -336,9 +336,62 @@
         var existingDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
         var billNoList = @Html.Raw(ViewBag.BillNoListJson ?? "[]");
 
+        function getIsTranBType1() {
+            return parseInt($('#tranBTypeHidden').val() || '0', 10) === 1;
+        }
+
+        function initPrMaterialSelect2($el) {
+            if (!$el || !$el.length) {
+                return;
+            }
+
+            if (!$.fn.select2) {
+                return;
+            }
+
+            try {
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    return;
+                }
+
+                $el.select2({ width: '100%', placeholder: 'Select Material', allowClear: true });
+            } catch (e) {
+            }
+        }
+
+        function sortSelectOptionsAlpha($select) {
+            if (!$select || !$select.length) {
+                return;
+            }
+
+            var opts = $select.find('option').toArray();
+            if (!opts || opts.length <= 2) {
+                return;
+            }
+
+            var first = opts.shift();
+            opts.sort(function (a, b) {
+                var at = (a.text || '').toString().toLowerCase();
+                var bt = (b.text || '').toString().toLowerCase();
+                if (at < bt) return -1;
+                if (at > bt) return 1;
+                return 0;
+            });
+
+            $select.empty();
+            $select.append(first);
+            for (var i = 0; i < opts.length; i++) {
+                $select.append(opts[i]);
+            }
+        }
+
         $(document).ready(function () {
 
-            $('#supplierDropdown').select2({ width: '100%' });
+            var isTranBType1 = getIsTranBType1();
+
+            if ($.fn.select2) {
+                $('#supplierDropdown').select2({ width: '100%' });
+            }
 
             $('#supplierDropdown').on('change', function () {
                 var id = parseInt($(this).val() || '0', 10);
@@ -408,6 +461,12 @@
                 calculateTotals();
             }
 
+            if (isTranBType1) {
+                $('#returnDetailsBody').find('.pr-material').each(function () {
+                    initPrMaterialSelect2($(this));
+                });
+            }
+
             $('#btnAddRow').click(function () {
                 addRow();
             });
@@ -456,6 +515,16 @@
                 if (res.success) {
                     materialList = res.materials;
 
+                    if (getIsTranBType1() && materialList && materialList.length) {
+                        materialList = materialList.slice().sort(function (a, b) {
+                            var an = (a && a.name ? a.name : '').toString().toLowerCase();
+                            var bn = (b && b.name ? b.name : '').toString().toLowerCase();
+                            if (an < bn) return -1;
+                            if (an > bn) return 1;
+                            return 0;
+                        });
+                    }
+
                     var supplierId = parseInt($('#supplierDropdown').val() || '0', 10);
                     if (!supplierId) {
                         return;
@@ -480,6 +549,16 @@
             $.get('@Url.Action("GetMaterialsBySupplier", "PurchaseReturn")', { tranRefId: supplierId }, function (res) {
                 if (res && res.success) {
                     materialList = res.materials || [];
+
+                    if (getIsTranBType1() && materialList && materialList.length) {
+                        materialList = materialList.slice().sort(function (a, b) {
+                            var an = (a && a.name ? a.name : '').toString().toLowerCase();
+                            var bn = (b && b.name ? b.name : '').toString().toLowerCase();
+                            if (an < bn) return -1;
+                            if (an > bn) return 1;
+                            return 0;
+                        });
+                    }
 
                     console.log('PR: loadMaterialsForSupplier result', supplierId, materialList);
 
@@ -515,16 +594,38 @@
         }
 
         function fillMaterialSelect($el, selectedId) {
-            $el.empty().append('<option value="">Select Material</option>');
+            var isTranBType1 = parseInt($('#tranBTypeHidden').val() || '0', 10) === 1;
+            var hadSelect2 = isTranBType1 && $.fn.select2 && $el.hasClass('select2-hidden-accessible');
+            if (hadSelect2) {
+                try {
+                    $el.select2('destroy');
+                } catch (e) {
+                }
+            }
+
+            if (isTranBType1) {
+                $el.empty().append('<option value="">Select Material</option>');
+            } else {
+                $el.empty().append('<option value="">Select Material</option>');
+            }
             if (materialList) {
                 materialList.forEach(function (m) {
-                    var opt = $('<option>').val(m.id).text(m.name).data('rate', m.rate).data('hsn', m.hsnCode);
-                    if (selectedId && selectedId == m.id) opt.prop('selected', true);
-                    $el.append(opt);
+                    $el.append('<option value="' + m.id + '">' + m.name + '</option>');
                 });
             }
+
+            if (isTranBType1) {
+                sortSelectOptionsAlpha($el);
+            }
+
             if (selectedId) {
-                $el.val(String(selectedId));
+                $el.val(selectedId);
+            } else {
+                $el.val('');
+            }
+
+            if ((hadSelect2 || isTranBType1) && $el && $el.length && $.contains(document.documentElement, $el[0])) {
+                initPrMaterialSelect2($el);
             }
         }
 
@@ -625,6 +726,11 @@
             tr.append(actionTd);
 
             tbody.append(tr);
+
+            var isTranBType1 = getIsTranBType1();
+            if (isTranBType1) {
+                initPrMaterialSelect2(matSelect);
+            }
 
             if (data) {
                 tr.data('packmid', parseInt(data.PackingId || 0, 10) || 0);
