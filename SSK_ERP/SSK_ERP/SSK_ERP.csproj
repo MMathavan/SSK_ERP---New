@@ -330,6 +330,7 @@
     <Compile Include="Controllers\Purchase\PurchaseInvoiceController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseReturnController.cs" />
     <Compile Include="Controllers\Purchase\ChellanController.cs" />
+    <Compile Include="Controllers\Purchase\ChellanToDebitNoteController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseInvoiceUploadController.cs" />
     <!-- Excluded per cleanup -->
     <!-- <Compile Include="Controllers\ProfileMasterController.cs" /> -->
@@ -1183,6 +1184,7 @@
     <Content Include="Views\Chellan\Index.cshtml" />
     <Content Include="Views\Chellan\Form.cshtml" />
     <Content Include="Views\Chellan\Print.cshtml" />
+    <Content Include="Views\ChellanToDebitNote\Form.cshtml" />
     <Content Include="Views\StockViewIndex\Index.cshtml" />
     <EntityDeploy Include="Data\SSK_ERP.edmx">
       <Generator>EntityModelCodeGenerator</Generator>

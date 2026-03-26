@@ -167,6 +167,17 @@
         color: #ffffff;
     }
 
+    .btn-debitnote {
+        background: linear-gradient(135deg, #6c5ce7, #00b894);
+        color: #ffffff;
+    }
+
+    .btn-debitnote:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 184, 148, 0.35);
+        color: #ffffff;
+    }
+
     .badge {
         font-weight: 600;
     }
@@ -260,6 +271,7 @@
     <script type="text/javascript">
         $(document).ready(function () {
             var canPrint = @((User != null && User.IsInRole("ChellanPrint")) ? "true" : "false");
+            var canConvertToDebitNote = @((User != null && User.IsInRole("ChellanToDebitNote")) ? "true" : "false");
             var errorMsg = "@(TempData["ErrorMessage"] ?? "")";
             if (errorMsg) {
                 Swal.fire({
@@ -352,10 +364,14 @@
                             var editUrl = (tranBType === 0 || tranBType === '0')
                                 ? ('@Url.Action("Direct", "CreateDirectChellan")' + '?id=' + id)
                                 : ('@Url.Action("Form", "Chellan")' + '?id=' + id);
+                            var debitNoteUrl = '@Url.Action("Form", "ChellanToDebitNote")' + '?id=' + id;
                             var printUrl = '@Url.Action("Print", "Chellan")' + '?id=' + id;
 
                             var html = '';
                             html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
+                            if (canConvertToDebitNote) {
+                                html += '<a href="' + debitNoteUrl + '" class="btn btn-action btn-debitnote"><i class="fa fa-exchange"></i> Debit Note</a>';
+                            }
                             if (canPrint) {
                                 html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
                             }

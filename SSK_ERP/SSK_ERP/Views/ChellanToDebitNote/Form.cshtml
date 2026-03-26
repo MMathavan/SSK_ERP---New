@@ -1,0 +1,551 @@
+@model SSK_ERP.Controllers.Purchase.ChellanToDebitNoteController.ChellanToDebitNoteViewModel
+
+@{
+    ViewBag.Title = "Chellan To Debit Note";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .pr-main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .pr-form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .pr-form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .pr-form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .pr-form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .pr-section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .form-select {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-select:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .pr-detail-table {
+        min-width: 1400px;
+    }
+
+    .pr-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 8px;
+    }
+
+    .pr-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    .pr-detail-table .form-control-sm {
+        padding: 5px;
+        height: 32px;
+    }
+
+    .form-actions {
+        margin-top: 20px;
+    }
+
+    .form-actions .btn {
+        min-width: 90px;
+    }
+
+    .pr-tax-table th,
+    .pr-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .pr-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 140px;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="pr-main-container">
+    <div class="pr-form-container">
+        <div class="pr-form-header">
+            <h1 class="pr-form-title">
+                <i class="bi bi-safe"></i>
+                Convert Chellan To Debit Note
+                <span style="font-size: 0.6em; opacity: 0.8; margin-left: 10px;">
+                    #@Model.ChellanNo
+                </span>
+            </h1>
+        </div>
+
+        <div class="pr-form-body">
+            @using (Html.BeginForm("Save", "ChellanToDebitNote", FormMethod.Post, new { id = "ctdnForm" }))
+            {
+                @Html.AntiForgeryToken()
+
+                @Html.HiddenFor(m => m.ChellanId)
+                @Html.HiddenFor(m => m.SupplierId)
+                @Html.HiddenFor(m => m.TranStateType)
+                @Html.HiddenFor(m => m.DetailRowsJson, new { id = "DetailRowsJson" })
+
+                <div class="pr-section-title">
+                    <i class="fa fa-info-circle"></i> Return Details
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Chellan No</label>
+                            <input type="text" class="form-control" value="@Model.ChellanNo" readonly />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Debit Note Date</label>
+                            @Html.TextBoxFor(m => m.DebitNoteDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Status</label>
+                            @Html.DropDownListFor(m => m.Status,
+                                new List<SelectListItem>
+                                {
+                                    new SelectListItem { Text = "Enabled", Value = "0" },
+                                    new SelectListItem { Text = "Disabled", Value = "1" }
+                                },
+                                new { @class = "form-control" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Supplier Name</label>
+                            <input type="text" class="form-control" value="@Model.SupplierName" readonly />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Chellan Date</label>
+                            <input type="text" class="form-control" value="@Model.ChellanDate.ToString("dd/MM/yyyy")" readonly />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Narration</label>
+                            @Html.TextAreaFor(m => m.Narration, new { @class = "form-control", rows = 2 })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Supplier Address</label>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" id="suppNameOrAddr" class="form-control" placeholder="Supplier Name" readonly="readonly" value="@Model.SupplierName" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="suppAddress1" class="form-control" placeholder="Address" readonly="readonly" value="@Model.Address1" />
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" id="suppCity" class="form-control" placeholder="City" readonly="readonly" value="@Model.City" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="suppState" class="form-control" placeholder="State" readonly="readonly" value="@Model.State" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="text" id="suppPincode" class="form-control" placeholder="Pincode" readonly="readonly" value="@Model.Pincode" />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" id="suppCountry" class="form-control" placeholder="Country" readonly="readonly" value="India" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pr-section-title">Item Details</div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle pr-detail-table" id="detailTable">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">Select</th>
+                                <th>Material</th>
+                                <th style="width:90px;">HSN</th>
+                                <th style="width:110px;">Bill No</th>
+                                <th style="width:110px;">Batch</th>
+                                <th style="width:110px;">Exp</th>
+                                <th style="width:90px;">Pack</th>
+                                <th style="width:90px;">PTR</th>
+                                <th style="width:90px;">MRP</th>
+                                <th style="width:120px;">Original Qty</th>
+                                <th style="width:100px;">Qty</th>
+                                <th style="width:100px;">Rate</th>
+                                <th style="width:110px;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered pr-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="btnCalculateTax">
+                                        <i class="fa fa-calculator"></i> Calculate Tax
+                                    </button>
+                                </td>
+                                <td class="pr-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    <input type="text" class="form-control text-end" id="lblTotalGross" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">CGST</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalCGST" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">SGST</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalSGST" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">IGST</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalIGST" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">Net Amount</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalNet" readonly="readonly" />
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="pr-section-title">Remarks</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        @Html.TextAreaFor(m => m.Remarks, new { @class = "form-control", rows = 3 })
+                    </div>
+                </div>
+
+                <div class="form-actions mt-3">
+                    <a href="@Url.Action("Index", "Chellan")" class="btn btn-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">Save Debit Note</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        (function () {
+            var hsnTaxMap = @Html.Raw(ViewBag.HsnTaxMapJson ?? "{}");
+            var tranStateType = @Model.TranStateType;
+
+            function parseDateToText(expiryDate) {
+                if (!expiryDate) return '';
+
+                if (typeof expiryDate === 'string' && expiryDate.indexOf('/Date(') === 0) {
+                    var timestamp = parseInt(expiryDate.substr(6));
+                    var d = new Date(timestamp);
+                    if (!isNaN(d.getTime())) {
+                        var day = String(d.getDate()).padStart(2, '0');
+                        var month = String(d.getMonth() + 1).padStart(2, '0');
+                        var year = d.getFullYear();
+                        return day + '/' + month + '/' + year;
+                    }
+                }
+
+                var d2 = new Date(expiryDate);
+                if (!isNaN(d2.getTime())) {
+                    var day2 = String(d2.getDate()).padStart(2, '0');
+                    var month2 = String(d2.getMonth() + 1).padStart(2, '0');
+                    var year2 = d2.getFullYear();
+                    return day2 + '/' + month2 + '/' + year2;
+                }
+
+                return '';
+            }
+
+            function toNumber(val) {
+                var n = parseFloat(val);
+                return isNaN(n) ? 0 : n;
+            }
+
+            function renderRows(rows) {
+                var $tbody = $('#detailTable tbody');
+                $tbody.empty();
+
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i] || {};
+
+                    var expText = parseDateToText(r.ExpiryDate);
+                    var qty = toNumber(r.Qty);
+                    var rate = toNumber(r.Rate);
+                    var amt = qty * rate;
+
+                    var tr = '';
+                    tr += '<tr data-idx="' + i + '">';
+                    tr += '<td class="text-center"><input type="checkbox" class="row-select" ' + (r.IsSelected ? 'checked' : '') + ' /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + ((r.MaterialName || '').toString().replace(/\"/g, '&quot;')) + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm text-end" readonly="readonly" value="' + (r.HsnCode || '') + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.BillNo || '') + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.BatchNo || '') + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + expText + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.Packing || '') + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm text-end" readonly="readonly" value="' + toNumber(r.Ptr).toFixed(2) + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm text-end" readonly="readonly" value="' + toNumber(r.Mrp).toFixed(2) + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm text-end" readonly="readonly" value="' + toNumber(r.OriginalQty).toFixed(2) + '" /></td>';
+                    tr += '<td><input type="number" step="0.01" class="form-control form-control-sm row-qty" value="' + qty.toFixed(2) + '" /></td>';
+                    tr += '<td><input type="number" step="0.01" class="form-control form-control-sm row-rate" value="' + rate.toFixed(2) + '" /></td>';
+                    tr += '<td><input type="text" class="form-control form-control-sm text-end row-amount" readonly="readonly" value="' + amt.toFixed(2) + '" /></td>';
+                    tr += '</tr>';
+
+                    $tbody.append(tr);
+                }
+            }
+
+            function getRowsFromHidden() {
+                var json = $('#DetailRowsJson').val();
+                if (!json) return [];
+                try {
+                    var rows = JSON.parse(json);
+                    return Array.isArray(rows) ? rows : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function updateHiddenFromGrid() {
+                var rows = getRowsFromHidden();
+
+                $('#detailTable tbody tr').each(function () {
+                    var $tr = $(this);
+                    var idx = parseInt($tr.attr('data-idx'));
+                    if (isNaN(idx) || idx < 0 || idx >= rows.length) return;
+
+                    var r = rows[idx] || {};
+                    r.IsSelected = $tr.find('.row-select').is(':checked');
+                    r.Qty = toNumber($tr.find('.row-qty').val());
+                    r.Rate = toNumber($tr.find('.row-rate').val());
+                    r.Amount = r.Qty * r.Rate;
+                    rows[idx] = r;
+                });
+
+                $('#DetailRowsJson').val(JSON.stringify(rows));
+            }
+
+            function calculateTotals() {
+                updateHiddenFromGrid();
+                var rows = getRowsFromHidden();
+
+                var gross = 0;
+                var cgst = 0;
+                var sgst = 0;
+                var igst = 0;
+
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i] || {};
+                    if (!r.IsSelected) continue;
+
+                    var rowAmt = toNumber(r.Amount);
+                    gross += rowAmt;
+
+                    var hsnCode = (r.HsnCode || '').toString();
+                    var tax = hsnTaxMap && hsnCode ? hsnTaxMap[hsnCode] : null;
+                    if (!tax) continue;
+
+                    if (parseInt(tranStateType || 0, 10) === 0) {
+                        cgst += (rowAmt * toNumber(tax.Cgst)) / 100.0;
+                        sgst += (rowAmt * toNumber(tax.Sgst)) / 100.0;
+                    } else {
+                        igst += (rowAmt * toNumber(tax.Igst)) / 100.0;
+                    }
+                }
+
+                var net = gross + cgst + sgst + igst;
+
+                $('#lblTotalGross').val(gross.toFixed(2));
+                $('#lblTotalCGST').val(cgst.toFixed(2));
+                $('#lblTotalSGST').val(sgst.toFixed(2));
+                $('#lblTotalIGST').val(igst.toFixed(2));
+                $('#lblTotalNet').val(net.toFixed(2));
+            }
+
+            function validateGrid() {
+                var rows = getRowsFromHidden();
+                var hasSelected = false;
+
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i] || {};
+                    if (!r.IsSelected) continue;
+                    hasSelected = true;
+
+                    var qty = toNumber(r.Qty);
+                    var originalQty = toNumber(r.OriginalQty);
+
+                    if (qty <= 0) {
+                        alert('Qty must be greater than 0 for selected rows.');
+                        return false;
+                    }
+
+                    if (qty > originalQty) {
+                        alert('Qty cannot be greater than Chellan Qty.');
+                        return false;
+                    }
+                }
+
+                if (!hasSelected) {
+                    alert('Please select at least one item row.');
+                    return false;
+                }
+
+                return true;
+            }
+
+            $(document).ready(function () {
+                var rows = getRowsFromHidden();
+                renderRows(rows);
+
+                calculateTotals();
+
+                $('#btnCalculateTax').on('click', function () {
+                    calculateTotals();
+                });
+
+                $('#detailTable').on('input', '.row-qty, .row-rate', function () {
+                    var $tr = $(this).closest('tr');
+                    var idx = parseInt($tr.attr('data-idx'));
+                    var rows2 = getRowsFromHidden();
+                    if (!isNaN(idx) && idx >= 0 && idx < rows2.length) {
+                        var r = rows2[idx] || {};
+                        var qty = toNumber($tr.find('.row-qty').val());
+                        var rate = toNumber($tr.find('.row-rate').val());
+                        var amt = qty * rate;
+                        $tr.find('.row-amount').val(amt.toFixed(2));
+
+                        r.Qty = qty;
+                        r.Rate = rate;
+                        r.Amount = amt;
+                        rows2[idx] = r;
+                        $('#DetailRowsJson').val(JSON.stringify(rows2));
+                    }
+
+                    calculateTotals();
+                });
+
+                $('#detailTable').on('change', '.row-select', function () {
+                    updateHiddenFromGrid();
+                    calculateTotals();
+                });
+
+                $('#ctdnForm').on('submit', function () {
+                    updateHiddenFromGrid();
+                    if (!validateGrid()) {
+                        return false;
+                    }
+                    return true;
+                });
+            });
+        })();
+    </script>
+}
