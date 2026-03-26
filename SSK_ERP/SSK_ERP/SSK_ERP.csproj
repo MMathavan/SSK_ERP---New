@@ -1185,6 +1185,9 @@
     <Content Include="Views\Chellan\Form.cshtml" />
     <Content Include="Views\Chellan\Print.cshtml" />
     <Content Include="Views\ChellanToDebitNote\Form.cshtml" />
+    <Content Include="Views\ChellanToDebitNote\DebitNoteIndex.cshtml" />
+    <Content Include="Views\ChellanToDebitNote\DebitNoteForm.cshtml" />
+    <Content Include="Views\ChellanToDebitNote\DebitNotePrint.cshtml" />
     <Content Include="Views\StockViewIndex\Index.cshtml" />
     <EntityDeploy Include="Data\SSK_ERP.edmx">
       <Generator>EntityModelCodeGenerator</Generator>

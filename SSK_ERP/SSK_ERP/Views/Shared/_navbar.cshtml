@@ -275,6 +275,7 @@
                         User.IsInRole("PurchaseOrderIndex") ||
                         User.IsInRole("PurchaseInvoiceIndex") ||
                         User.IsInRole("PurchaseReturnIndex") ||
+                        User.IsInRole("ChellanToDebitNoteDebitNoteIndex") ||
                         User.IsInRole("StockViewIndex")))
                     {
                         <li class="nav-item dropdown">
@@ -339,11 +340,11 @@
                                         </a>
                                     </li>
                                 }
-                                @if (User.IsInRole("PurchaseReturnIndex"))
+                                @if (User.IsInRole("ChellanToDebitNoteDebitNoteIndex"))
                                 {
                                     <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "PurchaseReturn")"
-                                           data-role="PurchaseReturnIndex" data-menugroupid="1" data-menuorder="3">
+                                        <a class="dropdown-item" href="@Url.Action("DebitNoteIndex", "ChellanToDebitNote")"
+                                           data-role="ChellanToDebitNoteDebitNoteIndex" data-menugroupid="1" data-menuorder="3">
                                             <i class="fa fa-undo"></i> Debit Note
                                         </a>
                                     </li>
