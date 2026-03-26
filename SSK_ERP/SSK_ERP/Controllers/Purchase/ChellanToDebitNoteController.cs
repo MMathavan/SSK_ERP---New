@@ -381,6 +381,13 @@ namespace SSK_ERP.Controllers.Purchase
                     .Where(d => d != null && d.IsSelected && d.MaterialId > 0 && d.Qty > 0)
                     .ToList();
 
+                var invalidQtyRow = details.FirstOrDefault(d => d.ActualQty > 0 && d.Qty > d.ActualQty);
+                if (invalidQtyRow != null)
+                {
+                    TempData["ErrorMessage"] = "Qty cannot be greater than Chellan Qty.";
+                    return RedirectToAction("DebitNoteForm", new { id = (int?)master.TRANMID });
+                }
+
                 if (!details.Any())
                 {
                     TempData["ErrorMessage"] = "Please add at least one detail row.";

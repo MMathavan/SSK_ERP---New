@@ -238,6 +238,16 @@
                 });
             }
 
+            var successMsg = "@(TempData["SuccessMessage"] ?? "")";
+            if (successMsg) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: successMsg,
+                    confirmButtonText: 'OK'
+                });
+            }
+
             $.fn.dataTable.ext.errMode = 'console';
 
             var table = $('#purchaseReturnTable').DataTable({
