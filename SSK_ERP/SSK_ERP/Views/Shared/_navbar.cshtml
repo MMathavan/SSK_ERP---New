@@ -330,6 +330,15 @@
                                         </a>
                                     </li>
                                 }
+                                @if (User.IsInRole("ChellanIndex"))
+                                {
+                                    <li>
+                                        <a class="dropdown-item" href="@Url.Action("Index", "Chellan")"
+                                           data-role="ChellanIndex" data-menugroupid="1" data-menuorder="5">
+                                            <i class="bi bi-safe"></i> Chellan
+                                        </a>
+                                    </li>
+                                }
                                 @if (User.IsInRole("PurchaseReturnIndex"))
                                 {
                                     <li>

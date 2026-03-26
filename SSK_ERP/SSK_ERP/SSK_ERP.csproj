@@ -329,6 +329,7 @@
     <Compile Include="Controllers\Purchase\PurchaseOrderController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseInvoiceController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseReturnController.cs" />
+    <Compile Include="Controllers\Purchase\ChellanController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseInvoiceUploadController.cs" />
     <!-- Excluded per cleanup -->
     <!-- <Compile Include="Controllers\ProfileMasterController.cs" /> -->
@@ -471,6 +472,7 @@
     <Compile Include="SessionExpire.cs" />
     <Compile Include="Startup.cs" />
     <Compile Include="Controllers\Purchase\CreateDirectPurchaseReturnController.cs" />
+    <Compile Include="Controllers\Purchase\CreateDirectChellanController.cs" />
     <Compile Include="Controllers\Sales\CreateDirectSalesReturnController.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -1175,8 +1177,12 @@
     <Content Include="Views\SalesEInvoice\Index.cshtml" />
     <Content Include="Views\CreditNoteEInvoice\Index.cshtml" />
     <Content Include="Views\CreateDirectPurchaseReturn\Direct.cshtml" />
+    <Content Include="Views\CreateDirectChellan\Direct.cshtml" />
     <Content Include="Views\CreateDirectSalesReturn\Direct.cshtml" />
     <Content Include="Views\SalesInvoiceFromSalesOrderOthers\Form.cshtml" />
+    <Content Include="Views\Chellan\Index.cshtml" />
+    <Content Include="Views\Chellan\Form.cshtml" />
+    <Content Include="Views\Chellan\Print.cshtml" />
     <Content Include="Views\StockViewIndex\Index.cshtml" />
     <EntityDeploy Include="Data\SSK_ERP.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
