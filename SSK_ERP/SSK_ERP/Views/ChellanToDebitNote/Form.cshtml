@@ -201,8 +201,8 @@
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label class="control-label">Chellan Date</label>
-                            <input type="text" class="form-control" value="@Model.ChellanDate.ToString("dd/MM/yyyy")" readonly />
+                            <label class="control-label">Bill No</label>
+                            @Html.TextBoxFor(m => m.BillNo, new { @class = "form-control" })
                         </div>
                     </div>
                 </div>
@@ -261,8 +261,7 @@
                                 <th style="width:110px;">Batch</th>
                                 <th style="width:110px;">Exp</th>
                                 <th style="width:90px;">Pack</th>
-                                <th style="width:90px;">PTR</th>
-                                <th style="width:90px;">MRP</th>
+                                <th style="width:100px;">No. of Boxes</th>
                                 <th style="width:120px;">Original Qty</th>
                                 <th style="width:100px;">Qty</th>
                                 <th style="width:100px;">Rate</th>
@@ -336,6 +335,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script type="text/javascript">
         (function () {
             var hsnTaxMap = @Html.Raw(ViewBag.HsnTaxMapJson ?? "{}");
@@ -392,8 +392,7 @@
                     tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.BatchNo || '') + '" /></td>';
                     tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + expText + '" /></td>';
                     tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.Packing || '') + '" /></td>';
-                    tr += '<td><input type="text" class="form-control form-control-sm text-end" readonly="readonly" value="' + toNumber(r.Ptr).toFixed(2) + '" /></td>';
-                    tr += '<td><input type="text" class="form-control form-control-sm text-end" readonly="readonly" value="' + toNumber(r.Mrp).toFixed(2) + '" /></td>';
+                    tr += '<td><input type="number" step="1" class="form-control form-control-sm text-end" readonly="readonly" value="' + toNumber(r.BoxQty).toFixed(0) + '" /></td>';
                     tr += '<td><input type="text" class="form-control form-control-sm text-end" readonly="readonly" value="' + toNumber(r.OriginalQty).toFixed(2) + '" /></td>';
                     tr += '<td><input type="number" step="0.01" class="form-control form-control-sm row-qty" value="' + qty.toFixed(2) + '" /></td>';
                     tr += '<td><input type="number" step="0.01" class="form-control form-control-sm row-rate" value="' + rate.toFixed(2) + '" /></td>';
@@ -538,11 +537,31 @@
                     calculateTotals();
                 });
 
-                $('#ctdnForm').on('submit', function () {
+                $('#ctdnForm').on('submit', function (e) {
                     updateHiddenFromGrid();
                     if (!validateGrid()) {
+                        e.preventDefault();
                         return false;
                     }
+
+                    if (window.Swal) {
+                        e.preventDefault();
+                        Swal.fire({
+                            icon: 'question',
+                            title: 'Confirm Save',
+                            text: 'Are you sure you want to save this?',
+                            showCancelButton: true,
+                            confirmButtonText: 'OK',
+                            cancelButtonText: 'Cancel'
+                        }).then(function (result) {
+                            if (result && result.isConfirmed) {
+                                $('#ctdnForm').off('submit');
+                                $('#ctdnForm').submit();
+                            }
+                        });
+                        return false;
+                    }
+
                     return true;
                 });
             });

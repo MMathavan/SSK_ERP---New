@@ -1215,6 +1215,7 @@ namespace SSK_ERP.Controllers.Purchase
             master.TRANIGSTAMT = totalIgst;
             master.TRANNAMT = totalNet;
             master.TRANPCOUNT = 0;
+            master.TRANAMTWRDS = ConvertAmountToWords(totalNet);
         }
 
         public class ChellanToDebitNoteViewModel
@@ -1222,6 +1223,7 @@ namespace SSK_ERP.Controllers.Purchase
             public int ChellanId { get; set; }
             public string ChellanNo { get; set; }
             public DateTime ChellanDate { get; set; }
+            public string BillNo { get; set; }
 
             public int SupplierId { get; set; }
             public string SupplierName { get; set; }
@@ -1352,6 +1354,7 @@ namespace SSK_ERP.Controllers.Purchase
                 ChellanId = master.TRANMID,
                 ChellanNo = master.TRANDNO,
                 ChellanDate = master.TRANDATE,
+                BillNo = master.TRANREFNO,
 
                 SupplierId = master.TRANREFID,
                 SupplierName = supplier != null ? supplier.CATENAME : master.TRANREFNAME,
@@ -1453,7 +1456,7 @@ namespace SSK_ERP.Controllers.Purchase
                     TRANREFID = chellan.TRANREFID,
                     TRANREFNAME = chellan.TRANREFNAME,
                     TRANSTATETYPE = chellan.TRANSTATETYPE,
-                    TRANREFNO = chellan.TRANREFNO,
+                    TRANREFNO = model.BillNo,
 
                     TRANLMID = chellan.TRANMID,
 
@@ -1473,6 +1476,8 @@ namespace SSK_ERP.Controllers.Purchase
 
                 InsertDetails(dnMaster, rows);
                 db.SaveChanges();
+
+                TempData["SuccessMessage"] = "Debit Note saved successfully.";
 
                 if (User != null && User.IsInRole("ChellanToDebitNoteDebitNoteIndex"))
                 {
@@ -1677,7 +1682,78 @@ namespace SSK_ERP.Controllers.Purchase
             master.TRANIGSTAMT = totalIgst;
             master.TRANNAMT = totalNet;
             master.TRANPCOUNT = 0;
-            master.TRANAMTWRDS = string.Empty;
+            master.TRANAMTWRDS = ConvertAmountToWords(totalNet);
+        }
+
+        private string ConvertAmountToWords(decimal amount)
+        {
+            if (amount == 0) return "ZERO RUPEES ONLY";
+
+            long integerPart = (long)Math.Floor(amount);
+            int decimalPart = (int)Math.Round((amount - integerPart) * 100);
+
+            string words = NumberToWords(integerPart) + " RUPEES";
+
+            if (decimalPart > 0)
+            {
+                words += " AND " + NumberToWords(decimalPart) + " PAISE";
+            }
+
+            words += " ONLY";
+            return words;
+        }
+
+        private string NumberToWords(long number)
+        {
+            if (number == 0) return "ZERO";
+
+            if (number < 0) return "MINUS " + NumberToWords(Math.Abs(number));
+
+            string[] unitsMap = { "ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN" };
+            string[] tensMap = { "ZERO", "TEN", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY" };
+
+            string words = "";
+
+            if ((number / 10000000) > 0)
+            {
+                words += NumberToWords(number / 10000000) + " CRORE ";
+                number %= 10000000;
+            }
+
+            if ((number / 100000) > 0)
+            {
+                words += NumberToWords(number / 100000) + " LAKH ";
+                number %= 100000;
+            }
+
+            if ((number / 1000) > 0)
+            {
+                words += NumberToWords(number / 1000) + " THOUSAND ";
+                number %= 1000;
+            }
+
+            if ((number / 100) > 0)
+            {
+                words += NumberToWords(number / 100) + " HUNDRED ";
+                number %= 100;
+            }
+
+            if (number > 0)
+            {
+                if (words != "")
+                    words += "AND ";
+
+                if (number < 20)
+                    words += unitsMap[number];
+                else
+                {
+                    words += tensMap[number / 10];
+                    if ((number % 10) > 0)
+                        words += " " + unitsMap[number % 10];
+                }
+            }
+
+            return words.Trim();
         }
 
         private string FormatPurchaseReturnTrandNo(int tranNo, DateTime tranDate)
