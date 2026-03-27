@@ -301,6 +301,102 @@ namespace SSK_ERP.Controllers.Purchase
                 });
             }
 
+            var selectedSourceDetailIds = new HashSet<int>(detailRows.Where(x => x.SourceDetailId > 0).Select(x => x.SourceDetailId));
+            var selectedRowKeys = new HashSet<string>(
+                detailRows.Select(x =>
+                    (x.MaterialId.ToString() + "|" + (x.BillNo ?? string.Empty) + "|" + (x.BatchNo ?? string.Empty) + "|" + x.PackingId.ToString())
+                )
+            );
+
+            if (model.TRANLMID > 0)
+            {
+                var chellanMaster = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == model.TRANLMID && t.REGSTRID == ChellanRegisterId);
+                if (chellanMaster != null)
+                {
+                    var chellanDetails = db.TransactionDetails
+                        .Where(d => d.TRANMID == chellanMaster.TRANMID)
+                        .OrderBy(d => d.TRANDID)
+                        .ToList();
+
+                    var chellanDetailIds = chellanDetails.Select(d => d.TRANDID).ToList();
+                    var chellanBatchDetails = db.TransactionBatchDetails
+                        .Where(b => chellanDetailIds.Contains(b.TRANDID))
+                        .ToList();
+
+                    var chellanMaterialIds = chellanDetails.Select(d => d.TRANDREFID).Distinct().ToList();
+                    var chellanMaterials = db.MaterialMasters
+                        .Where(m => chellanMaterialIds.Contains(m.MTRLID))
+                        .ToDictionary(m => m.MTRLID, m => m);
+
+                    var chellanHsnIds = chellanMaterials.Values
+                        .Where(m => m.HSNID > 0)
+                        .Select(m => m.HSNID)
+                        .Distinct()
+                        .ToList();
+
+                    var chellanHsnMap = db.HSNCodeMasters
+                        .Where(h => chellanHsnIds.Contains(h.HSNID))
+                        .ToDictionary(h => h.HSNID, h => h);
+
+                    var chellanPackingIds = chellanBatchDetails.Select(b => b.PACKMID).Distinct().ToList();
+                    var chellanPackingMap = db.PackingMasters
+                        .Where(p => chellanPackingIds.Contains(p.PACKMID))
+                        .ToDictionary(p => p.PACKMID, p => p.PACKMDESC);
+
+                    foreach (var cd in chellanDetails)
+                    {
+                        var cbatch = chellanBatchDetails.FirstOrDefault(b => b.TRANDID == cd.TRANDID);
+                        int sourceBatchId = cbatch != null ? cbatch.TRANBID : 0;
+                        var rowKey = cd.TRANDREFID.ToString() + "|" + (cd.TRANDREFNO ?? string.Empty) + "|" + (cbatch != null ? (cbatch.TRANBDNO ?? string.Empty) : string.Empty) + "|" + (cbatch != null ? cbatch.PACKMID.ToString() : "0");
+
+                        if (selectedSourceDetailIds.Contains(cd.TRANDID) || selectedRowKeys.Contains(rowKey))
+                        {
+                            continue;
+                        }
+
+                        chellanMaterials.TryGetValue(cd.TRANDREFID, out var cmat);
+                        string chsnCode = string.Empty;
+                        if (cmat != null && cmat.HSNID > 0 && chellanHsnMap.TryGetValue(cmat.HSNID, out var chsn))
+                        {
+                            chsnCode = chsn.HSNCODE;
+                        }
+
+                        string cpackingDesc = string.Empty;
+                        if (cbatch != null && chellanPackingMap.TryGetValue(cbatch.PACKMID, out var cpDesc))
+                        {
+                            cpackingDesc = cpDesc;
+                        }
+
+                        decimal cqty = cd.TRANDQTY;
+                        decimal crate = cd.TRANDRATE;
+                        decimal camt = cd.TRANDGAMT > 0 ? cd.TRANDGAMT : (cqty * crate);
+
+                        detailRows.Add(new DebitNoteDetailRow
+                        {
+                            IsSelected = false,
+                            MaterialId = cd.TRANDREFID,
+                            MaterialName = cd.TRANDREFNAME,
+                            Qty = cqty,
+                            Rate = crate,
+                            Amount = camt,
+                            HsnCode = chsnCode,
+                            BatchNo = cbatch != null ? cbatch.TRANBDNO : null,
+                            ExpiryDate = cbatch != null ? (DateTime?)cbatch.TRANBEXPDATE : null,
+                            PackingId = cbatch != null ? cbatch.PACKMID : 0,
+                            Ptr = cbatch != null ? cbatch.TRANBPTRRATE : 0m,
+                            Mrp = cbatch != null ? cbatch.TRANBMRP : 0m,
+                            BoxQty = cbatch != null ? cbatch.TRANBQTY : 0m,
+                            Packing = cpackingDesc,
+                            BillNo = cd.TRANDREFNO,
+                            SourceBatchId = sourceBatchId,
+                            SourceDetailId = cd.TRANDID,
+                            SourceRefId = chellanMaster.TRANMID,
+                            ActualQty = cqty
+                        });
+                    }
+                }
+            }
+
             ViewBag.StatusList = new SelectList(
                 new[]
                 {
