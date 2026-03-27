@@ -202,6 +202,14 @@ namespace SSK_ERP
                 namespaces: new[] { "SSK_ERP.Controllers" }
             );
 
+            // Explicit route for PendingDebitNote under Purchase namespace
+            routes.MapRoute(
+                name: "PendingDebitNote",
+                url: "PendingDebitNote/{action}/{id}",
+                defaults: new { controller = "PendingDebitNote", action = "Form", id = UrlParameter.Optional },
+                namespaces: new[] { "SSK_ERP.Controllers.Purchase" }
+            );
+
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",

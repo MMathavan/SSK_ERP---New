@@ -1,0 +1,624 @@
+@model SSK_ERP.Controllers.Purchase.PendingDebitNoteController.PendingDebitNoteFormViewModel
+
+@{
+    ViewBag.Title = "Pending Debit Note";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    .pr-main-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .pr-form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+    }
+
+    .pr-form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .pr-form-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .pr-form-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .pr-section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3436;
+        margin: 10px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .req {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .form-control {
+        border: 2px solid #c5ced8;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: #edf1f7;
+        color: #212529;
+    }
+
+    .form-control:focus {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        background-color: white;
+    }
+
+    .pr-detail-table {
+        min-width: 1400px;
+    }
+
+    .pr-detail-table thead th {
+        background-color: #337ab7;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 8px;
+    }
+
+    .pr-detail-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    .pr-detail-table .form-control-sm {
+        padding: 5px;
+        height: 32px;
+    }
+
+    .pr-tax-table th,
+    .pr-tax-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+
+    .pr-tax-summary-label {
+        text-align: right;
+        font-weight: 600;
+        width: 140px;
+        white-space: nowrap;
+    }
+
+    .supplier-address-section .row {
+        margin-bottom: 10px;
+    }
+
+    .supplier-address-section .form-group {
+        margin-bottom: 0;
+    }
+</style>
+
+<div class="pr-main-container">
+    <div class="pr-form-container">
+        <div class="pr-form-header">
+            <h1 class="pr-form-title">
+                <i class="bi bi-safe"></i>
+                Pending Debit Note
+                <span style="font-size: 0.6em; opacity: 0.8; margin-left: 10px;">
+                    #@(Model != null && Model.DebitNoteId > 0 ? Model.DebitNoteId.ToString() : "New")
+                </span>
+            </h1>
+        </div>
+
+        <div class="pr-form-body">
+            @using (Html.BeginForm("Save", "PendingDebitNote", FormMethod.Post, new { id = "pendingDebitNoteForm" }))
+            {
+                @Html.AntiForgeryToken()
+
+                @Html.HiddenFor(m => m.DebitNoteId)
+                @Html.HiddenFor(m => m.TranStateType, new { id = "stateTypeHidden" })
+                @Html.HiddenFor(m => m.DetailRowsJson, new { id = "DetailRowsJson" })
+
+                <div class="pr-section-title">
+                    <i class="fa fa-info-circle"></i> Debit Note Details
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">No</label>
+                            @Html.TextBoxFor(m => m.AutoNo, new { @class = "form-control", @readonly = "readonly", id = "autoNoText" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Date</label>
+                            @Html.TextBoxFor(m => m.DebitNoteDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Status</label>
+                            @Html.DropDownListFor(m => m.Status,
+                                new SelectList(new[] {
+                                    new { Value = 0, Text = "Enabled" },
+                                    new { Value = 1, Text = "Disabled" }
+                                }, "Value", "Text", Model != null ? Model.Status : 0),
+                                new { @class = "form-control", id = "statusDropdown" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Supplier Name <span class="req">*</span></label>
+                            @Html.DropDownListFor(m => m.SupplierId, ViewBag.SupplierList as SelectList, "-- Select --", new { @class = "form-control", id = "supplierSelect" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Chellan No <span class="req">*</span></label>
+                            @Html.DropDownListFor(m => m.ChellanId, new SelectList(new object[0], "Value", "Text"), "-- Select --", new { @class = "form-control", id = "chellanSelect" })
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Bill No</label>
+                            @Html.TextBoxFor(m => m.BillNo, new { @class = "form-control", id = "billNoText" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="control-label">Narration</label>
+                            @Html.TextAreaFor(m => m.Narration, new { @class = "form-control", rows = 2 })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pr-section-title">Supplier Address</div>
+                <div class="supplier-address-section">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            @Html.TextBoxFor(m => m.SupplierName, new { @class = "form-control", @readonly = "readonly", id = "supplierAddrName" })
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            @Html.TextBoxFor(m => m.SupplierAddr1, new { @class = "form-control", @readonly = "readonly", id = "supplierAddr1" })
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            @Html.TextBoxFor(m => m.SupplierAddr2, new { @class = "form-control", @readonly = "readonly", id = "supplierAddr2" })
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            @Html.TextBoxFor(m => m.SupplierState, new { @class = "form-control", @readonly = "readonly", id = "supplierAddrState" })
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            @Html.TextBoxFor(m => m.SupplierPincode, new { @class = "form-control", @readonly = "readonly", id = "supplierAddrPincode" })
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            @Html.TextBoxFor(m => m.SupplierCountry, new { @class = "form-control", @readonly = "readonly", id = "supplierAddrCountry" })
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div class="pr-section-title">
+                    <i class="fa fa-list"></i> Item Details
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered pr-detail-table" id="detailTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">Select</th>
+                                <th style="min-width: 220px;">Material</th>
+                                <th style="width: 95px;">HSN Code</th>
+                                <th style="width: 140px;">Bill No</th>
+                                <th style="width: 120px;">Batch No</th>
+                                <th style="width: 140px;">Expiry Date</th>
+                                <th style="width: 130px;">Packing</th>
+                                <th style="width: 95px;">No. of Boxes</th>
+                                <th style="width: 90px;">Qty</th>
+                                <th style="width: 90px;">Rate</th>
+                                <th style="width: 120px;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-md-12">
+                        <table class="table table-bordered pr-tax-table">
+                            <tr>
+                                <td class="col-md-4">
+                                    <button type="button" class="btn btn-success btn-sm" id="btnCalculateTax">
+                                        <i class="fa fa-calculator"></i> Calculate Tax
+                                    </button>
+                                </td>
+                                <td class="pr-tax-summary-label">Gross Amount</td>
+                                <td class="col-md-2">
+                                    <input type="text" class="form-control text-end" id="lblTotalGross" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">CGST</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalCGST" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">SGST</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalSGST" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">IGST</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalIGST" readonly="readonly" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td class="pr-tax-summary-label">Net Amount</td>
+                                <td>
+                                    <input type="text" class="form-control text-end" id="lblTotalNet" readonly="readonly" />
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="pr-section-title">Remarks</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        @Html.TextAreaFor(m => m.Remarks, new { @class = "form-control", rows = 3 })
+                    </div>
+                </div>
+
+                <div class="form-actions mt-3">
+                    <a href="@Url.Action("DebitNoteIndex", "ChellanToDebitNote")" class="btn btn-secondary">Back</a>
+                    <button type="button" id="btnSave" class="btn btn-primary">Save</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script type="text/javascript">
+        var detailRows = @Html.Raw(Model != null && !string.IsNullOrWhiteSpace(Model.DetailRowsJson) ? Model.DetailRowsJson : "[]");
+
+        function toNumber(val) {
+            var v = parseFloat(val);
+            return isNaN(v) ? 0 : v;
+        }
+
+        function formatDateForInput(dateVal) {
+            if (!dateVal) return '';
+
+            if (typeof dateVal === 'string' && dateVal.indexOf('/Date(') === 0) {
+                var timestamp = parseInt(dateVal.substr(6));
+                var d = new Date(timestamp);
+                if (!isNaN(d.getTime())) {
+                    var month = String(d.getMonth() + 1).padStart(2, '0');
+                    var day = String(d.getDate()).padStart(2, '0');
+                    return d.getFullYear() + '-' + month + '-' + day;
+                }
+            }
+
+            try {
+                var dt = new Date(dateVal);
+                if (!isNaN(dt.getTime())) {
+                    var m = String(dt.getMonth() + 1).padStart(2, '0');
+                    var da = String(dt.getDate()).padStart(2, '0');
+                    return dt.getFullYear() + '-' + m + '-' + da;
+                }
+            } catch (e) {
+            }
+
+            return '';
+        }
+
+        function renderDetailRows() {
+            var $tbody = $('#detailTable tbody');
+            $tbody.empty();
+
+            for (var i = 0; i < detailRows.length; i++) {
+                var r = detailRows[i] || {};
+                var exp = formatDateForInput(r.ExpiryDate);
+                var amt = toNumber(r.Amount);
+                var isSel = (r.IsSelected === undefined || r.IsSelected === null) ? true : !!r.IsSelected;
+                var actualQty = toNumber(r.ActualQty);
+                if (actualQty <= 0) {
+                    actualQty = toNumber(r.Qty);
+                }
+
+                var tr = '';
+                tr += '<tr data-idx="' + i + '">';
+                tr += '<td class="text-center"><input type="checkbox" class="row-select" ' + (isSel ? 'checked' : '') + ' /></td>';
+
+                tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + ((r.MaterialName || '').toString().replace(/\"/g, '&quot;')) + '" /></td>';
+                tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.HsnCode || '') + '" /></td>';
+                tr += '<td><input type="text" class="form-control form-control-sm row-billno" readonly="readonly" value="' + (r.BillNo || '') + '" /></td>';
+                tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.BatchNo || '') + '" /></td>';
+                tr += '<td><input type="date" class="form-control form-control-sm" readonly="readonly" value="' + exp + '" /></td>';
+                tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.Packing || '') + '" /></td>';
+                tr += '<td><input type="number" step="1" class="form-control form-control-sm text-end row-boxqty" readonly="readonly" value="' + toNumber(r.BoxQty).toFixed(0) + '" /></td>';
+                tr += '<td><input type="number" step="0.01" min="0" max="' + actualQty.toFixed(2) + '" class="form-control form-control-sm text-end row-qty" value="' + toNumber(r.Qty).toFixed(2) + '" /></td>';
+                tr += '<td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end row-rate" value="' + toNumber(r.Rate).toFixed(2) + '" /></td>';
+                tr += '<td><input type="text" class="form-control form-control-sm text-end row-amount" readonly="readonly" value="' + amt.toFixed(2) + '" /></td>';
+
+                tr += '</tr>';
+                $tbody.append(tr);
+            }
+        }
+
+        function updateHiddenRows() {
+            $('#detailTable tbody tr').each(function () {
+                var $tr = $(this);
+                var idx = parseInt($tr.attr('data-idx') || '0', 10);
+                if (idx >= 0 && idx < detailRows.length) {
+                    var r = detailRows[idx] || {};
+                    r.IsSelected = $tr.find('.row-select').is(':checked');
+                    r.BillNo = $tr.find('.row-billno').val();
+                    r.BoxQty = toNumber($tr.find('.row-boxqty').val());
+                    r.Qty = toNumber($tr.find('.row-qty').val());
+                    r.Rate = toNumber($tr.find('.row-rate').val());
+                    r.Amount = r.Qty * r.Rate;
+                    r.ExpiryDate = $tr.find('input[type="date"]').val();
+                    detailRows[idx] = r;
+                    $tr.find('.row-amount').val(toNumber(r.Amount).toFixed(2));
+                }
+            });
+            $('#DetailRowsJson').val(JSON.stringify(detailRows));
+        }
+
+        function calculateTax() {
+            var stType = parseInt($('#stateTypeHidden').val() || '0', 10);
+            updateHiddenRows();
+            var rows = (detailRows || []).filter(function (r) { return r && r.IsSelected; });
+
+            $.ajax({
+                url: '@Url.Action("CalculatePurchaseInvoiceTax", "PurchaseInvoice")',
+                type: 'POST',
+                data: { stateType: stType, detailRowsJson: JSON.stringify(rows) },
+                success: function (res) {
+                    if (res && res.success) {
+                        var grossVal = (res.grossAmount !== undefined) ? res.grossAmount : res.gross;
+                        var cgstVal = (res.cgstAmount !== undefined) ? res.cgstAmount : res.cgst;
+                        var sgstVal = (res.sgstAmount !== undefined) ? res.sgstAmount : res.sgst;
+                        var igstVal = (res.igstAmount !== undefined) ? res.igstAmount : res.igst;
+                        var netVal = (res.netAmount !== undefined) ? res.netAmount : res.net;
+
+                        $('#lblTotalGross').val(toNumber(grossVal).toFixed(2));
+                        $('#lblTotalCGST').val(toNumber(cgstVal).toFixed(2));
+                        $('#lblTotalSGST').val(toNumber(sgstVal).toFixed(2));
+                        $('#lblTotalIGST').val(toNumber(igstVal).toFixed(2));
+                        $('#lblTotalNet').val(toNumber(netVal).toFixed(2));
+                    }
+                }
+            });
+        }
+
+        function loadChellans(supplierId, selectedChellanId) {
+            $('#chellanSelect').empty().append($('<option>').val('').text('-- Select --'));
+            if (!supplierId) {
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GetChellansBySupplier", "PendingDebitNote")',
+                type: 'GET',
+                data: { supplierId: supplierId },
+                success: function (res) {
+                    if (res && res.success && res.chellans) {
+                        for (var i = 0; i < res.chellans.length; i++) {
+                            $('#chellanSelect').append($('<option>').val(res.chellans[i].id).text(res.chellans[i].text));
+                        }
+                        if (selectedChellanId) {
+                            $('#chellanSelect').val(selectedChellanId);
+                        }
+                        $('#chellanSelect').trigger('change.select2');
+                    }
+                }
+            });
+        }
+
+        function loadPendingRows(chellanId) {
+            detailRows = [];
+            renderDetailRows();
+            updateHiddenRows();
+            calculateTax();
+
+            if (!chellanId) {
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GetPendingRows", "PendingDebitNote")',
+                type: 'GET',
+                data: { chellanId: chellanId },
+                success: function (res) {
+                    if (res && res.success && res.rows) {
+                        detailRows = res.rows;
+                        renderDetailRows();
+                        updateHiddenRows();
+                        calculateTax();
+                    }
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            if (window.jQuery && $.fn.select2) {
+                $('#supplierSelect').select2();
+                $('#chellanSelect').select2();
+            }
+
+            renderDetailRows();
+            updateHiddenRows();
+            calculateTax();
+
+            var initialSupplierId = $('#supplierSelect').val();
+            var initialChellanId = $('#chellanSelect').val();
+            loadChellans(initialSupplierId, initialChellanId);
+
+            $('#supplierSelect').on('change', function () {
+                var supId = $(this).val();
+                loadChellans(supId, null);
+
+                $('#supplierAddrName').val('');
+                $('#supplierAddr1').val('');
+                $('#supplierAddr2').val('');
+                $('#supplierAddrState').val('');
+                $('#supplierAddrPincode').val('');
+                $('#supplierAddrCountry').val('');
+                if (supId) {
+                    $.ajax({
+                        url: '@Url.Action("GetSupplierAddress", "PendingDebitNote")',
+                        type: 'GET',
+                        data: { supplierId: supId },
+                        success: function (res) {
+                            if (res && res.success) {
+                                $('#supplierAddrName').val(res.supplierName || '');
+                                $('#supplierAddr1').val(res.addr1 || '');
+                                $('#supplierAddr2').val(res.addr2 || '');
+                                $('#supplierAddrState').val(res.state || '');
+                                $('#supplierAddrPincode').val(res.pincode || '');
+                                $('#supplierAddrCountry').val(res.country || '');
+                            }
+                        }
+                    });
+                }
+
+                detailRows = [];
+                renderDetailRows();
+                updateHiddenRows();
+                calculateTax();
+            });
+
+            $('#chellanSelect').on('change', function () {
+                var chId = $(this).val();
+                loadPendingRows(chId);
+            });
+
+            $('#detailTable').on('input', '.row-qty, .row-rate', function () {
+                var $tr = $(this).closest('tr');
+                var idx = parseInt($tr.attr('data-idx') || '0', 10);
+                if (idx >= 0 && idx < detailRows.length) {
+                    var r = detailRows[idx] || {};
+                    r.Qty = toNumber($tr.find('.row-qty').val());
+                    r.Rate = toNumber($tr.find('.row-rate').val());
+                    var actualQty = toNumber(r.ActualQty);
+                    if (actualQty <= 0) {
+                        actualQty = toNumber(r.Qty);
+                    }
+                    if (r.Qty > actualQty) {
+                        $tr.find('.row-qty').val(actualQty.toFixed(2));
+                        r.Qty = actualQty;
+                        if (window.Swal) {
+                            Swal.fire({ icon: 'warning', title: 'Invalid Qty', text: 'Qty cannot be greater than pending qty (' + actualQty.toFixed(2) + ').' });
+                        } else {
+                            alert('Qty cannot be greater than pending qty (' + actualQty.toFixed(2) + ').');
+                        }
+                    }
+                    r.Amount = r.Qty * r.Rate;
+                    detailRows[idx] = r;
+                    $tr.find('.row-amount').val(toNumber(r.Amount).toFixed(2));
+                    updateHiddenRows();
+                    calculateTax();
+                }
+            });
+
+            $('#detailTable').on('change', '.row-select', function () {
+                updateHiddenRows();
+                calculateTax();
+            });
+
+            $('#btnCalculateTax').on('click', function () {
+                calculateTax();
+            });
+
+            $('#btnSave').on('click', function () {
+                updateHiddenRows();
+
+                var doSubmit = function () {
+                    $('#pendingDebitNoteForm').submit();
+                };
+
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Confirm Save',
+                        text: 'Are you sure you want to save this?',
+                        showCancelButton: true,
+                        confirmButtonText: 'OK',
+                        cancelButtonText: 'Cancel'
+                    }).then(function (result) {
+                        if (result && result.isConfirmed) {
+                            doSubmit();
+                        }
+                    });
+                } else {
+                    doSubmit();
+                }
+            });
+        });
+    </script>
+}

@@ -176,6 +176,9 @@
                     <i class="fa fa-undo"></i>
                     Debit Note
                 </h1>
+                <a href="@Url.Action("Form", "PendingDebitNote")" class="btn btn-light btn-sm">
+                    <i class="fa fa-plus"></i> Add
+                </a>
             </div>
         </div>
 
@@ -326,7 +329,12 @@
                         orderable: false,
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
-                            var editUrl = '@Url.Action("DebitNoteForm", "ChellanToDebitNote")' + '?id=' + id;
+                            var editUrl;
+                            if (row && (row['TranBType'] == 2 || row['TranBType'] === 2)) {
+                                editUrl = '@Url.Action("Form", "PendingDebitNote")' + '?id=' + id;
+                            } else {
+                                editUrl = '@Url.Action("DebitNoteForm", "ChellanToDebitNote")' + '?id=' + id;
+                            }
                             var printUrl = '@Url.Action("DebitNotePrint", "ChellanToDebitNote")' + '?id=' + id;
 
                             var html = '';

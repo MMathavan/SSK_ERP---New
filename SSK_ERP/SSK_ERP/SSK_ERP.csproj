@@ -331,6 +331,7 @@
     <Compile Include="Controllers\Purchase\PurchaseReturnController.cs" />
     <Compile Include="Controllers\Purchase\ChellanController.cs" />
     <Compile Include="Controllers\Purchase\ChellanToDebitNoteController.cs" />
+    <Compile Include="Controllers\Purchase\PendingDebitNoteController.cs" />
     <Compile Include="Controllers\Purchase\PurchaseInvoiceUploadController.cs" />
     <!-- Excluded per cleanup -->
     <!-- <Compile Include="Controllers\ProfileMasterController.cs" /> -->
