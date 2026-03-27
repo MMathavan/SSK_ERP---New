@@ -553,6 +553,7 @@ namespace SSK_ERP.Controllers.Purchase
                 }
 
                 InsertDebitNoteDetails(existing, details);
+                db.SaveChanges();
                 TempData["SuccessMessage"] = "Debit Note saved successfully.";
                 return RedirectToAction("DebitNoteIndex");
             }
