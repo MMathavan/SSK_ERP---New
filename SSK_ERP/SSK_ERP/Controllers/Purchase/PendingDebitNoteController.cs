@@ -727,7 +727,7 @@ namespace SSK_ERP.Controllers.Purchase
                     TRANDSGSTAMT = sgstAmt,
                     TRANDIGSTAMT = igstAmt,
                     TRANDNAMT = net,
-                    TRANDAID = 0,
+                    TRANDAID = d.SourceDetailId,
                     TRANDNARTN = null,
                     TRANDRMKS = null
                 };

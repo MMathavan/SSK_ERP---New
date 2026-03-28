@@ -37,6 +37,10 @@ namespace SSK_ERP.Controllers.Purchase
             public decimal Qty { get; set; }
             public decimal Rate { get; set; }
             public decimal Amount { get; set; }
+
+            public int SourceBatchId { get; set; }
+            public int SourceDetailId { get; set; }
+            public int SourceRefId { get; set; }
         }
 
         private class DebitNoteDetailRow
@@ -1235,7 +1239,7 @@ namespace SSK_ERP.Controllers.Purchase
                     TRANDSGSTAMT = sgstAmt,
                     TRANDIGSTAMT = igstAmt,
                     TRANDNAMT = net,
-                    TRANDAID = 0,
+                    TRANDAID = d.SourceDetailId,
                     TRANDNARTN = null,
                     TRANDRMKS = null
                 };
@@ -1442,7 +1446,10 @@ namespace SSK_ERP.Controllers.Purchase
                     OriginalQty = qty,
                     Qty = qty,
                     Rate = rate,
-                    Amount = gross
+                    Amount = gross,
+                    SourceBatchId = batch != null ? batch.TRANBID : 0,
+                    SourceDetailId = d.TRANDID,
+                    SourceRefId = master.TRANMID
                 });
             }
 
@@ -1520,6 +1527,47 @@ namespace SSK_ERP.Controllers.Purchase
                     {
                         TempData["ErrorMessage"] = "Qty cannot be greater than Chellan Qty.";
                         return RedirectToAction("Form", new { id = model.ChellanId });
+                    }
+                }
+
+                // Ensure Chellan ↔ Debit Note linkage IDs are present (server-side safety)
+                // Map selected rows back to Chellan detail/batch rows so InsertDetails writes TRANDAID/TRANBPID/TRANDPID correctly.
+                var chellanDetails = db.TransactionDetails
+                    .Where(d => d.TRANMID == chellan.TRANMID)
+                    .ToList();
+
+                var chellanDetailIds = chellanDetails.Select(d => d.TRANDID).ToList();
+                var chellanBatches = db.TransactionBatchDetails
+                    .Where(b => chellanDetailIds.Contains(b.TRANDID))
+                    .ToList();
+
+                foreach (var r in rows)
+                {
+                    r.SourceRefId = chellan.TRANMID;
+
+                    if (r.SourceDetailId > 0 && r.SourceBatchId > 0)
+                    {
+                        continue;
+                    }
+
+                    var matchDetail = chellanDetails.FirstOrDefault(d =>
+                        d.TRANDREFID == r.MaterialId &&
+                        (d.TRANDREFNO ?? string.Empty) == (r.BillNo ?? string.Empty));
+
+                    if (matchDetail == null)
+                    {
+                        continue;
+                    }
+
+                    r.SourceDetailId = matchDetail.TRANDID;
+
+                    var matchBatch = chellanBatches.FirstOrDefault(b =>
+                        b.TRANDID == matchDetail.TRANDID &&
+                        (b.TRANBDNO ?? string.Empty) == (r.BatchNo ?? string.Empty));
+
+                    if (matchBatch != null)
+                    {
+                        r.SourceBatchId = matchBatch.TRANBID;
                     }
                 }
 
@@ -1702,7 +1750,7 @@ namespace SSK_ERP.Controllers.Purchase
                     TRANDSGSTAMT = sgstAmt,
                     TRANDIGSTAMT = igstAmt,
                     TRANDNAMT = net,
-                    TRANDAID = 0,
+                    TRANDAID = d.SourceDetailId,
                     TRANDNARTN = null,
                     TRANDRMKS = null
                 };
@@ -1759,10 +1807,10 @@ namespace SSK_ERP.Controllers.Purchase
                         sgstAmt,
                         igstAmt,
                         net,
-                        0,
-                        0,
+                        d.SourceBatchId,
+                        d.SourceDetailId,
                         totalQtyInt,
-                        d.MaterialId
+                        d.SourceRefId
                     );
                 }
 
