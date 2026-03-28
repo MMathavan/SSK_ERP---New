@@ -481,6 +481,64 @@ namespace SSK_ERP.Controllers.Purchase
                     .Where(d => d != null && d.IsSelected && d.MaterialId > 0 && d.Qty > 0)
                     .ToList();
 
+                var existing = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == master.TRANMID && t.REGSTRID == PurchaseReturnRegisterId);
+                if (existing == null)
+                {
+                    TempData["ErrorMessage"] = "Debit Note not found.";
+                    return RedirectToAction("DebitNoteIndex");
+                }
+
+                // Ensure Chellan ↔ Debit Note linkage IDs are present even when new rows are added in edit.
+                // Map selected rows back to Chellan detail/batch rows so InsertDebitNoteDetails writes TRANDAID/TRANBPID/TRANDPID correctly.
+                if (existing.TRANLMID > 0)
+                {
+                    var chellan = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == existing.TRANLMID && t.REGSTRID == ChellanRegisterId);
+                    if (chellan != null)
+                    {
+                        var chellanDetails = db.TransactionDetails
+                            .Where(d => d.TRANMID == chellan.TRANMID)
+                            .ToList();
+
+                        var chellanDetailIds = chellanDetails.Select(d => d.TRANDID).ToList();
+                        var chellanBatches = db.TransactionBatchDetails
+                            .Where(b => chellanDetailIds.Contains(b.TRANDID))
+                            .ToList();
+
+                        foreach (var d in details)
+                        {
+                            d.SourceRefId = chellan.TRANMID;
+
+                            if (d.SourceDetailId > 0 && d.SourceBatchId > 0)
+                            {
+                                continue;
+                            }
+
+                            var matchDetail = chellanDetails.FirstOrDefault(cd =>
+                                cd.TRANDREFID == d.MaterialId &&
+                                (cd.TRANDREFNO ?? string.Empty) == (d.BillNo ?? string.Empty));
+
+                            if (matchDetail == null)
+                            {
+                                continue;
+                            }
+
+                            d.SourceDetailId = matchDetail.TRANDID;
+                            d.ActualQty = matchDetail.TRANDQTY;
+
+                            var matchBatch = chellanBatches.FirstOrDefault(cb =>
+                                cb.TRANDID == matchDetail.TRANDID &&
+                                (cb.TRANBDNO ?? string.Empty) == (d.BatchNo ?? string.Empty) &&
+                                (d.PackingId <= 0 || cb.PACKMID == d.PackingId));
+
+                            if (matchBatch != null)
+                            {
+                                d.SourceBatchId = matchBatch.TRANBID;
+                                d.PackingId = d.PackingId > 0 ? d.PackingId : matchBatch.PACKMID;
+                            }
+                        }
+                    }
+                }
+
                 var invalidQtyRow = details.FirstOrDefault(d => d.ActualQty > 0 && d.Qty > d.ActualQty);
                 if (invalidQtyRow != null)
                 {
@@ -492,13 +550,6 @@ namespace SSK_ERP.Controllers.Purchase
                 {
                     TempData["ErrorMessage"] = "Please add at least one detail row.";
                     return RedirectToAction("DebitNoteForm", new { id = (int?)master.TRANMID });
-                }
-
-                var existing = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == master.TRANMID && t.REGSTRID == PurchaseReturnRegisterId);
-                if (existing == null)
-                {
-                    TempData["ErrorMessage"] = "Debit Note not found.";
-                    return RedirectToAction("DebitNoteIndex");
                 }
 
                 var supplier = db.SupplierMasters.FirstOrDefault(c => c.CATEID == master.TRANREFID);
@@ -534,29 +585,7 @@ namespace SSK_ERP.Controllers.Purchase
                 existing.PRCSDATE = DateTime.Now;
                 existing.TRANTIME = DateTime.Now;
 
-                var existingDetailIds = db.TransactionDetails
-                    .Where(d => d.TRANMID == existing.TRANMID)
-                    .Select(d => d.TRANDID)
-                    .ToList();
-
-                if (existingDetailIds.Any())
-                {
-                    db.Database.ExecuteSqlCommand(
-                        $"DELETE FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN ({string.Join(",", existingDetailIds)})");
-
-                    var existingDetails = db.TransactionDetails
-                        .Where(d => d.TRANMID == existing.TRANMID)
-                        .ToList();
-
-                    if (existingDetails.Any())
-                    {
-                        db.TransactionDetails.RemoveRange(existingDetails);
-                    }
-
-                    db.SaveChanges();
-                }
-
-                InsertDebitNoteDetails(existing, details);
+                UpsertDebitNoteDetails(existing, details);
                 db.SaveChanges();
                 TempData["SuccessMessage"] = "Debit Note saved successfully.";
                 return RedirectToAction("DebitNoteIndex");
@@ -1301,6 +1330,341 @@ namespace SSK_ERP.Controllers.Purchase
                         totalQtyInt,
                         d.SourceRefId
                     );
+                }
+
+                totalGross += gross;
+                totalNet += net;
+                totalCgst += cgstAmt;
+                totalSgst += sgstAmt;
+                totalIgst += igstAmt;
+            }
+
+            master.TRANGAMT = totalGross;
+            master.TRANCGSTAMT = totalCgst;
+            master.TRANSGSTAMT = totalSgst;
+            master.TRANIGSTAMT = totalIgst;
+            master.TRANNAMT = totalNet;
+            master.TRANPCOUNT = 0;
+            master.TRANAMTWRDS = ConvertAmountToWords(totalNet);
+        }
+
+        private void UpsertDebitNoteDetails(TransactionMaster master, List<DebitNoteDetailRow> details)
+        {
+            if (details == null)
+            {
+                details = new List<DebitNoteDetailRow>();
+            }
+
+            string NormalizeBillNo(string billNo)
+            {
+                billNo = billNo ?? string.Empty;
+                if (billNo.Length > 15)
+                {
+                    billNo = billNo.Substring(0, 15);
+                }
+                return billNo;
+            }
+
+            string NormalizeBatchNo(string batchNo)
+            {
+                return (batchNo ?? string.Empty).Trim();
+            }
+
+            string RowKey(int materialId, string billNo, string batchNo, int packingId, int sourceDetailId)
+            {
+                return sourceDetailId.ToString() + "|" + materialId.ToString() + "|" + (billNo ?? string.Empty) + "|" + (batchNo ?? string.Empty) + "|" + packingId.ToString();
+            }
+
+            var materialIds = details.Select(d => d.MaterialId).Distinct().ToList();
+            var materials = db.MaterialMasters
+                .Where(m => materialIds.Contains(m.MTRLID))
+                .ToDictionary(m => m.MTRLID, m => m);
+
+            var hsnIds = materials.Values
+                .Where(m => m.HSNID > 0)
+                .Select(m => m.HSNID)
+                .Distinct()
+                .ToList();
+
+            var hsnMap = db.HSNCodeMasters
+                .Where(h => hsnIds.Contains(h.HSNID))
+                .ToDictionary(h => h.HSNID, h => h);
+
+            var existingDetails = db.TransactionDetails
+                .Where(d => d.TRANMID == master.TRANMID)
+                .ToList();
+
+            var existingDetailIds = existingDetails.Select(d => d.TRANDID).ToList();
+            var existingBatches = existingDetailIds.Any()
+                ? db.TransactionBatchDetails.Where(b => existingDetailIds.Contains(b.TRANDID)).ToList()
+                : new List<TransactionBatchDetail>();
+
+            var existingMap = new Dictionary<string, TransactionDetail>(StringComparer.OrdinalIgnoreCase);
+            foreach (var ed in existingDetails)
+            {
+                var eb = existingBatches.FirstOrDefault(b => b.TRANDID == ed.TRANDID);
+                var k = RowKey(
+                    ed.TRANDREFID,
+                    ed.TRANDREFNO ?? string.Empty,
+                    eb != null ? (eb.TRANBDNO ?? string.Empty) : string.Empty,
+                    eb != null ? eb.PACKMID : ed.PACKMID,
+                    ed.TRANDAID
+                );
+
+                if (!existingMap.ContainsKey(k))
+                {
+                    existingMap[k] = ed;
+                }
+            }
+
+            var selectedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var d in details)
+            {
+                var k = RowKey(d.MaterialId, NormalizeBillNo(d.BillNo), NormalizeBatchNo(d.BatchNo), d.PackingId, d.SourceDetailId);
+                selectedKeys.Add(k);
+            }
+
+            var toDelete = new List<TransactionDetail>();
+            foreach (var kv in existingMap)
+            {
+                if (!selectedKeys.Contains(kv.Key))
+                {
+                    toDelete.Add(kv.Value);
+                }
+            }
+
+            if (toDelete.Any())
+            {
+                var delIds = toDelete.Select(d => d.TRANDID).ToList();
+                var delBatches = existingBatches.Where(b => delIds.Contains(b.TRANDID)).ToList();
+                if (delBatches.Any())
+                {
+                    db.TransactionBatchDetails.RemoveRange(delBatches);
+                }
+                db.TransactionDetails.RemoveRange(toDelete);
+                db.SaveChanges();
+            }
+
+            decimal totalGross = 0m;
+            decimal totalNet = 0m;
+            decimal totalCgst = 0m;
+            decimal totalSgst = 0m;
+            decimal totalIgst = 0m;
+            short tranStateType = master.TRANSTATETYPE;
+
+            var queryInsertBatch = @"INSERT INTO TRANSACTIONBATCHDETAIL (
+                    TRANDID, AMTRLID, HSNID, STKBID, TRANBDNO, TRANBEXPDATE, PACKMID,
+                    TRANPQTY, TRANBQTY, TRANBRATE, TRANBPTRRATE, TRANBMRP,
+                    TRANBGAMT, TRANBCGSTEXPRN, TRANBSGSTEXPRN, TRANBIGSTEXPRN,
+                    TRANBCGSTAMT, TRANBSGSTAMT, TRANBIGSTAMT, TRANBNAMT,
+                    TRANBPID, TRANDPID, TRANPTQTY, TRANBLMID
+                ) VALUES (
+                    @p0, @p1, @p2, @p3, @p4, @p5, @p6,
+                    @p7, @p8, @p9, @p10, @p11,
+                    @p12, @p13, @p14, @p15,
+                    @p16, @p17, @p18, @p19,
+                    @p20, @p21, @p22, @p23
+                )";
+
+            foreach (var d in details)
+            {
+                materials.TryGetValue(d.MaterialId, out var material);
+                int hsnId = material != null ? material.HSNID : 0;
+                hsnMap.TryGetValue(hsnId, out var hsn);
+
+                decimal qty = d.Qty;
+                decimal rate = d.Rate;
+                decimal gross = d.Amount > 0 ? d.Amount : qty * rate;
+
+                decimal cgstAmt = 0m;
+                decimal sgstAmt = 0m;
+                decimal igstAmt = 0m;
+                decimal cgstExpr = 0m;
+                decimal sgstExpr = 0m;
+                decimal igstExpr = 0m;
+
+                if (hsn != null)
+                {
+                    if (tranStateType == 0)
+                    {
+                        if (hsn.CGSTEXPRN > 0)
+                        {
+                            cgstAmt = Math.Round((gross * hsn.CGSTEXPRN) / 100m, 2);
+                            cgstExpr = hsn.CGSTEXPRN;
+                        }
+                        if (hsn.SGSTEXPRN > 0)
+                        {
+                            sgstAmt = Math.Round((gross * hsn.SGSTEXPRN) / 100m, 2);
+                            sgstExpr = hsn.SGSTEXPRN;
+                        }
+                    }
+                    else
+                    {
+                        if (hsn.IGSTEXPRN > 0)
+                        {
+                            igstAmt = Math.Round((gross * hsn.IGSTEXPRN) / 100m, 2);
+                            igstExpr = hsn.IGSTEXPRN;
+                        }
+                    }
+                }
+
+                decimal net = gross + cgstAmt + sgstAmt + igstAmt;
+
+                var billNo = NormalizeBillNo(d.BillNo);
+                var batchNo = NormalizeBatchNo(d.BatchNo);
+                var key = RowKey(d.MaterialId, billNo, batchNo, d.PackingId, d.SourceDetailId);
+
+                if (existingMap.TryGetValue(key, out var existingDetail))
+                {
+                    existingDetail.TRANDREFID = material != null ? material.MTRLID : d.MaterialId;
+                    existingDetail.TRANDREFNO = billNo;
+                    existingDetail.TRANDREFNAME = material != null ? material.MTRLDESC : existingDetail.TRANDREFNAME;
+                    existingDetail.HSNID = hsnId;
+                    existingDetail.PACKMID = d.PackingId;
+                    existingDetail.TRANDQTY = qty;
+                    existingDetail.TRANDRATE = rate;
+                    existingDetail.TRANDARATE = rate;
+                    existingDetail.TRANDGAMT = gross;
+                    existingDetail.TRANDCGSTAMT = cgstAmt;
+                    existingDetail.TRANDSGSTAMT = sgstAmt;
+                    existingDetail.TRANDIGSTAMT = igstAmt;
+                    existingDetail.TRANDNAMT = net;
+                    existingDetail.TRANDAID = d.SourceDetailId;
+
+                    db.Entry(existingDetail).State = System.Data.Entity.EntityState.Modified;
+                    db.SaveChanges();
+
+                    var eb = db.TransactionBatchDetails.FirstOrDefault(b => b.TRANDID == existingDetail.TRANDID);
+                    if (eb != null)
+                    {
+                        int boxQtyInt = (int)Math.Round(d.BoxQty);
+                        int totalQtyInt = (int)Math.Round(qty);
+
+                        int packQtyInt = totalQtyInt;
+                        if (boxQtyInt > 0 && totalQtyInt > 0)
+                        {
+                            packQtyInt = (int)Math.Round((decimal)totalQtyInt / boxQtyInt);
+                        }
+
+                        int resolvedPackMid = d.PackingId;
+                        if (packQtyInt > 0)
+                        {
+                            var matchingPack = db.PackingMasters
+                                .FirstOrDefault(p => p.PACKMNOU == packQtyInt && p.DISPSTATUS == 1)
+                                ?? db.PackingMasters.FirstOrDefault(p => p.PACKMNOU == packQtyInt);
+
+                            if (matchingPack != null)
+                            {
+                                resolvedPackMid = matchingPack.PACKMID;
+                            }
+                        }
+
+                        eb.AMTRLID = existingDetail.TRANDREFID;
+                        eb.HSNID = existingDetail.HSNID;
+                        eb.TRANBDNO = batchNo;
+                        eb.TRANBEXPDATE = d.ExpiryDate ?? DateTime.Today;
+                        eb.PACKMID = resolvedPackMid;
+                        eb.TRANPQTY = packQtyInt;
+                        eb.TRANBQTY = boxQtyInt;
+                        eb.TRANBRATE = rate;
+                        eb.TRANBPTRRATE = d.Ptr;
+                        eb.TRANBMRP = d.Mrp;
+                        eb.TRANBGAMT = gross;
+                        eb.TRANBCGSTEXPRN = cgstExpr;
+                        eb.TRANBSGSTEXPRN = sgstExpr;
+                        eb.TRANBIGSTEXPRN = igstExpr;
+                        eb.TRANBCGSTAMT = cgstAmt;
+                        eb.TRANBSGSTAMT = sgstAmt;
+                        eb.TRANBIGSTAMT = igstAmt;
+                        eb.TRANBNAMT = net;
+                        eb.TRANBPID = d.SourceBatchId;
+                        eb.TRANDPID = d.SourceDetailId;
+                        eb.TRANPTQTY = totalQtyInt;
+                        eb.TRANBLMID = d.SourceRefId;
+
+                        db.Entry(eb).State = System.Data.Entity.EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+                else
+                {
+                    var newDetail = new TransactionDetail
+                    {
+                        TRANMID = master.TRANMID,
+                        TRANDREFID = material != null ? material.MTRLID : d.MaterialId,
+                        TRANDREFNO = billNo,
+                        TRANDREFNAME = material != null ? material.MTRLDESC : string.Empty,
+                        TRANDMTRLPRFT = 0,
+                        HSNID = hsnId,
+                        PACKMID = d.PackingId,
+                        TRANDQTY = qty,
+                        TRANDRATE = rate,
+                        TRANDARATE = rate,
+                        TRANDGAMT = gross,
+                        TRANDCGSTAMT = cgstAmt,
+                        TRANDSGSTAMT = sgstAmt,
+                        TRANDIGSTAMT = igstAmt,
+                        TRANDNAMT = net,
+                        TRANDAID = d.SourceDetailId,
+                        TRANDNARTN = null,
+                        TRANDRMKS = null
+                    };
+
+                    db.TransactionDetails.Add(newDetail);
+                    db.SaveChanges();
+
+                    if (newDetail.TRANDID > 0)
+                    {
+                        int boxQtyInt = (int)Math.Round(d.BoxQty);
+                        int totalQtyInt = (int)Math.Round(qty);
+
+                        int packQtyInt = totalQtyInt;
+                        if (boxQtyInt > 0 && totalQtyInt > 0)
+                        {
+                            packQtyInt = (int)Math.Round((decimal)totalQtyInt / boxQtyInt);
+                        }
+
+                        int resolvedPackMid = d.PackingId;
+                        if (packQtyInt > 0)
+                        {
+                            var matchingPack = db.PackingMasters
+                                .FirstOrDefault(p => p.PACKMNOU == packQtyInt && p.DISPSTATUS == 1)
+                                ?? db.PackingMasters.FirstOrDefault(p => p.PACKMNOU == packQtyInt);
+
+                            if (matchingPack != null)
+                            {
+                                resolvedPackMid = matchingPack.PACKMID;
+                            }
+                        }
+
+                        db.Database.ExecuteSqlCommand(
+                            queryInsertBatch,
+                            newDetail.TRANDID,
+                            newDetail.TRANDREFID,
+                            newDetail.HSNID,
+                            0,
+                            batchNo,
+                            d.ExpiryDate ?? DateTime.Today,
+                            resolvedPackMid,
+                            packQtyInt,
+                            boxQtyInt,
+                            rate,
+                            d.Ptr,
+                            d.Mrp,
+                            gross,
+                            cgstExpr,
+                            sgstExpr,
+                            igstExpr,
+                            cgstAmt,
+                            sgstAmt,
+                            igstAmt,
+                            net,
+                            d.SourceBatchId,
+                            d.SourceDetailId,
+                            totalQtyInt,
+                            d.SourceRefId
+                        );
+                    }
                 }
 
                 totalGross += gross;

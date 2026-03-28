@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.Linq;
 using System.Web.Mvc;
 using Newtonsoft.Json;
@@ -355,18 +356,65 @@ namespace SSK_ERP.Controllers.Purchase
                     return Json(new { success = true, chellans = new object[0] }, JsonRequestBehavior.AllowGet);
                 }
 
-                var chellans = db.TransactionMasters
-                    .Where(t => t.REGSTRID == ChellanRegisterId && t.TRANREFID == supplierId)
-                    .OrderByDescending(t => t.TRANDATE)
-                    .ThenByDescending(t => t.TRANMID)
-                    .Select(t => new { id = t.TRANMID, text = t.TRANDNO })
-                    .ToList();
+                var chellans = new List<object>();
+                var connection = db.Database.Connection;
+                try
+                {
+                    if (connection.State != ConnectionState.Open)
+                    {
+                        connection.Open();
+                    }
+
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "PR_Get_Chellan_det";
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.Add(new SqlParameter("@Tranrefid", supplierId));
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            int ordTranMid = -1;
+                            int ordTrandNo = -1;
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                var name = reader.GetName(i);
+                                if (ordTranMid < 0 && name.Equals("TRANMID", StringComparison.OrdinalIgnoreCase)) ordTranMid = i;
+                                if (ordTrandNo < 0 && name.Equals("TRANDNO", StringComparison.OrdinalIgnoreCase)) ordTrandNo = i;
+                            }
+
+                            while (reader.Read())
+                            {
+                                int id = 0;
+                                string text = string.Empty;
+
+                                if (ordTranMid >= 0 && !reader.IsDBNull(ordTranMid))
+                                {
+                                    id = Convert.ToInt32(reader.GetValue(ordTranMid));
+                                }
+
+                                if (ordTrandNo >= 0 && !reader.IsDBNull(ordTrandNo))
+                                {
+                                    text = Convert.ToString(reader.GetValue(ordTrandNo));
+                                }
+
+                                if (id > 0)
+                                {
+                                    chellans.Add(new { id, text });
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    chellans = new List<object>();
+                }
 
                 return Json(new { success = true, chellans }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, error = ex.Message }, JsonRequestBehavior.AllowGet);
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
 
@@ -381,8 +429,14 @@ namespace SSK_ERP.Controllers.Purchase
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, error = ex.Message }, JsonRequestBehavior.AllowGet);
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
             }
+        }
+
+        private class ChellanDropdownSpRow
+        {
+            public int TRANMID { get; set; }
+            public string TRANDNO { get; set; }
         }
 
         private void FillSupplierViewBags(int? selectedSupplierId)
