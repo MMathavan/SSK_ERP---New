@@ -268,12 +268,6 @@ namespace SSK_ERP.Controllers.Masters
                         var now = DateTime.Now;
 
                         // Normalize description and code
-                        if (!string.IsNullOrEmpty(tab.MTRLDESC))
-                        {
-                            tab.MTRLDESC = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo
-                                .ToTitleCase(tab.MTRLDESC.ToLower());
-                        }
-
                         if (!string.IsNullOrEmpty(tab.MTRLCODE))
                         {
                             tab.MTRLCODE = tab.MTRLCODE.ToUpper();

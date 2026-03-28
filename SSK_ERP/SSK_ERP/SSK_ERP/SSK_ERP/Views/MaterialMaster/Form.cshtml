@@ -319,16 +319,6 @@
                 // Trigger remote validation
                 $(this).valid();
             });
-            
-            // Auto-format description to title case
-            $('#i_MTRLDESC').on('blur', function() {
-                var value = this.value.trim();
-                if (value) {
-                    this.value = value.toLowerCase().replace(/\b\w/g, function(l) {
-                        return l.toUpperCase();
-                    });
-                }
-            });
         });
     </script>
 }
