@@ -121,18 +121,6 @@ namespace SSK_ERP.Controllers.Purchase
                 }
 
                 var savedRows = LoadDebitNoteRows(dn);
-                var pendingRows = vm.ChellanId > 0 ? LoadPendingRows(vm.ChellanId) : new List<PendingDebitNoteDetailRow>();
-
-                var savedKey = new HashSet<int>(savedRows.Where(x => x.SourceDetailId > 0).Select(x => x.SourceDetailId));
-                foreach (var pr in pendingRows)
-                {
-                    if (!savedKey.Contains(pr.SourceDetailId))
-                    {
-                        pr.IsSelected = false;
-                        savedRows.Add(pr);
-                    }
-                }
-
                 vm.DetailRowsJson = JsonConvert.SerializeObject(savedRows);
             }
             else

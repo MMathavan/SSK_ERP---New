@@ -152,6 +152,12 @@
                 @Html.HiddenFor(m => m.TranStateType, new { id = "stateTypeHidden" })
                 @Html.HiddenFor(m => m.DetailRowsJson, new { id = "DetailRowsJson" })
 
+                if (Model != null && Model.DebitNoteId > 0)
+                {
+                    @Html.HiddenFor(m => m.SupplierId)
+                    @Html.HiddenFor(m => m.ChellanId)
+                }
+
                 <div class="pr-section-title">
                     <i class="fa fa-info-circle"></i> Debit Note Details
                 </div>
@@ -186,13 +192,27 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="control-label">Supplier Name <span class="req">*</span></label>
-                            @Html.DropDownListFor(m => m.SupplierId, ViewBag.SupplierList as SelectList, "-- Select --", new { @class = "form-control", id = "supplierSelect" })
+                            @if (Model != null && Model.DebitNoteId > 0)
+                            {
+                                @Html.DropDownListFor(m => m.SupplierId, ViewBag.SupplierList as SelectList, "-- Select --", new { @class = "form-control", id = "supplierSelect", disabled = "disabled" })
+                            }
+                            else
+                            {
+                                @Html.DropDownListFor(m => m.SupplierId, ViewBag.SupplierList as SelectList, "-- Select --", new { @class = "form-control", id = "supplierSelect" })
+                            }
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="control-label">Chellan No <span class="req">*</span></label>
-                            @Html.DropDownListFor(m => m.ChellanId, new SelectList(new object[0], "Value", "Text"), "-- Select --", new { @class = "form-control", id = "chellanSelect" })
+                            @if (Model != null && Model.DebitNoteId > 0)
+                            {
+                                @Html.DropDownListFor(m => m.ChellanId, new SelectList(new object[0], "Value", "Text"), "-- Select --", new { @class = "form-control", id = "chellanSelect", disabled = "disabled" })
+                            }
+                            else
+                            {
+                                @Html.DropDownListFor(m => m.ChellanId, new SelectList(new object[0], "Value", "Text"), "-- Select --", new { @class = "form-control", id = "chellanSelect" })
+                            }
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -343,6 +363,7 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script type="text/javascript">
         var detailRows = @Html.Raw(Model != null && !string.IsNullOrWhiteSpace(Model.DetailRowsJson) ? Model.DetailRowsJson : "[]");
+        var isEditMode = @(Model != null && Model.DebitNoteId > 0 ? "true" : "false");
 
         function toNumber(val) {
             var v = parseFloat(val);
@@ -391,7 +412,12 @@
 
                 var tr = '';
                 tr += '<tr data-idx="' + i + '">';
-                tr += '<td class="text-center"><input type="checkbox" class="row-select" ' + (isSel ? 'checked' : '') + ' /></td>';
+                if (isEditMode) {
+                    r.IsSelected = true;
+                    tr += '<td class="text-center"><input type="checkbox" class="row-select" checked="checked" disabled="disabled" /></td>';
+                } else {
+                    tr += '<td class="text-center"><input type="checkbox" class="row-select" ' + (isSel ? 'checked' : '') + ' /></td>';
+                }
 
                 tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + ((r.MaterialName || '').toString().replace(/\"/g, '&quot;')) + '" /></td>';
                 tr += '<td><input type="text" class="form-control form-control-sm" readonly="readonly" value="' + (r.HsnCode || '') + '" /></td>';
@@ -415,7 +441,7 @@
                 var idx = parseInt($tr.attr('data-idx') || '0', 10);
                 if (idx >= 0 && idx < detailRows.length) {
                     var r = detailRows[idx] || {};
-                    r.IsSelected = $tr.find('.row-select').is(':checked');
+                    r.IsSelected = isEditMode ? true : $tr.find('.row-select').is(':checked');
                     r.BillNo = $tr.find('.row-billno').val();
                     r.BoxQty = toNumber($tr.find('.row-boxqty').val());
                     r.Qty = toNumber($tr.find('.row-qty').val());
@@ -506,6 +532,15 @@
         }
 
         $(document).ready(function () {
+            var serverErrorMessage = '@(TempData["ErrorMessage"] != null ? System.Web.HttpUtility.JavaScriptStringEncode(TempData["ErrorMessage"].ToString()) : "")';
+            if (serverErrorMessage) {
+                if (window.Swal) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: serverErrorMessage });
+                } else {
+                    alert(serverErrorMessage);
+                }
+            }
+
             if (window.jQuery && $.fn.select2) {
                 $('#supplierSelect').select2();
                 $('#chellanSelect').select2();
@@ -518,6 +553,11 @@
             var initialSupplierId = $('#supplierSelect').val();
             var initialChellanId = $('#chellanSelect').val();
             loadChellans(initialSupplierId, initialChellanId);
+
+            if (isEditMode && window.jQuery && $.fn.select2) {
+                $('#supplierSelect').prop('disabled', true);
+                $('#chellanSelect').prop('disabled', true);
+            }
 
             $('#supplierSelect').on('change', function () {
                 var supId = $(this).val();
