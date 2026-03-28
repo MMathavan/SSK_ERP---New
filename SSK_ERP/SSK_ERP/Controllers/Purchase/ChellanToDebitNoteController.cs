@@ -327,6 +327,42 @@ namespace SSK_ERP.Controllers.Purchase
                         .Where(b => chellanDetailIds.Contains(b.TRANDID))
                         .ToList();
 
+                    var chellanBatchIds = chellanBatchDetails.Select(b => b.TRANBID).ToList();
+
+                    var billedSourceDetailIds = new HashSet<int>();
+                    var billedSourceBatchIds = new HashSet<int>();
+
+                    // Exclude chellan items already billed in OTHER debit notes (e.g., created via PendingDebitNote)
+                    // For debit notes, linkage is stored in batch detail: TRANDPID = source chellan detail id, TRANBPID = source chellan batch id,
+                    // TRANBLMID = source chellan master id.
+                    var billedLinks = (
+                        from b in db.TransactionBatchDetails
+                        join d in db.TransactionDetails on b.TRANDID equals d.TRANDID
+                        join m in db.TransactionMasters on d.TRANMID equals m.TRANMID
+                        where m.REGSTRID == PurchaseReturnRegisterId
+                              && m.TRANMID != model.TRANMID
+                              && b.TRANBLMID.HasValue
+                              && b.TRANBLMID.Value == chellanMaster.TRANMID
+                        select new
+                        {
+                            SourceDetailId = b.TRANDPID,
+                            SourceBatchId = b.TRANBPID
+                        }
+                    ).ToList();
+
+                    foreach (var l in billedLinks)
+                    {
+                        if (l.SourceDetailId > 0)
+                        {
+                            billedSourceDetailIds.Add(l.SourceDetailId);
+                        }
+
+                        if (l.SourceBatchId > 0)
+                        {
+                            billedSourceBatchIds.Add(l.SourceBatchId);
+                        }
+                    }
+
                     var chellanMaterialIds = chellanDetails.Select(d => d.TRANDREFID).Distinct().ToList();
                     var chellanMaterials = db.MaterialMasters
                         .Where(m => chellanMaterialIds.Contains(m.MTRLID))
@@ -354,6 +390,11 @@ namespace SSK_ERP.Controllers.Purchase
                         var rowKey = cd.TRANDREFID.ToString() + "|" + (cd.TRANDREFNO ?? string.Empty) + "|" + (cbatch != null ? (cbatch.TRANBDNO ?? string.Empty) : string.Empty) + "|" + (cbatch != null ? cbatch.PACKMID.ToString() : "0");
 
                         if (selectedSourceDetailIds.Contains(cd.TRANDID) || selectedRowKeys.Contains(rowKey))
+                        {
+                            continue;
+                        }
+
+                        if (billedSourceDetailIds.Contains(cd.TRANDID) || (sourceBatchId > 0 && billedSourceBatchIds.Contains(sourceBatchId)))
                         {
                             continue;
                         }

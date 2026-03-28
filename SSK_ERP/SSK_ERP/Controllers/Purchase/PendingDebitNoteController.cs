@@ -412,12 +412,284 @@ namespace SSK_ERP.Controllers.Purchase
         {
             try
             {
-                var rows = chellanId > 0 ? LoadPendingRows(chellanId) : new List<PendingDebitNoteDetailRow>();
+                List<PendingDebitNoteDetailRow> rows;
+                if (chellanId > 0)
+                {
+                    rows = LoadPendingRowsFromSp(chellanId);
+                    if (rows == null)
+                    {
+                        rows = LoadPendingRows(chellanId);
+                    }
+                }
+                else
+                {
+                    rows = new List<PendingDebitNoteDetailRow>();
+                }
                 return Json(new { success = true, rows }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        private List<PendingDebitNoteDetailRow> LoadPendingRowsFromSp(int tranMid)
+        {
+            if (tranMid <= 0)
+            {
+                return new List<PendingDebitNoteDetailRow>();
+            }
+
+            var rows = new List<PendingDebitNoteDetailRow>();
+            var connection = db.Database.Connection;
+            try
+            {
+                var chellan = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == tranMid && t.REGSTRID == ChellanRegisterId);
+                var chellanDetails = new List<TransactionDetail>();
+                var chellanBatches = new List<TransactionBatchDetail>();
+                if (chellan != null)
+                {
+                    chellanDetails = db.TransactionDetails.Where(d => d.TRANMID == chellan.TRANMID).ToList();
+                    var chellanDetailIds = chellanDetails.Select(d => d.TRANDID).ToList();
+                    if (chellanDetailIds.Any())
+                    {
+                        chellanBatches = db.TransactionBatchDetails.Where(b => chellanDetailIds.Contains(b.TRANDID)).ToList();
+                    }
+                }
+
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                }
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "PR_GETPENDINGDEBITNOTE_DETAILS_ASSIGN";
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.Add(new SqlParameter("@TRANMID", tranMid));
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        var ord = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var name = reader.GetName(i);
+                            if (!string.IsNullOrWhiteSpace(name) && !ord.ContainsKey(name))
+                            {
+                                ord[name] = i;
+                            }
+                        }
+
+                        int GetOrd(params string[] names)
+                        {
+                            foreach (var n in names)
+                            {
+                                if (string.IsNullOrWhiteSpace(n)) continue;
+                                if (ord.TryGetValue(n, out var idx)) return idx;
+                            }
+                            return -1;
+                        }
+
+                        int oMaterialId = GetOrd("MaterialId", "MTRLID", "TRANDREFID", "AMTRLID");
+                        int oMaterialName = GetOrd("MaterialName", "MTRLDESC", "TRANDREFNAME");
+                        int oQty = GetOrd("Qty", "QTY", "TRANDQTY", "TRANBQTY");
+                        int oRate = GetOrd("Rate", "RATE", "TRANDRATE", "TRANBRATE");
+                        int oAmount = GetOrd("Amount", "AMOUNT", "TRANDGAMT", "GAMT", "TRANBGAMT");
+                        int oHsnCode = GetOrd("HsnCode", "HSNCODE");
+                        int oBillNo = GetOrd("BillNo", "BILLNO", "TRANDREFNO");
+                        int oBatchNo = GetOrd("BatchNo", "BATCHNO", "TRANBDNO");
+                        int oExpiryDate = GetOrd("ExpiryDate", "EXPIRYDATE", "TRANBEXPDATE");
+                        int oPackingId = GetOrd("PackingId", "PACKMID");
+                        int oPacking = GetOrd("Packing", "PACKING", "PACKMDESC");
+                        int oBoxQty = GetOrd("BoxQty", "BOXQTY", "TRANPQTY");
+                        int oSourceBatchId = GetOrd("SourceBatchId", "SOURCEBATCHID", "TRANBID", "TRANBPID");
+                        int oSourceDetailId = GetOrd("SourceDetailId", "SOURCEDETAILID", "TRANDID", "TRANDPID");
+                        int oSourceRefId = GetOrd("SourceRefId", "SOURCEREFID", "TRANMID", "TRANBLMID");
+                        int oActualQty = GetOrd("ActualQty", "ACTUALQTY", "PENDINGQTY", "TRANPTQTY", "TRANBQTY");
+
+                        while (reader.Read())
+                        {
+                            var r = new PendingDebitNoteDetailRow
+                            {
+                                IsSelected = true
+                            };
+
+                            object v;
+
+                            if (oMaterialId >= 0 && !reader.IsDBNull(oMaterialId))
+                            {
+                                v = reader.GetValue(oMaterialId);
+                                r.MaterialId = Convert.ToInt32(v);
+                            }
+                            if (oMaterialName >= 0 && !reader.IsDBNull(oMaterialName))
+                            {
+                                r.MaterialName = Convert.ToString(reader.GetValue(oMaterialName));
+                            }
+                            if (oQty >= 0 && !reader.IsDBNull(oQty))
+                            {
+                                r.Qty = Convert.ToDecimal(reader.GetValue(oQty));
+                            }
+                            if (oRate >= 0 && !reader.IsDBNull(oRate))
+                            {
+                                r.Rate = Convert.ToDecimal(reader.GetValue(oRate));
+                            }
+                            if (oAmount >= 0 && !reader.IsDBNull(oAmount))
+                            {
+                                r.Amount = Convert.ToDecimal(reader.GetValue(oAmount));
+                            }
+                            else
+                            {
+                                r.Amount = r.Qty * r.Rate;
+                            }
+                            if (oHsnCode >= 0 && !reader.IsDBNull(oHsnCode))
+                            {
+                                r.HsnCode = Convert.ToString(reader.GetValue(oHsnCode));
+                            }
+                            if (oBillNo >= 0 && !reader.IsDBNull(oBillNo))
+                            {
+                                r.BillNo = Convert.ToString(reader.GetValue(oBillNo));
+                            }
+                            if (oBatchNo >= 0 && !reader.IsDBNull(oBatchNo))
+                            {
+                                r.BatchNo = Convert.ToString(reader.GetValue(oBatchNo));
+                            }
+                            if (oExpiryDate >= 0 && !reader.IsDBNull(oExpiryDate))
+                            {
+                                v = reader.GetValue(oExpiryDate);
+                                if (v is DateTime dt) r.ExpiryDate = dt;
+                                else
+                                {
+                                    if (DateTime.TryParse(Convert.ToString(v), out var pdt)) r.ExpiryDate = pdt;
+                                }
+                            }
+                            if (oPackingId >= 0 && !reader.IsDBNull(oPackingId))
+                            {
+                                r.PackingId = Convert.ToInt32(reader.GetValue(oPackingId));
+                            }
+                            if (oPacking >= 0 && !reader.IsDBNull(oPacking))
+                            {
+                                r.Packing = Convert.ToString(reader.GetValue(oPacking));
+                            }
+                            if (oBoxQty >= 0 && !reader.IsDBNull(oBoxQty))
+                            {
+                                r.BoxQty = Convert.ToDecimal(reader.GetValue(oBoxQty));
+                            }
+                            if (oSourceBatchId >= 0 && !reader.IsDBNull(oSourceBatchId))
+                            {
+                                r.SourceBatchId = Convert.ToInt32(reader.GetValue(oSourceBatchId));
+                            }
+                            if (oSourceDetailId >= 0 && !reader.IsDBNull(oSourceDetailId))
+                            {
+                                r.SourceDetailId = Convert.ToInt32(reader.GetValue(oSourceDetailId));
+                            }
+                            if (oSourceRefId >= 0 && !reader.IsDBNull(oSourceRefId))
+                            {
+                                r.SourceRefId = Convert.ToInt32(reader.GetValue(oSourceRefId));
+                            }
+                            else
+                            {
+                                r.SourceRefId = tranMid;
+                            }
+                            if (oActualQty >= 0 && !reader.IsDBNull(oActualQty))
+                            {
+                                r.ActualQty = Convert.ToDecimal(reader.GetValue(oActualQty));
+                            }
+                            else
+                            {
+                                r.ActualQty = r.Qty;
+                            }
+
+                            if (r.MaterialId <= 0 && !string.IsNullOrWhiteSpace(r.MaterialName))
+                            {
+                                var matName = (r.MaterialName ?? string.Empty).Trim();
+
+                                if (chellanDetails.Any())
+                                {
+                                    var cd = chellanDetails.FirstOrDefault(d =>
+                                        (d.TRANDREFNAME ?? string.Empty).Trim().Equals(matName, StringComparison.OrdinalIgnoreCase) &&
+                                        (d.TRANDREFNO ?? string.Empty) == (r.BillNo ?? string.Empty));
+
+                                    if (cd == null)
+                                    {
+                                        cd = chellanDetails.FirstOrDefault(d =>
+                                            (d.TRANDREFNAME ?? string.Empty).Trim().Equals(matName, StringComparison.OrdinalIgnoreCase));
+                                    }
+
+                                    if (cd != null)
+                                    {
+                                        r.MaterialId = cd.TRANDREFID;
+                                        if (r.SourceDetailId <= 0)
+                                        {
+                                            r.SourceDetailId = cd.TRANDID;
+                                        }
+                                    }
+                                }
+
+                                if (r.MaterialId <= 0)
+                                {
+                                    var matId = db.MaterialMasters
+                                        .Where(m => (m.MTRLDESC ?? string.Empty).Trim().ToLower() == matName.ToLower())
+                                        .Select(m => (int?)m.MTRLID)
+                                        .FirstOrDefault();
+                                    r.MaterialId = matId ?? 0;
+                                }
+                            }
+
+                            if (r.PackingId <= 0 && !string.IsNullOrWhiteSpace(r.Packing))
+                            {
+                                var packId = db.PackingMasters
+                                    .Where(p => p.PACKMDESC == r.Packing)
+                                    .Select(p => (int?)p.PACKMID)
+                                    .FirstOrDefault();
+                                r.PackingId = packId ?? 0;
+                            }
+
+                            if (r.SourceDetailId <= 0 && chellanDetails.Any())
+                            {
+                                var matchDetail = chellanDetails.FirstOrDefault(d =>
+                                    d.TRANDREFID == r.MaterialId &&
+                                    (d.TRANDREFNO ?? string.Empty) == (r.BillNo ?? string.Empty));
+
+                                if (matchDetail != null)
+                                {
+                                    r.SourceDetailId = matchDetail.TRANDID;
+                                }
+                            }
+
+                            if (r.SourceBatchId <= 0 && r.SourceDetailId > 0 && chellanBatches.Any())
+                            {
+                                var matchBatch = chellanBatches.FirstOrDefault(b =>
+                                    b.TRANDID == r.SourceDetailId &&
+                                    (b.TRANBDNO ?? string.Empty) == (r.BatchNo ?? string.Empty) &&
+                                    (r.PackingId <= 0 || b.PACKMID == r.PackingId));
+
+                                if (matchBatch != null)
+                                {
+                                    r.SourceBatchId = matchBatch.TRANBID;
+                                    r.BoxQty = r.BoxQty > 0 ? r.BoxQty : matchBatch.TRANPQTY;
+                                }
+                            }
+
+                            if (r.ActualQty <= 0)
+                            {
+                                r.ActualQty = r.Qty;
+                            }
+
+                            // Allow row to be returned as long as we have qty; MaterialId is needed for save,
+                            // but MaterialName/other fields can still be shown in UI.
+                            if (r.Qty > 0)
+                            {
+                                rows.Add(r);
+                            }
+                        }
+                    }
+                }
+
+                return rows;
+            }
+            catch
+            {
+                return null;
             }
         }
 
