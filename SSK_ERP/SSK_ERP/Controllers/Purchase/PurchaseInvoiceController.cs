@@ -462,6 +462,7 @@ namespace SSK_ERP.Controllers.Purchase
                     existing.TRANPONUM = master.TRANPONUM;
                     existing.TRAN_CRDPRDT = master.TRAN_CRDPRDT;
                     existing.TRANRMKS = master.TRANRMKS;
+                    existing.TRANROAMT = master.TRANROAMT;
                     existing.DISPSTATUS = master.DISPSTATUS;
                     existing.LMUSRID = userName;
                     existing.PRCSDATE = DateTime.Now;
@@ -507,6 +508,11 @@ namespace SSK_ERP.Controllers.Purchase
                     master.LMUSRID = userName;
                     master.PRCSDATE = DateTime.Now;
                     master.TRANPCOUNT = 0;
+
+                    if (!master.TRANROAMT.HasValue)
+                    {
+                        master.TRANROAMT = 0m;
+                    }
 
                     db.TransactionMasters.Add(master);
                     db.SaveChanges();
@@ -1043,6 +1049,7 @@ namespace SSK_ERP.Controllers.Purchase
             model.CGSTAmount = master.TRANCGSTAMT;
             model.SGSTAmount = master.TRANSGSTAMT;
             model.IGSTAmount = master.TRANIGSTAMT;
+            model.RoundingOff = master.TRANROAMT ?? 0m;
             model.NetAmount = master.TRANNAMT;
             model.AmountInWords = master.TRANAMTWRDS;
             model.Remarks = master.TRANRMKS;
@@ -1103,6 +1110,7 @@ namespace SSK_ERP.Controllers.Purchase
             public decimal CGSTAmount { get; set; }
             public decimal SGSTAmount { get; set; }
             public decimal IGSTAmount { get; set; }
+            public decimal RoundingOff { get; set; }
             public decimal NetAmount { get; set; }
             public string AmountInWords { get; set; }
             public string Remarks { get; set; }

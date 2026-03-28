@@ -561,6 +561,13 @@
                             </tr>
                             <tr>
                                 <td></td>
+                                <td class="so-tax-summary-label">Rounding Off</td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.TRANROAMT, new { @class = "form-control text-end", id = "lblRoundingOff" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
                                 <td class="so-tax-summary-label">Net Amount</td>
                                 <td>
                                     @Html.TextBoxFor(m => m.TRANNAMT, new { @class = "form-control text-end", id = "lblTotalNet", @readonly = "readonly" })
