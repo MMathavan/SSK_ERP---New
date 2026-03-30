@@ -463,6 +463,11 @@ namespace SSK_ERP.Controllers.Purchase
                     existing.TRAN_CRDPRDT = master.TRAN_CRDPRDT;
                     existing.TRANRMKS = master.TRANRMKS;
                     existing.TRANROAMT = master.TRANROAMT;
+
+                    if (!existing.TRANROAMT.HasValue)
+                    {
+                        existing.TRANROAMT = 0m;
+                    }
                     existing.DISPSTATUS = master.DISPSTATUS;
                     existing.LMUSRID = userName;
                     existing.PRCSDATE = DateTime.Now;
@@ -689,9 +694,11 @@ namespace SSK_ERP.Controllers.Purchase
             master.TRANCGSTAMT = totalCgst;
             master.TRANSGSTAMT = totalSgst;
             master.TRANIGSTAMT = totalIgst;
-            master.TRANNAMT = totalNet;
+
+            var rounding = master.TRANROAMT ?? 0m;
+            master.TRANNAMT = totalNet + rounding;
             master.TRANPCOUNT = 0;
-            master.TRANAMTWRDS = ConvertAmountToWords(totalNet);
+            master.TRANAMTWRDS = ConvertAmountToWords(master.TRANNAMT);
 
             db.SaveChanges(); // Update master totals
         }

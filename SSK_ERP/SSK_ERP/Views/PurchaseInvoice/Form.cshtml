@@ -563,7 +563,7 @@
                                 <td></td>
                                 <td class="so-tax-summary-label">Rounding Off</td>
                                 <td>
-                                    @Html.TextBoxFor(m => m.TRANROAMT, new { @class = "form-control text-end", id = "lblRoundingOff" })
+                                    @Html.TextBoxFor(m => m.TRANROAMT, new { @class = "form-control text-end", id = "lblRoundingOff", type = "number", step = "0.001" })
                                 </td>
                             </tr>
                             <tr>
@@ -601,6 +601,7 @@
         var materialGroupList = [];
         var packingList = @Html.Raw(ViewBag.PackingListJson ?? "[]");
         var existingDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
+        var baseNetAmount = 0;
         
         $(document).ready(function () {
              // 1. Initial Data Loading
@@ -672,6 +673,15 @@
                  // Re-calcs happen inside addRow typically via values, but let's just trigger simple totals
                  calculateLocalTotals();
              }
+
+             // Initialize base net amount from current values (supports both add/edit)
+             syncBaseNetFromCurrent();
+             applyRoundingToNet();
+
+             // When rounding changes, update net immediately
+             $('#lblRoundingOff').on('input blur change', function () {
+                 applyRoundingToNet();
+             });
              
              // 5. Save Button
              $('#btnSave').click(function() {
@@ -705,6 +715,9 @@
                       alert('Please complete at least one item row (Material + Qty).');
                       return;
                  }
+
+                 // Ensure net includes rounding before posting
+                 applyRoundingToNet();
                  
                  $('#detailRowsJson').val(JSON.stringify(rows));
                  $('#purchaseInvoiceForm').submit();
@@ -979,10 +992,33 @@
                          $('#lblTotalCGST').val(res.cgst.toFixed(2));
                          $('#lblTotalSGST').val(res.sgst.toFixed(2));
                          $('#lblTotalIGST').val(res.igst.toFixed(2));
-                         $('#lblTotalNet').val(res.net.toFixed(2));
+                         baseNetAmount = parseFloat(res.net) || 0;
+                         applyRoundingToNet();
                       }
                  }
              });
+        }
+
+        function syncBaseNetFromCurrent() {
+            var net = parseFloat($('#lblTotalNet').val()) || 0;
+            var rnd = parseFloat($('#lblRoundingOff').val()) || 0;
+            baseNetAmount = net - rnd;
+        }
+
+        function applyRoundingToNet() {
+            // If baseNetAmount was never set, derive from current values
+            if (typeof baseNetAmount !== 'number' || isNaN(baseNetAmount)) {
+                baseNetAmount = 0;
+            }
+
+            // If net textbox already has a value but baseNetAmount is 0, initialize base from current
+            if (baseNetAmount === 0) {
+                syncBaseNetFromCurrent();
+            }
+
+            var rnd = parseFloat($('#lblRoundingOff').val()) || 0;
+            var net = (baseNetAmount + rnd);
+            $('#lblTotalNet').val(net.toFixed(2));
         }
     </script>
 }
