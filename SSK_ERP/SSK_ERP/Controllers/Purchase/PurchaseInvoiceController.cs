@@ -311,12 +311,30 @@ namespace SSK_ERP.Controllers.Purchase
             }
             
             ViewBag.PoNumberForDisplay = poNumberForDisplay;
+
+            PopulatePurchaseInvoiceFormViewBags(model, detailRows, id);
+
+            return View(model);
+        }
+
+        private void PopulatePurchaseInvoiceFormViewBags(TransactionMaster model, System.Collections.Generic.List<PurchaseInvoiceDetailRow> detailRows, int? id)
+        {
             ViewBag.IsEditMode = id.HasValue && id.Value > 0;
 
-
-            ViewBag.DetailRowsJson = detailRows.Any()
+            ViewBag.DetailRowsJson = detailRows != null && detailRows.Any()
                 ? Newtonsoft.Json.JsonConvert.SerializeObject(detailRows)
                 : "[]";
+
+            ViewBag.StatusList = new SelectList(
+                new[]
+                {
+                    new { Value = "0", Text = "Enabled" },
+                    new { Value = "1", Text = "Disabled" }
+                },
+                "Value",
+                "Text",
+                (model != null ? model.DISPSTATUS.ToString() : "0")
+            );
 
             var supplierList = db.SupplierMasters
                 .Where(c => c.DISPSTATUS == 0)
@@ -328,7 +346,7 @@ namespace SSK_ERP.Controllers.Purchase
                 })
                 .ToList();
 
-            ViewBag.SupplierList = new SelectList(supplierList, "CATEID", "CATENAME", model.TRANREFID);
+            ViewBag.SupplierList = new SelectList(supplierList, "CATEID", "CATENAME", model != null ? model.TRANREFID : 0);
 
             var packingList = db.PackingMasters
                 .Where(p => p.DISPSTATUS == 0)
@@ -339,7 +357,6 @@ namespace SSK_ERP.Controllers.Purchase
                     p.PACKMDESC
                 })
                 .ToList();
-            // Pass full list for JS to use
             ViewBag.PackingListJson = Newtonsoft.Json.JsonConvert.SerializeObject(packingList);
 
             ViewBag.StateTypeList = new SelectList(
@@ -350,10 +367,11 @@ namespace SSK_ERP.Controllers.Purchase
                 },
                 "Value",
                 "Text",
-                model.TRANSTATETYPE.ToString()
+                (model != null ? model.TRANSTATETYPE.ToString() : "0")
             );
 
-            return View(model);
+            // Preserve PO display value behavior used in GET
+            ViewBag.PoNumberForDisplay = ViewBag.PoNumberForDisplay;
         }
 
         [HttpPost]
@@ -361,6 +379,7 @@ namespace SSK_ERP.Controllers.Purchase
         [Authorize(Roles = "PurchaseInvoiceCreate,PurchaseInvoiceEdit")]
         public ActionResult savedata(TransactionMaster master, string detailRowsJson)
         {
+            var detailsForForm = new System.Collections.Generic.List<PurchaseInvoiceDetailRow>();
             try
             {
                 bool isEdit = master.TRANMID > 0 &&
@@ -391,10 +410,13 @@ namespace SSK_ERP.Controllers.Purchase
                     .Where(d => d != null && d.MaterialId > 0 && d.Qty > 0)
                     .ToList();
 
+                detailsForForm = details;
+
                 if (!details.Any())
                 {
-                    TempData["ErrorMessage"] = "Please add at least one detail row.";
-                    return RedirectToAction("Form", new { id = isEdit ? (int?)master.TRANMID : null });
+                    ViewBag.ErrorMessage = "Please add at least one detail row.";
+                    PopulatePurchaseInvoiceFormViewBags(master, detailsForForm, isEdit ? (int?)master.TRANMID : null);
+                    return View("Form", master);
                 }
 
                 var compyObj = Session["CompyId"] ?? Session["compyid"];
@@ -405,8 +427,9 @@ namespace SSK_ERP.Controllers.Purchase
 
                 if (master.TRANREFID <= 0)
                 {
-                    TempData["ErrorMessage"] = "Please select a supplier.";
-                    return RedirectToAction("Form", new { id = isEdit ? (int?)master.TRANMID : null });
+                    ViewBag.ErrorMessage = "Please select a supplier.";
+                    PopulatePurchaseInvoiceFormViewBags(master, detailsForForm, isEdit ? (int?)master.TRANMID : null);
+                    return View("Form", master);
                 }
 
                 short tranStateType = 0;
@@ -530,8 +553,9 @@ namespace SSK_ERP.Controllers.Purchase
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = ex.Message;
-                return RedirectToAction("Index");
+                ViewBag.ErrorMessage = ex.Message;
+                PopulatePurchaseInvoiceFormViewBags(master, detailsForForm, master.TRANMID > 0 ? (int?)master.TRANMID : null);
+                return View("Form", master);
             }
         }
 
