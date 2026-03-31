@@ -777,8 +777,16 @@ SELECT
                 {
                     using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
                     {
-                        var tokenFromConfig = ConfigurationManager.AppSettings["GSTZEN_TOKEN"]; 
-                        var userIdFromConfig = ConfigurationManager.AppSettings["GSTZEN_USERID"]; 
+                        var tokenFromConfig = (ConfigurationManager.AppSettings["GSTZEN_TOKEN"] ?? string.Empty).Trim();
+                        var userIdFromConfig = (ConfigurationManager.AppSettings["GSTZEN_USERID"] ?? string.Empty).Trim();
+
+                        string tokenMasked = string.Empty;
+                        if (!string.IsNullOrWhiteSpace(tokenFromConfig))
+                        {
+                            tokenMasked = tokenFromConfig.Length <= 8
+                                ? new string('*', tokenFromConfig.Length)
+                                : tokenFromConfig.Substring(0, 4) + new string('*', tokenFromConfig.Length - 8) + tokenFromConfig.Substring(tokenFromConfig.Length - 4);
+                        }
 
                         if (string.IsNullOrWhiteSpace(tokenFromConfig))
                         {
@@ -799,13 +807,34 @@ SELECT
                             return Content(missingMsg);
                         }
 
-                        request.Headers.TryAddWithoutValidation("Token", tokenFromConfig);
-                        if (!string.IsNullOrWhiteSpace(userIdFromConfig))
+                        if (string.IsNullOrWhiteSpace(userIdFromConfig))
                         {
-                            request.Headers.TryAddWithoutValidation("UserId", userIdFromConfig);
-                            request.Headers.TryAddWithoutValidation("UserID", userIdFromConfig);
-                            request.Headers.TryAddWithoutValidation("userid", userIdFromConfig);
+                            var missingMsg = "GSTZen user id is not configured. Please set appSettings key GSTZEN_USERID in Web.config.";
+                            if (showJson)
+                            {
+                                var payload = new
+                                {
+                                    message = missingMsg,
+                                    requestJson = stringjson,
+                                    responseJson = "",
+                                    portalHttpStatus = 0,
+                                    portalHttpReason = ""
+                                };
+                                return Content(JsonConvert.SerializeObject(payload), "application/json");
+                            }
+
+                            return Content(missingMsg);
                         }
+
+                        // GSTZen sometimes expects different header keys depending on gateway/proxy.
+                        request.Headers.TryAddWithoutValidation("Token", tokenFromConfig);
+                        request.Headers.TryAddWithoutValidation("token", tokenFromConfig);
+                        request.Headers.TryAddWithoutValidation("TOKEN", tokenFromConfig);
+
+                        request.Headers.TryAddWithoutValidation("UserId", userIdFromConfig);
+                        request.Headers.TryAddWithoutValidation("UserID", userIdFromConfig);
+                        request.Headers.TryAddWithoutValidation("userid", userIdFromConfig);
+                        request.Headers.TryAddWithoutValidation("user_id", userIdFromConfig);
 
                         request.Content = new StringContent(stringjson);
                         request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
@@ -861,6 +890,11 @@ SELECT
                                                     var tokenConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_TOKEN"]);
                                                     var userIdConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_USERID"]);
                                                     msg = msg + " (Config check: GSTZEN_TOKEN=" + (tokenConfigured ? "SET" : "MISSING") + ", GSTZEN_USERID=" + (userIdConfigured ? "SET" : "MISSING") + ")";
+
+                                                    if (showJson && msg != null && (msg.IndexOf("invalid", StringComparison.OrdinalIgnoreCase) >= 0 || msg.IndexOf("incorrect user", StringComparison.OrdinalIgnoreCase) >= 0))
+                                                    {
+                                                        msg = msg + " (SentCredentials: UserId='" + userIdFromConfig + "', Token='" + tokenMasked + "', HttpStatus=" + portalHttpStatus + ")";
+                                                    }
                                                 }
                                             }
                                         }
