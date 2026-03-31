@@ -463,6 +463,7 @@
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
                             var hasSalesInvoice = row['HasSalesInvoice'] === true || row['HasSalesInvoice'] === 'true';
+                            var isDirect = row['IsDirect'] === true || row['IsDirect'] === 'true';
                             var status = row['StatusDescription']; // might be text or 0/1
                             // Check approved logic consistently
                             // If status is "0", it's just Enabled. If "1", Disabled.
@@ -478,7 +479,11 @@
                                 html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
                                 
                                 // Sales Invoice Button (Yellow)
-                                html += '<button type="button" class="btn btn-action btn-si" onclick="openSalesInvoice(' + id + ');"><i class="fa fa-file-invoice"></i> Sales Invoice</button>';
+                                if (isDirect) {
+                                    html += '<button type="button" class="btn btn-action btn-si" disabled="disabled" style="opacity:0.6;cursor:not-allowed;"><i class="fa fa-file-invoice"></i> Sales Invoice</button>';
+                                } else {
+                                    html += '<button type="button" class="btn btn-action btn-si" onclick="openSalesInvoice(' + id + ');"><i class="fa fa-file-invoice"></i> Sales Invoice</button>';
+                                }
     
                                 html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
     

@@ -16,6 +16,7 @@ namespace SSK_ERP.Controllers.Purchase
         private class PurchaseInvoiceListRow
         {
             public int TRANMID { get; set; }
+            public int? TRANLMID { get; set; }
             public DateTime? EnteredDate { get; set; }
             public DateTime? PoDate { get; set; }
             public int TRANNO { get; set; }
@@ -51,6 +52,7 @@ namespace SSK_ERP.Controllers.Purchase
 
                 // Base query for purchase invoices (REGSTRID = 18).
                 var sql = @"SELECT tm.TRANMID,
+                                   tm.TRANLMID,
                                    tm.PRCSDATE AS EnteredDate,
                                    tm.TRANDATE AS PoDate,
                                    tm.TRANNO,
@@ -95,6 +97,7 @@ namespace SSK_ERP.Controllers.Purchase
                 var allInvoices = invoices.Select(i => new
                 {
                     TRANMID = i.TRANMID,
+                    TRANLMID = i.TRANLMID,
                     EnteredDate = i.EnteredDate,
                     PoDate = i.PoDate,
                     TRANNO = i.TRANNO,
@@ -106,7 +109,8 @@ namespace SSK_ERP.Controllers.Purchase
                     StatusDescription = i.DISPSTATUS.HasValue
                         ? i.DISPSTATUS.Value.ToString()
                         : "N/A",
-                    HasSalesInvoice = salesInvoiceLinkSet.Contains(i.TRANMID)
+                    HasSalesInvoice = salesInvoiceLinkSet.Contains(i.TRANMID),
+                    IsDirect = !(i.TRANLMID.HasValue && i.TRANLMID.Value > 0)
                 }).ToList();
 
                 return Json(new { aaData = allInvoices }, JsonRequestBehavior.AllowGet);
