@@ -336,7 +336,12 @@
         });
 
         $(document).on("click", "a.EInvoice", function () {
-            var idx = $(this).attr('id');
+            var idxRaw = $(this).attr('id');
+            var idx = parseInt(idxRaw, 10);
+            if (!idxRaw || isNaN(idx) || idx <= 0) {
+                alert('Invalid invoice id. Please reload the page and try again.');
+                return;
+            }
             base = window.location.origin;
             var showConfirm = function () {
                 if (window.Swal && Swal.fire) {

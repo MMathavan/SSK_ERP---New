@@ -6,10 +6,12 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 using static SSK_ERP.Models.EInvoice;
@@ -95,7 +97,60 @@ namespace SSK_ERP.Controllers
                 return defaultValue;
             }
 
-            return Convert.ToDateTime(value).Date.ToString(format);
+            var dt = Convert.ToDateTime(value).Date;
+            if (string.Equals(format, "dd/MM/yyyy", StringComparison.OrdinalIgnoreCase))
+            {
+                return dt.ToString("dd'/'MM'/'yyyy", CultureInfo.InvariantCulture);
+            }
+
+            return dt.ToString(format, CultureInfo.InvariantCulture);
+        }
+
+        private static string NormalizeGstStateCode(string stateCodeOrAbbr)
+        {
+            if (string.IsNullOrWhiteSpace(stateCodeOrAbbr))
+            {
+                return string.Empty;
+            }
+
+            var raw = stateCodeOrAbbr.Trim();
+
+            if (raw.All(char.IsDigit))
+            {
+                return raw.PadLeft(2, '0');
+            }
+
+            var abbr = raw.ToUpperInvariant();
+            switch (abbr)
+            {
+                case "TN": return "33";
+                case "PY": return "34";
+                case "KA": return "29";
+                case "KL": return "32";
+                case "AP": return "37";
+                case "TS": return "36";
+                default: return string.Empty;
+            }
+        }
+
+        private static string NormalizePhoneDigits(string phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                return string.Empty;
+            }
+
+            return new string(phone.Where(char.IsDigit).ToArray());
+        }
+
+        private static string NormalizeNameKey(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return string.Empty;
+            }
+
+            return Regex.Replace(name.ToUpperInvariant(), "[^A-Z0-9]", string.Empty);
         }
 
         private class SalesEInvoiceListRow
@@ -262,7 +317,65 @@ namespace SSK_ERP.Controllers
 
                 SqlCommand sqlCmd = new SqlCommand();
                 sqlCmd.CommandType = CommandType.Text;
-                sqlCmd.CommandText = "Select * from Z_SALES_EINVOICE_DETAILS Where TRANMID = " + tranmid;
+                sqlCmd.CommandText = @"
+SELECT
+    TM.TRANMID,
+    TM.REGSTRID,
+    TM.TRANDATE,
+    TM.TRANNO,
+    RIGHT(TM.TRANDNO, 15) AS TRANDNO,
+    TM.TRANREFID,
+
+    CM.COMPGSTNO,
+    CM.COMPDNAME AS COMPNAME,
+    CM.COMPADDR1,
+    CM.COMPADDR2,
+    CM.COMPLOCTDESC,
+    CM.COMPPINCODE,
+    CM.COMPSTATECODE,
+    CM.COMPPHN1,
+    CM.COMPMAIL,
+
+    CUS.CATE_GST_NO,
+    TM.TRANREFNAME,
+    CUS.CATEADDR1,
+    CUS.CATEADDR2,
+    CUS.CATEADDR3,
+    CUS.CATEADDR4,
+    CUS.CATEADDR5,
+    LOC.LOCTDESC,
+    ST.STATEDESC,
+    ST.STATECODE,
+    CUS.CATEPHN3,
+
+    (TM.TRANGAMT - ISNULL(Z1.DEDVALUE, 0)) AS TRANGAMT,
+    TM.TRANNAMT,
+    ISNULL(Z2.CGSTAMT, 0) AS TRANCGSTAMT,
+    ISNULL(Z2.SGSTAMT, 0) AS TRANSGSTAMT,
+    ISNULL(Z2.IGSTAMT, 0) AS TRANIGSTAMT,
+    ISNULL(Z2.ROAMT, 0) AS TRANROAMT,
+    ISNULL(Z1.DEDVALUE, 0) AS DISCAMT,
+
+    0 AS CUSTGID
+FROM TRANSACTIONMASTER TM
+INNER JOIN COMPANYACCOUNTINGDETAIL CAD ON TM.COMPYID = CAD.COMPYID
+INNER JOIN COMPANYMASTER CM ON CAD.COMPID = CM.COMPID
+LEFT JOIN CUSTOMERMASTER CUS ON TM.TRANREFID = CUS.CATEID
+LEFT JOIN LOCATIONMASTER LOC ON CUS.LOCTID = LOC.LOCTID
+LEFT JOIN STATEMASTER ST ON CUS.STATEID = ST.STATEID
+LEFT JOIN (
+    SELECT
+        TRANMID,
+        SUM(CASE CFID WHEN 15 THEN DEDVALUE ELSE 0 END) AS CGSTAMT,
+        SUM(CASE CFID WHEN 16 THEN DEDVALUE ELSE 0 END) AS SGSTAMT,
+        SUM(CASE CFID WHEN 17 THEN DEDVALUE ELSE 0 END) AS IGSTAMT,
+        SUM(CASE CFID WHEN 1 THEN DEDVALUE ELSE 0 END) AS ROAMT
+    FROM TRANSACTIONMASTERFACTOR
+    GROUP BY TRANMID
+) Z2 ON Z2.TRANMID = TM.TRANMID
+LEFT JOIN Z_SALES_EINVOICE_DETAILS_01 Z1 ON Z1.TRANMID = TM.TRANMID
+WHERE TM.TRANMID = @tranmid";
+                sqlCmd.Parameters.AddWithValue("@tranmid", tranmid);
                 sqlCmd.Connection = myConnection;
                 myConnection.Open();
                 reader = sqlCmd.ExecuteReader();
@@ -301,6 +414,192 @@ namespace SSK_ERP.Controllers
                             break;
                     }
 
+                    int? tranRefId = null;
+                    try
+                    {
+                        tranRefId = db.TransactionMasters
+                            .Where(t => t.TRANMID == tranmid)
+                            .Select(t => (int?)t.TRANREFID)
+                            .FirstOrDefault();
+                    }
+                    catch
+                    {
+                        tranRefId = null;
+                    }
+
+                    var tranRefIdFromSql = GetInt32(reader, "TRANREFID");
+                    var resolvedTranRefId = tranRefIdFromSql > 0 ? tranRefIdFromSql : (tranRefId ?? 0);
+
+                    if (resolvedTranRefId <= 0)
+                    {
+                        var tranRefNameFromSql = GetString(reader, "TRANREFNAME");
+                        if (!string.IsNullOrWhiteSpace(tranRefNameFromSql))
+                        {
+                            try
+                            {
+                                var targetKey = NormalizeNameKey(tranRefNameFromSql);
+                                var words = Regex.Matches(tranRefNameFromSql, "[A-Za-z0-9]+");
+                                var tokens = words
+                                    .Cast<Match>()
+                                    .Select(m => m.Value)
+                                    .Where(w => !string.IsNullOrWhiteSpace(w) && w.Length > 2)
+                                    .Take(4)
+                                    .ToList();
+
+                                IQueryable<CustomerMaster> q = db.CustomerMasters;
+                                foreach (var token in tokens)
+                                {
+                                    var t = token;
+                                    q = q.Where(c => c.CATENAME.Contains(t) || c.CATEDNAME.Contains(t));
+                                }
+
+                                var candidates = q
+                                    .Select(c => new { c.CATEID, c.CATENAME, c.CATEDNAME })
+                                    .Take(25)
+                                    .ToList();
+
+                                var matchedIds = candidates
+                                    .Where(c => NormalizeNameKey(c.CATENAME) == targetKey || NormalizeNameKey(c.CATEDNAME) == targetKey)
+                                    .Select(c => c.CATEID)
+                                    .Distinct()
+                                    .Take(2)
+                                    .ToList();
+
+                                if (matchedIds.Count == 1)
+                                {
+                                    resolvedTranRefId = matchedIds[0];
+                                }
+                            }
+                            catch
+                            {
+                                // ignore fallback lookup failures
+                            }
+                        }
+                    }
+
+                    if (resolvedTranRefId <= 0)
+                    {
+                        var msgMissingBuyer = "Customer reference not found for this invoice. TRANMID=" + tranmid + ", TRANREFNAME=\"" + GetString(reader, "TRANREFNAME") + "\".";
+                        if (showJson)
+                        {
+                            object candidatesPayload = null;
+                            try
+                            {
+                                var tranRefName = GetString(reader, "TRANREFNAME");
+                                var words = Regex.Matches(tranRefName ?? string.Empty, "[A-Za-z0-9]+");
+                                var tokens = words
+                                    .Cast<Match>()
+                                    .Select(m => m.Value)
+                                    .Where(w => !string.IsNullOrWhiteSpace(w) && w.Length > 2)
+                                    .Take(4)
+                                    .ToList();
+
+                                IQueryable<CustomerMaster> q = db.CustomerMasters;
+                                foreach (var token in tokens)
+                                {
+                                    var t = token;
+                                    q = q.Where(c => c.CATENAME.Contains(t) || c.CATEDNAME.Contains(t));
+                                }
+
+                                var candidates = q
+                                    .Select(c => new { c.CATEID, c.CATENAME, c.CATEDNAME, c.CATE_GST_NO })
+                                    .Take(10)
+                                    .ToList();
+
+                                candidatesPayload = candidates;
+                                msgMissingBuyer = msgMissingBuyer + " CandidateCustomers=" + JsonConvert.SerializeObject(candidates);
+                            }
+                            catch
+                            {
+                                candidatesPayload = null;
+                            }
+
+                            var payloadEarly = new
+                            {
+                                message = msgMissingBuyer,
+                                requestJson = "",
+                                responseJson = "",
+                                candidateCustomers = candidatesPayload,
+                                portalHttpStatus = 0,
+                                portalHttpReason = ""
+                            };
+                            return Content(JsonConvert.SerializeObject(payloadEarly), "application/json");
+                        }
+
+                        return Content(msgMissingBuyer);
+                    }
+
+                    CustomerMaster buyerMaster = null;
+                    if (resolvedTranRefId > 0)
+                    {
+                        try
+                        {
+                            buyerMaster = db.CustomerMasters.FirstOrDefault(c => c.CATEID == resolvedTranRefId);
+                        }
+                        catch
+                        {
+                            buyerMaster = null;
+                        }
+                    }
+
+                    if (buyerMaster == null)
+                    {
+                        var msgMissingBuyer = "Customer master not found for this invoice. TRANMID=" + tranmid + ", TRANREFID=" + resolvedTranRefId + ".";
+                        if (showJson)
+                        {
+                            var payloadEarly = new
+                            {
+                                message = msgMissingBuyer,
+                                requestJson = "",
+                                responseJson = "",
+                                portalHttpStatus = 0,
+                                portalHttpReason = ""
+                            };
+                            return Content(JsonConvert.SerializeObject(payloadEarly), "application/json");
+                        }
+
+                        return Content(msgMissingBuyer);
+                    }
+
+                    string buyerGstin = GetString(reader, "CATE_GST_NO");
+                    if (string.IsNullOrWhiteSpace(buyerGstin) && buyerMaster != null)
+                    {
+                        buyerGstin = buyerMaster.CATE_GST_NO;
+                    }
+
+                    int buyerPin = 0;
+                    var buyerPinRaw = NormalizePhoneDigits(GetString(reader, "CATEADDR5"));
+                    if (!string.IsNullOrWhiteSpace(buyerPinRaw))
+                    {
+                        int.TryParse(buyerPinRaw, out buyerPin);
+                    }
+
+                    if ((buyerPin < 100000 || buyerPin > 999999) && buyerMaster != null)
+                    {
+                        if (int.TryParse(NormalizePhoneDigits(buyerMaster.CATEADDR5), out var pinParsed))
+                        {
+                            buyerPin = pinParsed;
+                        }
+                    }
+
+                    string buyerPhone = NormalizePhoneDigits(GetString(reader, "CATEPHN3"));
+                    if (string.IsNullOrWhiteSpace(buyerPhone) && buyerMaster != null)
+                    {
+                        buyerPhone = NormalizePhoneDigits(buyerMaster.CATEPHN3);
+                        if (string.IsNullOrWhiteSpace(buyerPhone)) buyerPhone = NormalizePhoneDigits(buyerMaster.CATEPHN4);
+                        if (string.IsNullOrWhiteSpace(buyerPhone)) buyerPhone = NormalizePhoneDigits(buyerMaster.CATEPHN1);
+                        if (string.IsNullOrWhiteSpace(buyerPhone)) buyerPhone = NormalizePhoneDigits(buyerMaster.CATEPHN2);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(buyerGstin))
+                    {
+                        buyerGstin = "URP";
+                        if (!string.Equals(suptyp, "SEZWP", StringComparison.OrdinalIgnoreCase))
+                        {
+                            suptyp = "B2C";
+                        }
+                    }
+
                     var response = new Response()
                     {
                         Version = "1.1",
@@ -336,15 +635,15 @@ namespace SSK_ERP.Controllers
 
                         BuyerDtls = new BuyerDtls()
                         {
-                            Gstin = GetString(reader, "CATEBGSTNO"),
+                            Gstin = buyerGstin,
                             LglNm = GetString(reader, "TRANREFNAME"),
-                            Pos = GetString(reader, "STATECODE"),
-                            Addr1 = GetString(reader, "TRAN_CUST_ADDR1"),
-                            Addr2 = GetString(reader, "TRAN_CUST_ADDR2"),
-                            Loc = GetString(reader, "TRAN_CUST_LOCTDESC"),
-                            Pin = GetInt32(reader, "TRAN_CUST_PINCODE"),
-                            Stcd = GetString(reader, "STATECODE"),
-                            Ph = GetString(reader, "CATECPHN1"),
+                            Pos = NormalizeGstStateCode(GetString(reader, "STATECODE")),
+                            Addr1 = GetString(reader, "CATEADDR1"),
+                            Addr2 = GetString(reader, "CATEADDR2"),
+                            Loc = GetString(reader, "LOCTDESC"),
+                            Pin = buyerPin,
+                            Stcd = NormalizeGstStateCode(GetString(reader, "STATECODE")),
+                            Ph = buyerPhone,
                             Em = null// reader["CATEMAIL"].ToString()
                         },
 
@@ -367,7 +666,106 @@ namespace SSK_ERP.Controllers
 
                     };
 
-                    stringjson = JsonConvert.SerializeObject(response);
+                    stringjson = JsonConvert.SerializeObject(
+                        response,
+                        new JsonSerializerSettings
+                        {
+                            NullValueHandling = NullValueHandling.Ignore
+                        });
+                }
+
+                if (string.IsNullOrWhiteSpace(stringjson))
+                {
+                    var msgNoJson = "EInvoice JSON not generated. Source data not found for this invoice. TRANMID=" + id + ".";
+                    if (showJson)
+                    {
+                        try
+                        {
+                            using (var diagConn = new SqlConnection(_connStr))
+                            {
+                                diagConn.Open();
+
+                                var diag = new Dictionary<string, object>();
+
+                                using (var cmd = new SqlCommand(@"
+SELECT
+    CASE WHEN EXISTS(SELECT 1 FROM TRANSACTIONMASTER WHERE TRANMID=@id) THEN 1 ELSE 0 END AS HasTM,
+    CASE WHEN EXISTS(
+        SELECT 1
+        FROM TRANSACTIONMASTER TM
+        INNER JOIN COMPANYACCOUNTINGDETAIL CAD ON TM.COMPYID = CAD.COMPYID
+        WHERE TM.TRANMID=@id
+    ) THEN 1 ELSE 0 END AS HasCAD,
+    CASE WHEN EXISTS(
+        SELECT 1
+        FROM TRANSACTIONMASTER TM
+        INNER JOIN COMPANYACCOUNTINGDETAIL CAD ON TM.COMPYID = CAD.COMPYID
+        INNER JOIN COMPANYMASTER CM ON CAD.COMPID = CM.COMPID
+        WHERE TM.TRANMID=@id
+    ) THEN 1 ELSE 0 END AS HasCompany,
+    CASE WHEN EXISTS(
+        SELECT 1
+        FROM TRANSACTIONMASTER TM
+        INNER JOIN CUSTOMERMASTER CUS ON TM.TRANREFID = CUS.CATEID
+        WHERE TM.TRANMID=@id
+    ) THEN 1 ELSE 0 END AS HasCustomer,
+    CASE WHEN EXISTS(
+        SELECT 1
+        FROM TRANSACTIONMASTER TM
+        INNER JOIN CUSTOMERMASTER CUS ON TM.TRANREFID = CUS.CATEID
+        INNER JOIN LOCATIONMASTER LOC ON CUS.LOCTID = LOC.LOCTID
+        WHERE TM.TRANMID=@id
+    ) THEN 1 ELSE 0 END AS HasLocation,
+    CASE WHEN EXISTS(
+        SELECT 1
+        FROM TRANSACTIONMASTER TM
+        INNER JOIN CUSTOMERMASTER CUS ON TM.TRANREFID = CUS.CATEID
+        INNER JOIN STATEMASTER ST ON CUS.STATEID = ST.STATEID
+        WHERE TM.TRANMID=@id
+    ) THEN 1 ELSE 0 END AS HasState,
+    CASE WHEN EXISTS(
+        SELECT 1
+        FROM TRANSACTIONMASTERFACTOR
+        WHERE TRANMID=@id
+    ) THEN 1 ELSE 0 END AS HasFactors
+", diagConn))
+                                {
+                                    cmd.Parameters.AddWithValue("@id", id);
+                                    using (var r = cmd.ExecuteReader())
+                                    {
+                                        if (r.Read())
+                                        {
+                                            diag["HasTM"] = r["HasTM"];
+                                            diag["HasCAD"] = r["HasCAD"];
+                                            diag["HasCompany"] = r["HasCompany"];
+                                            diag["HasCustomer"] = r["HasCustomer"];
+                                            diag["HasLocation"] = r["HasLocation"];
+                                            diag["HasState"] = r["HasState"];
+                                            diag["HasFactors"] = r["HasFactors"];
+                                        }
+                                    }
+                                }
+
+                                msgNoJson = msgNoJson + " Diagnostics=" + JsonConvert.SerializeObject(diag);
+                            }
+                        }
+                        catch
+                        {
+                            // ignore diagnostics failure
+                        }
+
+                        var payload = new
+                        {
+                            message = msgNoJson,
+                            requestJson = "",
+                            responseJson = "",
+                            portalHttpStatus = 0,
+                            portalHttpReason = ""
+                        };
+                        return Content(JsonConvert.SerializeObject(payload), "application/json");
+                    }
+
+                    return Content(msgNoJson);
                 }
 
                 string msg = "";
@@ -379,7 +777,35 @@ namespace SSK_ERP.Controllers
                 {
                     using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
                     {
-                        request.Headers.TryAddWithoutValidation("Token", "3a3b2ee0-677a-4cb7-b8d4-5e26adf35dce");
+                        var tokenFromConfig = ConfigurationManager.AppSettings["GSTZEN_TOKEN"]; 
+                        var userIdFromConfig = ConfigurationManager.AppSettings["GSTZEN_USERID"]; 
+
+                        if (string.IsNullOrWhiteSpace(tokenFromConfig))
+                        {
+                            var missingMsg = "GSTZen token is not configured. Please set appSettings key GSTZEN_TOKEN in Web.config.";
+                            if (showJson)
+                            {
+                                var payload = new
+                                {
+                                    message = missingMsg,
+                                    requestJson = stringjson,
+                                    responseJson = "",
+                                    portalHttpStatus = 0,
+                                    portalHttpReason = ""
+                                };
+                                return Content(JsonConvert.SerializeObject(payload), "application/json");
+                            }
+
+                            return Content(missingMsg);
+                        }
+
+                        request.Headers.TryAddWithoutValidation("Token", tokenFromConfig);
+                        if (!string.IsNullOrWhiteSpace(userIdFromConfig))
+                        {
+                            request.Headers.TryAddWithoutValidation("UserId", userIdFromConfig);
+                            request.Headers.TryAddWithoutValidation("UserID", userIdFromConfig);
+                            request.Headers.TryAddWithoutValidation("userid", userIdFromConfig);
+                        }
 
                         request.Content = new StringContent(stringjson);
                         request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
@@ -418,6 +844,33 @@ namespace SSK_ERP.Controllers
                                 msg = data["message"] != null ? data["message"].Value<string>() : "";
                                 status = data["status"] != null ? data["status"].Value<int>() : 0;
 
+                                if (status == 0 && data["Status"] != null)
+                                {
+                                    try
+                                    {
+                                        var statusAlt = data["Status"].Value<int>();
+                                        if (statusAlt == 0 && data["ErrorDetails"] != null && data["ErrorDetails"].Type == JTokenType.Array)
+                                        {
+                                            var firstErr = data["ErrorDetails"].First;
+                                            if (firstErr != null && firstErr["ErrorMessage"] != null)
+                                            {
+                                                msg = firstErr["ErrorMessage"].Value<string>();
+
+                                                if (msg != null && msg.IndexOf("Incorrect user id", StringComparison.OrdinalIgnoreCase) >= 0)
+                                                {
+                                                    var tokenConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_TOKEN"]);
+                                                    var userIdConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_USERID"]);
+                                                    msg = msg + " (Config check: GSTZEN_TOKEN=" + (tokenConfigured ? "SET" : "MISSING") + ", GSTZEN_USERID=" + (userIdConfigured ? "SET" : "MISSING") + ")";
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // keep existing msg
+                                    }
+                                }
+
                                 if (status == 1)
                                 {
                                     msg = data["message"] != null ? data["message"].Value<string>() : msg;
@@ -441,7 +894,12 @@ namespace SSK_ERP.Controllers
                                     cmd.Parameters.AddWithValue("@PTranMID", tranmid);
                                     cmd.Parameters.AddWithValue("@PIRNNO", zirnno);
                                     cmd.Parameters.AddWithValue("@PACKNO", zackno);
-                                    cmd.Parameters.AddWithValue("@PACKDT", Convert.ToDateTime(zackdt));
+                                    DateTime ackDtParsed;
+                                    if (!DateTime.TryParse(zackdt, out ackDtParsed))
+                                    {
+                                        ackDtParsed = DateTime.Now;
+                                    }
+                                    cmd.Parameters.AddWithValue("@PACKDT", ackDtParsed);
                                     cmd.Parameters.AddWithValue("@PCUSRID", Session["CUSRID"].ToString());
                                     cmd.Parameters.AddWithValue("@PSignedQRCode", imageFileUrl);
                                     cmd.Parameters.AddWithValue("@PSignedQRCodeURL", newimageurl);
@@ -453,7 +911,19 @@ namespace SSK_ERP.Controllers
                                     string path = Server.MapPath("~/QrCode");
 
                                     WebClient webClient = new WebClient();
-                                    webClient.DownloadFile(newimageurl, path + "\\" + localFileName);
+                                    try
+                                    {
+                                        if (!System.IO.Directory.Exists(path))
+                                        {
+                                            System.IO.Directory.CreateDirectory(path);
+                                        }
+
+                                        webClient.DownloadFile(newimageurl, path + "\\" + localFileName);
+                                    }
+                                    catch
+                                    {
+                                        // ignore QR download failures; IRN is already updated
+                                    }
 
                                     SqlConnection XmyConnection = new SqlConnection(_connStr);
                                     SqlCommand Xcmd = new SqlCommand("pr_Transaction_QrCode_Path_Update_Assgn", XmyConnection);
