@@ -94,11 +94,22 @@ namespace SSK_ERP.Controllers
                 int salesInvoiceCount = 0;
                 int pendingSalesInvoiceCount = 0;
 
+                int othersSalesOrderCount = 0;
+                int othersPendingSalesOrderCount = 0;
+                int othersPurchaseInvoiceCount = 0;
+                int othersPendingPurchaseInvoiceCount = 0;
+                int othersSalesInvoiceCount = 0;
+                int othersPendingSalesInvoiceCount = 0;
+
                 var pendingPurchaseOrderDetails = new List<PendingDocRow>();
                 var pendingSalesOrderDetails = new List<PendingDocRow>();
                 var pendingPurchaseInvoiceDetails = new List<PendingDocRow>();
                 var pendingSalesInvoiceDetails = new List<PendingDocRow>();
                 var partialPurchaseInvoiceDetails = new List<PendingDocRow>();
+
+                var othersPendingSalesOrderDetails = new List<PendingDocRow>();
+                var othersPendingPurchaseInvoiceDetails = new List<PendingDocRow>();
+                var othersPendingSalesInvoiceDetails = new List<PendingDocRow>();
 
                 try { customersCount = _db.CustomerMasters.Count(c => c.DISPSTATUS == 0 || c.DISPSTATUS == null); } catch { }
                 try { suppliersCount = _db.SupplierMasters.Count(s => s.DISPSTATUS == 0 || s.DISPSTATUS == null); } catch { }
@@ -118,14 +129,21 @@ namespace SSK_ERP.Controllers
                     // Dashboard filter: exclude Sales Order Others (TRANETYPE=1)
                     salesOrderCount = txQuery.Count(t => t.REGSTRID == 1 && t.TRANETYPE == 0);
                     purchaseOrderCount = txQuery.Count(t => t.REGSTRID == 2);
-                    // Dashboard filter: exclude Direct Purchase Invoice (TRANBTYPE=1)
-                    purchaseInvoiceCount = txQuery.Count(t => t.REGSTRID == 18 && (t.TRANBTYPE == null || t.TRANBTYPE == 0));
+                    // Dashboard filter: exclude Direct Purchase Invoice (direct invoices have no PO link: TRANLMID is null/0)
+                    purchaseInvoiceCount = txQuery.Count(t => t.REGSTRID == 18 && t.TRANLMID != null && t.TRANLMID > 0);
 
                     // Dashboard filter: exclude Sales Invoice created from Sales Order Others
                     // (SI.TRANLMID points to Sales Order (REGSTRID=1) and that Sales Order has TRANETYPE=1)
                     salesInvoiceCount = txQuery
                         .Where(t => t.REGSTRID == 20)
                         .Count(si => !_db.TransactionMasters.Any(so => so.REGSTRID == 1 && so.TRANETYPE == 1 && so.TRANMID == si.TRANLMID));
+
+                    othersSalesOrderCount = txQuery.Count(t => t.REGSTRID == 1 && t.TRANETYPE == 1);
+                    // Others Purchase Invoice Direct (no PO link)
+                    othersPurchaseInvoiceCount = txQuery.Count(t => t.REGSTRID == 18 && (t.TRANLMID == null || t.TRANLMID <= 0));
+                    othersSalesInvoiceCount = txQuery
+                        .Where(t => t.REGSTRID == 20)
+                        .Count(si => _db.TransactionMasters.Any(so => so.REGSTRID == 1 && so.TRANETYPE == 1 && so.TRANMID == si.TRANLMID));
                 }
                 catch { }
 
@@ -278,7 +296,8 @@ namespace SSK_ERP.Controllers
                                 FROM TRANSACTIONMASTER pi
                                 WHERE pi.REGSTRID = 18
                                   AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
-                                  AND (pi.TRANBTYPE = 0 OR pi.TRANBTYPE IS NULL)
+                                  AND pi.TRANLMID IS NOT NULL
+                                  AND pi.TRANLMID > 0
                                   AND NOT EXISTS (
                                       SELECT 1
                                       FROM TRANSACTIONMASTER si
@@ -314,7 +333,8 @@ namespace SSK_ERP.Controllers
                                FROM TRANSACTIONMASTER pi
                                WHERE pi.REGSTRID = 18
                                  AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
-                                 AND (pi.TRANBTYPE = 0 OR pi.TRANBTYPE IS NULL)
+                                 AND pi.TRANLMID IS NOT NULL
+                                 AND pi.TRANLMID > 0
                                  AND NOT EXISTS (
                                      SELECT 1
                                      FROM TRANSACTIONMASTER si
@@ -505,6 +525,221 @@ namespace SSK_ERP.Controllers
                     partialPurchaseInvoiceDetails = new List<PendingDocRow>();
                 }
 
+                // Others Pending Sales Order
+                try
+                {
+                    var sql = @"SELECT COUNT(*)
+                                FROM TRANSACTIONMASTER so
+                                WHERE so.REGSTRID = 1
+                                  AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                  AND ISNULL(so.TRANETYPE, 0) = 1
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONMASTER po
+                                      WHERE po.REGSTRID = 2
+                                        AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                        AND po.TRANLMID = so.TRANMID
+                                  )";
+                    if (hasDateFilter)
+                    {
+                        sql += " AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx";
+                        othersPendingSalesOrderCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        othersPendingSalesOrderCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
+                }
+                catch
+                {
+                    othersPendingSalesOrderCount = 0;
+                }
+
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    so.TRANDATE AS [Date],
+                                    so.TRANNO AS [Number],
+                                    so.TRANREFNO AS [DocNo],
+                                    so.TRANREFNAME AS [CustomerName],
+                                    ISNULL(so.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER so
+                               WHERE so.REGSTRID = 1
+                                 AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                 AND ISNULL(so.TRANETYPE, 0) = 1
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER po
+                                     WHERE po.REGSTRID = 2
+                                       AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                       AND po.TRANLMID = so.TRANMID
+                                 )
+                                 {0}
+                               ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
+
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx");
+                        othersPendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        othersPendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
+                }
+                catch
+                {
+                    othersPendingSalesOrderDetails = new List<PendingDocRow>();
+                }
+
+                // Others Pending Purchase Invoice
+                try
+                {
+                    var sql = @"SELECT COUNT(*)
+                                FROM TRANSACTIONMASTER pi
+                                WHERE pi.REGSTRID = 18
+                                  AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                  AND (pi.TRANLMID IS NULL OR pi.TRANLMID <= 0)
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONMASTER si
+                                      WHERE si.REGSTRID = 20
+                                        AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                        AND si.TRANLMID = pi.TRANMID
+                                  )";
+                    if (hasDateFilter)
+                    {
+                        sql += " AND pi.TRANDATE >= @FromDate AND pi.TRANDATE < @ToDateEx";
+                        othersPendingPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        othersPendingPurchaseInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
+                }
+                catch
+                {
+                    othersPendingPurchaseInvoiceCount = 0;
+                }
+
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    pi.TRANDATE AS [Date],
+                                    pi.TRANNO AS [Number],
+                                    pi.TRANREFNO AS [DocNo],
+                                    pi.TRANREFNAME AS [CustomerName],
+                                    ISNULL(pi.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER pi
+                               WHERE pi.REGSTRID = 18
+                                 AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                 AND (pi.TRANLMID IS NULL OR pi.TRANLMID <= 0)
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER si
+                                     WHERE si.REGSTRID = 20
+                                       AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                       AND si.TRANLMID = pi.TRANMID
+                                 )
+                                 {0}
+                               ORDER BY pi.TRANDATE DESC, pi.TRANNO DESC";
+
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND pi.TRANDATE >= @FromDate AND pi.TRANDATE < @ToDateEx");
+                        othersPendingPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        othersPendingPurchaseInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
+                }
+                catch
+                {
+                    othersPendingPurchaseInvoiceDetails = new List<PendingDocRow>();
+                }
+
+                // Others Pending Sales Invoice
+                try
+                {
+                    var sql = @"SELECT COUNT(*)
+                                FROM TRANSACTIONMASTER so
+                                WHERE so.REGSTRID = 1
+                                  AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                  AND ISNULL(so.TRANETYPE, 0) = 1
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONMASTER si
+                                      WHERE si.REGSTRID = 20
+                                        AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                        AND si.TRANLMID = so.TRANMID
+                                  )";
+                    if (hasDateFilter)
+                    {
+                        sql += " AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx";
+                        othersPendingSalesInvoiceCount = _db.Database.SqlQuery<int>(sql,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).FirstOrDefault();
+                    }
+                    else
+                    {
+                        othersPendingSalesInvoiceCount = _db.Database.SqlQuery<int>(sql).FirstOrDefault();
+                    }
+                }
+                catch
+                {
+                    othersPendingSalesInvoiceCount = 0;
+                }
+
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    so.TRANDATE AS [Date],
+                                    so.TRANNO AS [Number],
+                                    so.TRANREFNO AS [DocNo],
+                                    so.TRANREFNAME AS [CustomerName],
+                                    ISNULL(so.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER so
+                               WHERE so.REGSTRID = 1
+                                 AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                 AND ISNULL(so.TRANETYPE, 0) = 1
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER si
+                                     WHERE si.REGSTRID = 20
+                                       AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                       AND si.TRANLMID = so.TRANMID
+                                 )
+                                 {0}
+                               ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
+
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx");
+                        othersPendingSalesInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        othersPendingSalesInvoiceDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
+                }
+                catch
+                {
+                    othersPendingSalesInvoiceDetails = new List<PendingDocRow>();
+                }
 
                 // Pass essential business data to view
                 ViewBag.CustomersCount = customersCount;
@@ -521,11 +756,22 @@ namespace SSK_ERP.Controllers
                 ViewBag.SalesInvoiceCount = salesInvoiceCount;
                 ViewBag.PendingSalesInvoiceCount = pendingSalesInvoiceCount;
 
+                ViewBag.OthersSalesOrderCount = othersSalesOrderCount;
+                ViewBag.OthersPendingSalesOrderCount = othersPendingSalesOrderCount;
+                ViewBag.OthersPurchaseInvoiceCount = othersPurchaseInvoiceCount;
+                ViewBag.OthersPendingPurchaseInvoiceCount = othersPendingPurchaseInvoiceCount;
+                ViewBag.OthersSalesInvoiceCount = othersSalesInvoiceCount;
+                ViewBag.OthersPendingSalesInvoiceCount = othersPendingSalesInvoiceCount;
+
                 ViewBag.PendingPurchaseOrderDetails = pendingPurchaseOrderDetails;
                 ViewBag.PendingSalesOrderDetails = pendingSalesOrderDetails;
                 ViewBag.PendingPurchaseInvoiceDetails = pendingPurchaseInvoiceDetails;
                 ViewBag.PendingSalesInvoiceDetails = pendingSalesInvoiceDetails;
                 ViewBag.PartialPurchaseInvoiceDetails = partialPurchaseInvoiceDetails;
+
+                ViewBag.OthersPendingSalesOrderDetails = othersPendingSalesOrderDetails;
+                ViewBag.OthersPendingPurchaseInvoiceDetails = othersPendingPurchaseInvoiceDetails;
+                ViewBag.OthersPendingSalesInvoiceDetails = othersPendingSalesInvoiceDetails;
 
                 ViewBag.TransactionMetricsTotal = salesOrderCount + pendingSalesOrderCount + purchaseOrderCount + pendingPurchaseOrderCount + purchaseInvoiceCount + pendingPurchaseInvoiceCount + partialPurchaseInvoiceCount + salesInvoiceCount + pendingSalesInvoiceCount;
 
@@ -655,11 +901,22 @@ namespace SSK_ERP.Controllers
                 ViewBag.SalesInvoiceCount = 0;
                 ViewBag.PendingSalesInvoiceCount = 0;
 
+                ViewBag.OthersSalesOrderCount = 0;
+                ViewBag.OthersPendingSalesOrderCount = 0;
+                ViewBag.OthersPurchaseInvoiceCount = 0;
+                ViewBag.OthersPendingPurchaseInvoiceCount = 0;
+                ViewBag.OthersSalesInvoiceCount = 0;
+                ViewBag.OthersPendingSalesInvoiceCount = 0;
+
                 ViewBag.PendingPurchaseOrderDetails = new List<PendingDocRow>();
                 ViewBag.PendingSalesOrderDetails = new List<PendingDocRow>();
                 ViewBag.PendingPurchaseInvoiceDetails = new List<PendingDocRow>();
                 ViewBag.PendingSalesInvoiceDetails = new List<PendingDocRow>();
                 ViewBag.PartialPurchaseInvoiceDetails = new List<PendingDocRow>();
+
+                ViewBag.OthersPendingSalesOrderDetails = new List<PendingDocRow>();
+                ViewBag.OthersPendingPurchaseInvoiceDetails = new List<PendingDocRow>();
+                ViewBag.OthersPendingSalesInvoiceDetails = new List<PendingDocRow>();
 
                 ViewBag.TransactionMetricsTotal = 0;
 
