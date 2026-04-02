@@ -611,6 +611,17 @@ namespace SSK_ERP.Controllers
                                       WHERE si.REGSTRID = 20
                                         AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
                                         AND si.TRANLMID = pi.TRANMID
+                                  )
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM TRANSACTIONDETAIL pd
+                                      INNER JOIN TRANSACTIONBATCHDETAIL pbd ON pbd.TRANDID = pd.TRANDID
+                                      INNER JOIN TRANSACTIONBATCHDETAIL sbd ON sbd.TRANDPID = pbd.TRANBID
+                                      INNER JOIN TRANSACTIONDETAIL sd ON sd.TRANDID = sbd.TRANDID
+                                      INNER JOIN TRANSACTIONMASTER si ON si.TRANMID = sd.TRANMID
+                                      WHERE pd.TRANMID = pi.TRANMID
+                                        AND si.REGSTRID = 20
+                                        AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
                                   )";
                     if (hasDateFilter)
                     {
@@ -648,6 +659,17 @@ namespace SSK_ERP.Controllers
                                        AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
                                        AND si.TRANLMID = pi.TRANMID
                                  )
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONDETAIL pd
+                                     INNER JOIN TRANSACTIONBATCHDETAIL pbd ON pbd.TRANDID = pd.TRANDID
+                                     INNER JOIN TRANSACTIONBATCHDETAIL sbd ON sbd.TRANDPID = pbd.TRANBID
+                                     INNER JOIN TRANSACTIONDETAIL sd ON sd.TRANDID = sbd.TRANDID
+                                     INNER JOIN TRANSACTIONMASTER si ON si.TRANMID = sd.TRANMID
+                                     WHERE pd.TRANMID = pi.TRANMID
+                                       AND si.REGSTRID = 20
+                                       AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
+                                 )
                                  {0}
                                ORDER BY pi.TRANDATE DESC, pi.TRANNO DESC";
 
@@ -677,13 +699,13 @@ namespace SSK_ERP.Controllers
                                 WHERE so.REGSTRID = 1
                                   AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
                                   AND ISNULL(so.TRANETYPE, 0) = 1
-                                  AND NOT EXISTS (
+                                  AND (ISNULL(so.INVMID, 0) <= 0 OR NOT EXISTS (
                                       SELECT 1
                                       FROM TRANSACTIONMASTER si
                                       WHERE si.REGSTRID = 20
                                         AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
-                                        AND si.TRANLMID = so.TRANMID
-                                  )";
+                                        AND si.TRANMID = so.INVMID
+                                  ))";
                     if (hasDateFilter)
                     {
                         sql += " AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx";
@@ -713,13 +735,13 @@ namespace SSK_ERP.Controllers
                                WHERE so.REGSTRID = 1
                                  AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
                                  AND ISNULL(so.TRANETYPE, 0) = 1
-                                 AND NOT EXISTS (
+                                 AND (ISNULL(so.INVMID, 0) <= 0 OR NOT EXISTS (
                                      SELECT 1
                                      FROM TRANSACTIONMASTER si
                                      WHERE si.REGSTRID = 20
                                        AND (si.DISPSTATUS = 0 OR si.DISPSTATUS IS NULL)
-                                       AND si.TRANLMID = so.TRANMID
-                                 )
+                                       AND si.TRANMID = so.INVMID
+                                 ))
                                  {0}
                                ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
 
