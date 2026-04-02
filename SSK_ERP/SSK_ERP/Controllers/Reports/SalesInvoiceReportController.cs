@@ -19,6 +19,8 @@ namespace SSK_ERP.Controllers
         private const string SiDatewiseDetailedView = "VW_SALESINVOICE_DATEWISE_DEATILED_RPT";
         private const string SiDatewisePendingConsolidatedView = "VW_SO_TO_SALESINVOICE_PENDING_RPT";
 
+        private const int PreviewMaxRows = 500;
+
         private static string ResolveDateColumn(DataTable table)
         {
             if (table == null)
@@ -143,6 +145,49 @@ namespace SSK_ERP.Controllers
 
         [HttpGet]
         [Authorize(Roles = "SalesInvoiceReport")]
+        public ActionResult Preview(string reportType = null, string mode = null, string fromDate = null, string toDate = null, string customerIds = null)
+        {
+            try
+            {
+                var resolvedReportType = (reportType ?? string.Empty).Trim().ToLowerInvariant();
+                var resolvedMode = (mode ?? string.Empty).Trim().ToLowerInvariant();
+
+                string viewName;
+                if (resolvedReportType == "customerwise")
+                {
+                    viewName = (resolvedMode == "detailed") ? SiDatewiseDetailedView : SiDatewiseConsolidatedView;
+                }
+                else
+                {
+                    if (resolvedMode == "detailed")
+                    {
+                        viewName = SiDatewiseDetailedView;
+                    }
+                    else if (resolvedMode == "pending")
+                    {
+                        viewName = SiDatewisePendingConsolidatedView;
+                    }
+                    else
+                    {
+                        viewName = SiDatewiseConsolidatedView;
+                    }
+                }
+
+                var table = LoadReportTable(viewName, fromDate, toDate, customerIds, PreviewMaxRows);
+                ViewBag.PreviewRowCount = table != null ? table.Rows.Count : 0;
+                ViewBag.PreviewMaxRows = PreviewMaxRows;
+
+                return PartialView("_PreviewTable", table);
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return Content(ex.Message);
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "SalesInvoiceReport")]
         public FileResult ExportDatewiseConsolidated(string fromDate = null, string toDate = null)
         {
             return ExportFromView(SiDatewiseConsolidatedView, "SALES INVOICE DATEWISE - CONSOLIDATED", "SSK_ENTERPRISE_SALES_INVOICE_DATEWISE_CONSOLIDATED", fromDate, toDate, null);
@@ -257,90 +302,7 @@ namespace SSK_ERP.Controllers
                 }
             }
 
-            var sql = new StringBuilder();
-            sql.Append("SELECT * FROM ").Append(viewName).Append(" WHERE 1 = 1 ");
-
-            var dateColumn = ResolveDateColumnForView(viewName);
-
-            var parameters = new List<object>();
-            int paramIndex = 0;
-
-            if (parsedFrom.HasValue)
-            {
-                if (!string.IsNullOrWhiteSpace(dateColumn))
-                {
-                    sql.Append("AND [").Append(dateColumn).Append("] >= @p" + paramIndex + " ");
-                    parameters.Add(parsedFrom.Value);
-                    paramIndex++;
-                }
-            }
-
-            if (parsedToExclusive.HasValue)
-            {
-                if (!string.IsNullOrWhiteSpace(dateColumn))
-                {
-                    sql.Append("AND [").Append(dateColumn).Append("] < @p" + paramIndex + " ");
-                    parameters.Add(parsedToExclusive.Value);
-                    paramIndex++;
-                }
-            }
-
-            var table = new DataTable();
-            var exportConn = db.Database.Connection;
-            bool exportShouldClose = false;
-            if (exportConn.State != ConnectionState.Open)
-            {
-                exportConn.Open();
-                exportShouldClose = true;
-            }
-
-            try
-            {
-                using (var cmd = exportConn.CreateCommand())
-                {
-                    cmd.CommandText = sql.ToString();
-                    for (int i = 0; i < parameters.Count; i++)
-                    {
-                        var p = cmd.CreateParameter();
-                        p.ParameterName = "@p" + i;
-                        p.Value = parameters[i] ?? DBNull.Value;
-                        cmd.Parameters.Add(p);
-                    }
-
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        table.Load(reader);
-                    }
-                }
-            }
-            finally
-            {
-                if (exportShouldClose)
-                {
-                    exportConn.Close();
-                }
-            }
-
-            if (allowedCustomerNames != null && allowedCustomerNames.Count > 0)
-            {
-                var customerColumnName = ResolveCustomerNameColumn(table);
-                if (!string.IsNullOrEmpty(customerColumnName))
-                {
-                    for (int i = table.Rows.Count - 1; i >= 0; i--)
-                    {
-                        var row = table.Rows[i];
-                        var value = row[customerColumnName];
-                        var name = value == null || value == DBNull.Value
-                            ? string.Empty
-                            : Convert.ToString(value, CultureInfo.InvariantCulture).Trim();
-
-                        if (!allowedCustomerNames.Contains(name))
-                        {
-                            table.Rows.RemoveAt(i);
-                        }
-                    }
-                }
-            }
+            var table = LoadReportTable(viewName, fromDate, toDate, customerIds, null);
 
             int columnCount = table.Columns.Count > 0 ? table.Columns.Count : 1;
 
@@ -434,6 +396,156 @@ namespace SSK_ERP.Controllers
             var fileName = string.Format("{0}_{1}.xls", fileNamePrefix, rangePart);
 
             return File(bytes, "application/vnd.ms-excel", fileName);
+        }
+
+        private DataTable LoadReportTable(string viewName, string fromDate, string toDate, string customerIds, int? topRows)
+        {
+            DateTime? parsedFrom = null;
+            DateTime? parsedToExclusive = null;
+
+            DateTime temp;
+            if (!string.IsNullOrWhiteSpace(fromDate) &&
+                DateTime.TryParseExact(fromDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out temp))
+            {
+                parsedFrom = temp.Date;
+            }
+
+            if (!string.IsNullOrWhiteSpace(toDate) &&
+                DateTime.TryParseExact(toDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out temp))
+            {
+                parsedToExclusive = temp.Date.AddDays(1);
+            }
+
+            var selectedCustomerIds = new HashSet<int>();
+            if (!string.IsNullOrWhiteSpace(customerIds))
+            {
+                var parts = customerIds.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    int id;
+                    if (int.TryParse(part, out id))
+                    {
+                        selectedCustomerIds.Add(id);
+                    }
+                }
+            }
+
+            HashSet<string> allowedCustomerNames = null;
+            if (selectedCustomerIds.Count > 0)
+            {
+                var names = db.CustomerMasters
+                    .Where(c => selectedCustomerIds.Contains(c.CATEID))
+                    .Select(c => new { c.CATENAME, c.CATEDNAME })
+                    .ToList();
+
+                if (names.Count > 0)
+                {
+                    allowedCustomerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var n in names)
+                    {
+                        if (!string.IsNullOrWhiteSpace(n.CATENAME))
+                        {
+                            allowedCustomerNames.Add(n.CATENAME.Trim());
+                        }
+                        if (!string.IsNullOrWhiteSpace(n.CATEDNAME))
+                        {
+                            allowedCustomerNames.Add(n.CATEDNAME.Trim());
+                        }
+                    }
+                }
+            }
+
+            var sql = new StringBuilder();
+            sql.Append("SELECT ");
+            if (topRows.HasValue && topRows.Value > 0)
+            {
+                sql.Append("TOP ").Append(topRows.Value).Append(' ');
+            }
+            sql.Append("* FROM ").Append(viewName).Append(" WHERE 1 = 1 ");
+
+            var dateColumn = ResolveDateColumnForView(viewName);
+
+            var parameters = new List<object>();
+            int paramIndex = 0;
+
+            if (parsedFrom.HasValue)
+            {
+                if (!string.IsNullOrWhiteSpace(dateColumn))
+                {
+                    sql.Append("AND [").Append(dateColumn).Append("] >= @p" + paramIndex + " ");
+                    parameters.Add(parsedFrom.Value);
+                    paramIndex++;
+                }
+            }
+
+            if (parsedToExclusive.HasValue)
+            {
+                if (!string.IsNullOrWhiteSpace(dateColumn))
+                {
+                    sql.Append("AND [").Append(dateColumn).Append("] < @p" + paramIndex + " ");
+                    parameters.Add(parsedToExclusive.Value);
+                    paramIndex++;
+                }
+            }
+
+            var table = new DataTable();
+            var exportConn = db.Database.Connection;
+            bool exportShouldClose = false;
+            if (exportConn.State != ConnectionState.Open)
+            {
+                exportConn.Open();
+                exportShouldClose = true;
+            }
+
+            try
+            {
+                using (var cmd = exportConn.CreateCommand())
+                {
+                    cmd.CommandText = sql.ToString();
+                    for (int i = 0; i < parameters.Count; i++)
+                    {
+                        var p = cmd.CreateParameter();
+                        p.ParameterName = "@p" + i;
+                        p.Value = parameters[i] ?? DBNull.Value;
+                        cmd.Parameters.Add(p);
+                    }
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        table.Load(reader);
+                    }
+                }
+            }
+            finally
+            {
+                if (exportShouldClose)
+                {
+                    exportConn.Close();
+                }
+            }
+
+            if (allowedCustomerNames != null && allowedCustomerNames.Count > 0)
+            {
+                var customerColumnName = ResolveCustomerNameColumn(table);
+                if (!string.IsNullOrEmpty(customerColumnName))
+                {
+                    for (int i = table.Rows.Count - 1; i >= 0; i--)
+                    {
+                        var row = table.Rows[i];
+                        var value = row[customerColumnName];
+                        var name = value == null || value == DBNull.Value
+                            ? string.Empty
+                            : Convert.ToString(value, CultureInfo.InvariantCulture).Trim();
+
+                        if (!allowedCustomerNames.Contains(name))
+                        {
+                            table.Rows.RemoveAt(i);
+                        }
+                    }
+                }
+            }
+
+            return table;
         }
     }
 }
