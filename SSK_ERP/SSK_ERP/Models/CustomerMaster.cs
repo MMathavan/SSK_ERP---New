@@ -82,7 +82,6 @@ namespace SSK_ERP.Models
         public string CATE_TAN_NO { get; set; }
 
         [DisplayName("Pesticide Licence No")]
-        [MaxLength(50)]
         public string CATE_PEST_LIC_NO { get; set; }
 
         [DisplayName("Seed Licence No")]
