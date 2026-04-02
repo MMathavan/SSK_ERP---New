@@ -647,6 +647,99 @@
                 $('#siTaxModal').modal('hide');
             });
 
+            function applyBatchToRow($tr, b) {
+                if (!$tr || !b) return;
+
+                function toIsoDateValue(val) {
+                    if (!val) return '';
+
+                    // Supports: /Date(1711996200000)/, ISO strings, Date object
+                    if (Object.prototype.toString.call(val) === '[object Date]') {
+                        if (isNaN(val.getTime())) return '';
+                        var m1 = (val.getMonth() + 1);
+                        var d1 = val.getDate();
+                        var mm1 = (m1 < 10 ? '0' + m1 : '' + m1);
+                        var dd1 = (d1 < 10 ? '0' + d1 : '' + d1);
+                        return val.getFullYear() + '-' + mm1 + '-' + dd1;
+                    }
+
+                    var s = (val + '').trim();
+                    if (s === '') return '';
+
+                    // ASP.NET format: /Date(1711996200000)/
+                    var m = /\/Date\((-?\d+)\)\//.exec(s);
+                    if (m && m[1]) {
+                        var ticks = parseInt(m[1], 10);
+                        if (!isNaN(ticks)) {
+                            var dt1 = new Date(ticks);
+                            if (!isNaN(dt1.getTime())) {
+                                var m2 = (dt1.getMonth() + 1);
+                                var d2 = dt1.getDate();
+                                var mm2 = (m2 < 10 ? '0' + m2 : '' + m2);
+                                var dd2 = (d2 < 10 ? '0' + d2 : '' + d2);
+                                return dt1.getFullYear() + '-' + mm2 + '-' + dd2;
+                            }
+                        }
+                    }
+
+                    // ISO or other browser-parseable string
+                    var dt = new Date(s);
+                    if (isNaN(dt.getTime())) return '';
+                    var m3 = (dt.getMonth() + 1);
+                    var d3 = dt.getDate();
+                    var mm3 = (m3 < 10 ? '0' + m3 : '' + m3);
+                    var dd3 = (d3 < 10 ? '0' + d3 : '' + d3);
+                    return dt.getFullYear() + '-' + mm3 + '-' + dd3;
+                }
+
+                var $exp = $tr.find('.row-expdate');
+                if ($exp.length) {
+                    var iso = toIsoDateValue(b.ExpiryDate);
+                    if (iso) {
+                        $exp.val(iso);
+                    }
+                }
+
+                if (typeof b.BoxQty !== 'undefined' && b.BoxQty !== null) {
+                    $tr.find('.row-boxqty').val(parseDecimal(b.BoxQty).toFixed(0));
+                }
+                if (typeof b.Ptr !== 'undefined' && b.Ptr !== null) {
+                    $tr.find('.row-ptr').val(parseDecimal(b.Ptr).toFixed(2));
+                }
+                if (typeof b.Mrp !== 'undefined' && b.Mrp !== null) {
+                    $tr.find('.row-mrp').val(parseDecimal(b.Mrp).toFixed(2));
+                }
+            }
+
+            function clearBatchFields($tr) {
+                if (!$tr) return;
+
+                var $batch = $tr.find('.row-batch');
+                if ($batch && $batch.length) {
+                    $batch.val('');
+                }
+
+                var $exp = $tr.find('.row-expdate');
+                if ($exp && $exp.length) {
+                    $exp.val('');
+                }
+
+                var $box = $tr.find('.row-boxqty');
+                if ($box && $box.length) {
+                    $box.val('0');
+                }
+
+                var $ptr = $tr.find('.row-ptr');
+                if ($ptr && $ptr.length) {
+                    $ptr.val('0.00');
+                }
+
+                var $mrp = $tr.find('.row-mrp');
+                if ($mrp && $mrp.length) {
+                    $mrp.val('0.00');
+                }
+            }
+
             $(document).on('change', '.row-packing', function () {
                 var $tr = $(this).closest('tr');
                 var materialId = parseInt($tr.find('.row-materialid').val() || '0', 10);
@@ -655,6 +748,9 @@
                 var $batch = $tr.find('.row-batch');
                 $batch.empty();
                 $batch.append('<option value=""></option>');
+
+                // Always clear previous batch-derived values when packing changes.
+                clearBatchFields($tr);
 
                 if (materialId <= 0 || packingId <= 0) {
                     return;
@@ -667,23 +763,43 @@
 
                     var list = res.data || [];
                     list.forEach(function (b) {
-                        $batch.append('<option value="' + b.BatchId + '">' + (b.BatchNo || '') + '</option>');
+                        $batch.append(
+                            '<option value="' + b.BatchId + '"' +
+                            ' data-expiry="' + (b.ExpiryDate || '') + '"' +
+                            ' data-boxqty="' + (b.BoxQty || 0) + '"' +
+                            ' data-ptr="' + (b.Ptr || 0) + '"' +
+                            ' data-mrp="' + (b.Mrp || 0) + '">' +
+                            (b.BatchNo || '') +
+                            '</option>'
+                        );
                     });
 
                     if (list.length > 0) {
                         $batch.val(list[0].BatchId);
-
-                        var $exp = $tr.find('.row-expdate');
-                        if ($exp.length && (!$exp.val() || ($exp.val() + '').trim() === '') && list[0].ExpiryDate) {
-                            var dt = new Date(list[0].ExpiryDate);
-                            if (!isNaN(dt.getTime())) {
-                                var mm = (dt.getMonth() + 1).toString().padStart(2, '0');
-                                var dd = dt.getDate().toString().padStart(2, '0');
-                                $exp.val(dt.getFullYear() + '-' + mm + '-' + dd);
-                            }
-                        }
+                        applyBatchToRow($tr, list[0]);
+                    } else {
+                        clearBatchFields($tr);
                     }
                 });
+            });
+
+            $(document).on('change', '.row-batch', function () {
+                var $tr = $(this).closest('tr');
+                var $opt = $(this).find('option:selected');
+                if (!$opt || !$opt.length) return;
+
+                if (!($opt.val() || '').toString().trim()) {
+                    clearBatchFields($tr);
+                    return;
+                }
+
+                var b = {
+                    ExpiryDate: $opt.attr('data-expiry'),
+                    BoxQty: $opt.attr('data-boxqty'),
+                    Ptr: $opt.attr('data-ptr'),
+                    Mrp: $opt.attr('data-mrp')
+                };
+                applyBatchToRow($tr, b);
             });
 
             $('#salesInvoiceOthersForm').on('submit', function (e) {

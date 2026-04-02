@@ -517,6 +517,9 @@ namespace SSK_ERP.Controllers
                             var ordBatchNo = GetOrd("BATCHNO2", "BATCHNO", "TRANBDNO", "BatchNo");
                             var ordExp = GetOrd("TRANBEXPDATE", "ExpiryDate", "EXPDATE");
                             var ordStock = GetOrd("MTRLSTKQTY", "StockQty", "STKQTY");
+                            var ordBoxQty = GetOrd("TRANBQTY", "BoxQty", "BOXQTY");
+                            var ordPtr = GetOrd("TRANBPTRRATE", "PTR", "Ptr", "PTRRATE");
+                            var ordMrp = GetOrd("TRANBMRP", "MRP", "Mrp");
 
                             while (reader.Read())
                             {
@@ -544,9 +547,27 @@ namespace SSK_ERP.Controllers
                                     stock = Convert.ToDecimal(reader.GetValue(ordStock));
                                 }
 
+                                decimal boxQty = 0m;
+                                if (ordBoxQty >= 0 && !reader.IsDBNull(ordBoxQty))
+                                {
+                                    boxQty = Convert.ToDecimal(reader.GetValue(ordBoxQty));
+                                }
+
+                                decimal ptr = 0m;
+                                if (ordPtr >= 0 && !reader.IsDBNull(ordPtr))
+                                {
+                                    ptr = Convert.ToDecimal(reader.GetValue(ordPtr));
+                                }
+
+                                decimal mrp = 0m;
+                                if (ordMrp >= 0 && !reader.IsDBNull(ordMrp))
+                                {
+                                    mrp = Convert.ToDecimal(reader.GetValue(ordMrp));
+                                }
+
                                 if (!string.IsNullOrWhiteSpace(batchNo))
                                 {
-                                    data.Add(new { BatchId = batchId, BatchNo = batchNo, ExpiryDate = exp, StockQty = stock });
+                                    data.Add(new { BatchId = batchId, BatchNo = batchNo, ExpiryDate = exp, StockQty = stock, BoxQty = boxQty, Ptr = ptr, Mrp = mrp });
                                 }
                             }
                         }
