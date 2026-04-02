@@ -115,10 +115,17 @@ namespace SSK_ERP.Controllers
                         txQuery = txQuery.Where(t => t.TRANDATE >= fromDateValue.Value && t.TRANDATE < toDateExclusiveValue.Value);
                     }
 
-                    salesOrderCount = txQuery.Count(t => t.REGSTRID == 1);
+                    // Dashboard filter: exclude Sales Order Others (TRANETYPE=1)
+                    salesOrderCount = txQuery.Count(t => t.REGSTRID == 1 && t.TRANETYPE == 0);
                     purchaseOrderCount = txQuery.Count(t => t.REGSTRID == 2);
-                    purchaseInvoiceCount = txQuery.Count(t => t.REGSTRID == 18);
-                    salesInvoiceCount = txQuery.Count(t => t.REGSTRID == 20);
+                    // Dashboard filter: exclude Direct Purchase Invoice (TRANBTYPE=1)
+                    purchaseInvoiceCount = txQuery.Count(t => t.REGSTRID == 18 && (t.TRANBTYPE == null || t.TRANBTYPE == 0));
+
+                    // Dashboard filter: exclude Sales Invoice created from Sales Order Others
+                    // (SI.TRANLMID points to Sales Order (REGSTRID=1) and that Sales Order has TRANETYPE=1)
+                    salesInvoiceCount = txQuery
+                        .Where(t => t.REGSTRID == 20)
+                        .Count(si => !_db.TransactionMasters.Any(so => so.REGSTRID == 1 && so.TRANETYPE == 1 && so.TRANMID == si.TRANLMID));
                 }
                 catch { }
 
@@ -129,6 +136,7 @@ namespace SSK_ERP.Controllers
                                 FROM TRANSACTIONMASTER so
                                 WHERE so.REGSTRID = 1
                                   AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                  AND ISNULL(so.TRANETYPE, 0) = 0
                                   AND NOT EXISTS (
                                       SELECT 1
                                       FROM TRANSACTIONMASTER po
@@ -151,6 +159,46 @@ namespace SSK_ERP.Controllers
                 catch
                 {
                     pendingSalesOrderCount = 0;
+                }
+
+                try
+                {
+                    var sql = @"SELECT TOP 10
+                                    so.TRANDATE AS [Date],
+                                    so.TRANNO AS [Number],
+                                    so.TRANREFNO AS [DocNo],
+                                    so.TRANREFNAME AS [CustomerName],
+                                    ISNULL(so.TRANNAMT, 0) AS [Amount]
+                               FROM TRANSACTIONMASTER so
+                               WHERE so.REGSTRID = 1
+                                 AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                 AND ISNULL(so.TRANETYPE, 0) = 0
+                                 AND NOT EXISTS (
+                                     SELECT 1
+                                     FROM TRANSACTIONMASTER po
+                                     WHERE po.REGSTRID = 2
+                                       AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
+                                       AND po.TRANLMID = so.TRANMID
+                                 )
+                                 {0}
+                               ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
+
+                    if (hasDateFilter)
+                    {
+                        var sqlFiltered = string.Format(sql, "AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx");
+                        pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
+                            new SqlParameter("@FromDate", fromDateValue.Value),
+                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
+                    }
+                    else
+                    {
+                        var sqlAll = string.Format(sql, string.Empty);
+                        pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
+                    }
+                }
+                catch
+                {
+                    pendingSalesOrderDetails = new List<PendingDocRow>();
                 }
 
                 // Pending Purchase Order: PO not yet converted into a Purchase Invoice
@@ -223,45 +271,6 @@ namespace SSK_ERP.Controllers
                     pendingPurchaseOrderDetails = new List<PendingDocRow>();
                 }
 
-                try
-                {
-                    var sql = @"SELECT TOP 10
-                                    so.TRANDATE AS [Date],
-                                    so.TRANNO AS [Number],
-                                    so.TRANREFNO AS [DocNo],
-                                    so.TRANREFNAME AS [CustomerName],
-                                    ISNULL(so.TRANNAMT, 0) AS [Amount]
-                               FROM TRANSACTIONMASTER so
-                               WHERE so.REGSTRID = 1
-                                 AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
-                                 AND NOT EXISTS (
-                                     SELECT 1
-                                     FROM TRANSACTIONMASTER po
-                                     WHERE po.REGSTRID = 2
-                                       AND (po.DISPSTATUS = 0 OR po.DISPSTATUS IS NULL)
-                                       AND po.TRANLMID = so.TRANMID
-                                 )
-                                 {0}
-                               ORDER BY so.TRANDATE DESC, so.TRANNO DESC";
-
-                    if (hasDateFilter)
-                    {
-                        var sqlFiltered = string.Format(sql, "AND so.TRANDATE >= @FromDate AND so.TRANDATE < @ToDateEx");
-                        pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlFiltered,
-                            new SqlParameter("@FromDate", fromDateValue.Value),
-                            new SqlParameter("@ToDateEx", toDateExclusiveValue.Value)).ToList();
-                    }
-                    else
-                    {
-                        var sqlAll = string.Format(sql, string.Empty);
-                        pendingSalesOrderDetails = _db.Database.SqlQuery<PendingDocRow>(sqlAll).ToList();
-                    }
-                }
-                catch
-                {
-                    pendingSalesOrderDetails = new List<PendingDocRow>();
-                }
-
                 // Pending Purchase Invoice: Purchase invoice not yet converted into a Sales Invoice
                 try
                 {
@@ -269,6 +278,7 @@ namespace SSK_ERP.Controllers
                                 FROM TRANSACTIONMASTER pi
                                 WHERE pi.REGSTRID = 18
                                   AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                  AND (pi.TRANBTYPE = 0 OR pi.TRANBTYPE IS NULL)
                                   AND NOT EXISTS (
                                       SELECT 1
                                       FROM TRANSACTIONMASTER si
@@ -304,6 +314,7 @@ namespace SSK_ERP.Controllers
                                FROM TRANSACTIONMASTER pi
                                WHERE pi.REGSTRID = 18
                                  AND (pi.DISPSTATUS = 0 OR pi.DISPSTATUS IS NULL)
+                                 AND (pi.TRANBTYPE = 0 OR pi.TRANBTYPE IS NULL)
                                  AND NOT EXISTS (
                                      SELECT 1
                                      FROM TRANSACTIONMASTER si
@@ -339,6 +350,7 @@ namespace SSK_ERP.Controllers
                                 FROM TRANSACTIONMASTER so
                                 WHERE so.REGSTRID = 1
                                   AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                  AND ISNULL(so.TRANETYPE, 0) = 0
                                   AND NOT EXISTS (
                                       SELECT 1
                                       FROM TRANSACTIONMASTER po
@@ -376,6 +388,7 @@ namespace SSK_ERP.Controllers
                                FROM TRANSACTIONMASTER so
                                WHERE so.REGSTRID = 1
                                  AND (so.DISPSTATUS = 0 OR so.DISPSTATUS IS NULL)
+                                 AND ISNULL(so.TRANETYPE, 0) = 0
                                  AND NOT EXISTS (
                                      SELECT 1
                                      FROM TRANSACTIONMASTER po
@@ -529,6 +542,7 @@ namespace SSK_ERP.Controllers
                         .Where(t => t.REGSTRID == 20 &&
                                     (t.DISPSTATUS == 0 || t.DISPSTATUS == null) &&
                                     t.TRANDATE >= sixMonthsAgo)
+                        .Where(si => !_db.TransactionMasters.Any(so => so.REGSTRID == 1 && so.TRANETYPE == 1 && so.TRANMID == si.TRANLMID))
                         .ToList();
 
                     if (invoices.Any())
