@@ -666,6 +666,23 @@ WHERE TM.TRANMID = @tranmid";
 
                     };
 
+                    try
+                    {
+                        if (response.ItemList != null && response.ItemList.Count > 0 && response.ValDtls != null)
+                        {
+                            var sumCgst = Math.Round(response.ItemList.Sum(x => x.CgstAmt), 2);
+                            var sumSgst = Math.Round(response.ItemList.Sum(x => x.SgstAmt), 2);
+                            var sumIgst = Math.Round(response.ItemList.Sum(x => x.IgstAmt), 2);
+
+                            if (response.ValDtls.CgstVal <= 0 && sumCgst > 0) response.ValDtls.CgstVal = sumCgst;
+                            if (response.ValDtls.SgstVal <= 0 && sumSgst > 0) response.ValDtls.SgstVal = sumSgst;
+                            if (response.ValDtls.IgstVal <= 0 && sumIgst > 0) response.ValDtls.IgstVal = sumIgst;
+                        }
+                    }
+                    catch
+                    {
+                    }
+
                     stringjson = JsonConvert.SerializeObject(
                         response,
                         new JsonSerializerSettings
@@ -775,82 +792,80 @@ SELECT
 
                 using (var httpClient = new HttpClient())
                 {
-                    using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
+                    var tokenFromConfig = (ConfigurationManager.AppSettings["GSTZEN_TOKEN"] ?? string.Empty).Trim();
+                    var userIdFromConfig = (ConfigurationManager.AppSettings["GSTZEN_USERID"] ?? string.Empty).Trim();
+
+                    string tokenMasked = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(tokenFromConfig))
                     {
-                        var tokenFromConfig = (ConfigurationManager.AppSettings["GSTZEN_TOKEN"] ?? string.Empty).Trim();
-                        var userIdFromConfig = (ConfigurationManager.AppSettings["GSTZEN_USERID"] ?? string.Empty).Trim();
+                        tokenMasked = tokenFromConfig.Length <= 8
+                            ? new string('*', tokenFromConfig.Length)
+                            : tokenFromConfig.Substring(0, 4) + new string('*', tokenFromConfig.Length - 8) + tokenFromConfig.Substring(tokenFromConfig.Length - 4);
+                    }
 
-                        string tokenMasked = string.Empty;
-                        if (!string.IsNullOrWhiteSpace(tokenFromConfig))
+                    if (string.IsNullOrWhiteSpace(tokenFromConfig))
+                    {
+                        var missingMsg = "GSTZen token is not configured. Please set appSettings key GSTZEN_TOKEN in Web.config.";
+                        if (showJson)
                         {
-                            tokenMasked = tokenFromConfig.Length <= 8
-                                ? new string('*', tokenFromConfig.Length)
-                                : tokenFromConfig.Substring(0, 4) + new string('*', tokenFromConfig.Length - 8) + tokenFromConfig.Substring(tokenFromConfig.Length - 4);
+                            var payload = new
+                            {
+                                message = missingMsg,
+                                requestJson = stringjson,
+                                responseJson = "",
+                                portalHttpStatus = 0,
+                                portalHttpReason = ""
+                            };
+                            return Content(JsonConvert.SerializeObject(payload), "application/json");
                         }
 
-                        if (string.IsNullOrWhiteSpace(tokenFromConfig))
+                        return Content(missingMsg);
+                    }
+
+                    var candidateUserIds = new[] { userIdFromConfig, "API_SSK_ERP", "dinesh@fusiontec.com" }
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    if (candidateUserIds.Count == 0)
+                    {
+                        candidateUserIds.Add(string.Empty);
+                    }
+
+                    var attemptedUserIds = new List<string>();
+                    string effectiveUserId = userIdFromConfig;
+                    JObject data = null;
+
+                    foreach (var currentUserId in candidateUserIds)
+                    {
+                        effectiveUserId = currentUserId;
+                        attemptedUserIds.Add(string.IsNullOrWhiteSpace(currentUserId) ? "<blank>" : currentUserId);
+
+                        using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
                         {
-                            var missingMsg = "GSTZen token is not configured. Please set appSettings key GSTZEN_TOKEN in Web.config.";
-                            if (showJson)
+                            request.Headers.TryAddWithoutValidation("Token", tokenFromConfig);
+                            if (!string.IsNullOrWhiteSpace(currentUserId))
                             {
-                                var payload = new
-                                {
-                                    message = missingMsg,
-                                    requestJson = stringjson,
-                                    responseJson = "",
-                                    portalHttpStatus = 0,
-                                    portalHttpReason = ""
-                                };
-                                return Content(JsonConvert.SerializeObject(payload), "application/json");
+                                request.Headers.TryAddWithoutValidation("UserId", currentUserId);
+                                request.Headers.TryAddWithoutValidation("username", currentUserId);
                             }
 
-                            return Content(missingMsg);
-                        }
+                            request.Content = new StringContent(stringjson, System.Text.Encoding.UTF8, "application/json");
 
-                        if (string.IsNullOrWhiteSpace(userIdFromConfig))
-                        {
-                            var missingMsg = "GSTZen user id is not configured. Please set appSettings key GSTZEN_USERID in Web.config.";
-                            if (showJson)
+                            var response = await httpClient.SendAsync(request);
+                            if (response == null)
                             {
-                                var payload = new
-                                {
-                                    message = missingMsg,
-                                    requestJson = stringjson,
-                                    responseJson = "",
-                                    portalHttpStatus = 0,
-                                    portalHttpReason = ""
-                                };
-                                return Content(JsonConvert.SerializeObject(payload), "application/json");
+                                continue;
                             }
 
-                            return Content(missingMsg);
-                        }
-
-                        // GSTZen sometimes expects different header keys depending on gateway/proxy.
-                        request.Headers.TryAddWithoutValidation("Token", tokenFromConfig);
-                        request.Headers.TryAddWithoutValidation("token", tokenFromConfig);
-                        request.Headers.TryAddWithoutValidation("TOKEN", tokenFromConfig);
-
-                        request.Headers.TryAddWithoutValidation("UserId", userIdFromConfig);
-                        request.Headers.TryAddWithoutValidation("UserID", userIdFromConfig);
-                        request.Headers.TryAddWithoutValidation("userid", userIdFromConfig);
-                        request.Headers.TryAddWithoutValidation("user_id", userIdFromConfig);
-
-                        request.Content = new StringContent(stringjson);
-                        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-
-                        var response = await httpClient.SendAsync(request);
-
-                        if (response != null)
-                        {
                             portalHttpStatus = (int)response.StatusCode;
                             portalHttpReason = response.ReasonPhrase;
-                            var jsonString = await response.Content.ReadAsStringAsync();
-                            portalResponseRaw = jsonString;
-                            JObject data = null;
+                            portalResponseRaw = await response.Content.ReadAsStringAsync();
+                            data = null;
+
                             try
                             {
-                                data = (JObject)JsonConvert.DeserializeObject(jsonString);
+                                data = (JObject)JsonConvert.DeserializeObject(portalResponseRaw);
                             }
                             catch
                             {
@@ -859,118 +874,166 @@ SELECT
 
                             if (data == null)
                             {
-                                msg = string.IsNullOrWhiteSpace(jsonString) ? "Empty response from portal." : jsonString;
+                                msg = string.IsNullOrWhiteSpace(portalResponseRaw) ? "Empty response from portal." : portalResponseRaw;
+                                break;
                             }
-                            else
+
+                            var shouldRetryWithAnotherUserId = false;
+                            try
                             {
-
-                                var status = 0;
-                                string zirnno = "";// param[2].ToString();
-                                string zackdt = "";//param[3].ToString();
-                                string zackno = "";//param[4].ToString();
-                                string imgUrl = "";
-
-                                msg = data["message"] != null ? data["message"].Value<string>() : "";
-                                status = data["status"] != null ? data["status"].Value<int>() : 0;
-
-                                if (status == 0 && data["Status"] != null)
+                                var statusAlt = data["Status"] != null ? data["Status"].Value<int>() : -1;
+                                if (statusAlt == 0 && data["ErrorDetails"] != null && data["ErrorDetails"].Type == JTokenType.Array)
                                 {
-                                    try
+                                    var firstErr = data["ErrorDetails"].First;
+                                    var errCode = firstErr != null && firstErr["ErrorCode"] != null ? firstErr["ErrorCode"].Value<string>() : string.Empty;
+                                    shouldRetryWithAnotherUserId = string.Equals(errCode, "1017", StringComparison.OrdinalIgnoreCase)
+                                        && !string.Equals(currentUserId, candidateUserIds.Last(), StringComparison.OrdinalIgnoreCase);
+                                }
+                            }
+                            catch
+                            {
+                                shouldRetryWithAnotherUserId = false;
+                            }
+
+                            if (!shouldRetryWithAnotherUserId)
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    if (data == null)
+                    {
+                        if (string.IsNullOrWhiteSpace(msg))
+                        {
+                            msg = string.IsNullOrWhiteSpace(portalResponseRaw) ? "Empty response from portal." : portalResponseRaw;
+                        }
+                    }
+                    else
+                    {
+                        var status = 0;
+                        string zirnno = "";
+                        string zackdt = "";
+                        string zackno = "";
+                        string imgUrl = "";
+
+                        msg = data["message"] != null ? data["message"].Value<string>() : "";
+                        status = data["status"] != null ? data["status"].Value<int>() : 0;
+
+                        if (status == 0 && data["Status"] != null)
+                        {
+                            try
+                            {
+                                var statusAlt = data["Status"].Value<int>();
+                                if (statusAlt == 0 && data["ErrorDetails"] != null && data["ErrorDetails"].Type == JTokenType.Array)
+                                {
+                                    var firstErr = data["ErrorDetails"].First;
+                                    if (firstErr != null && firstErr["ErrorMessage"] != null)
                                     {
-                                        var statusAlt = data["Status"].Value<int>();
-                                        if (statusAlt == 0 && data["ErrorDetails"] != null && data["ErrorDetails"].Type == JTokenType.Array)
+                                        msg = firstErr["ErrorMessage"].Value<string>();
+
+                                        try
                                         {
-                                            var firstErr = data["ErrorDetails"].First;
-                                            if (firstErr != null && firstErr["ErrorMessage"] != null)
+                                            var errCode = firstErr["ErrorCode"] != null ? firstErr["ErrorCode"].Value<string>() : null;
+                                            if (!string.IsNullOrWhiteSpace(errCode) && errCode.Trim() == "1017")
                                             {
-                                                msg = firstErr["ErrorMessage"].Value<string>();
+                                                msg = msg + " (NIC e-Invoice Portal API credentials missing/invalid. In GSTZen, open the GSTIN settings and configure NIC API Username/Password and ensure GSTZen is marked as ERP provider in NIC portal. This is NOT the GSTZen API Key in Web.config.)";
+                                            }
+                                        }
+                                        catch
+                                        {
+                                        }
 
-                                                if (msg != null && msg.IndexOf("Incorrect user id", StringComparison.OrdinalIgnoreCase) >= 0)
-                                                {
-                                                    var tokenConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_TOKEN"]);
-                                                    var userIdConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_USERID"]);
-                                                    msg = msg + " (Config check: GSTZEN_TOKEN=" + (tokenConfigured ? "SET" : "MISSING") + ", GSTZEN_USERID=" + (userIdConfigured ? "SET" : "MISSING") + ")";
+                                        if (msg != null && msg.IndexOf("Incorrect user id", StringComparison.OrdinalIgnoreCase) >= 0)
+                                        {
+                                            var tokenConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_TOKEN"]);
+                                            var userIdConfigured = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GSTZEN_USERID"]);
+                                            msg = msg + " (Config check: GSTZEN_TOKEN=" + (tokenConfigured ? "SET" : "MISSING") + ", GSTZEN_USERID=" + (userIdConfigured ? "SET" : "MISSING") + ")";
 
-                                                    if (showJson && msg != null && (msg.IndexOf("invalid", StringComparison.OrdinalIgnoreCase) >= 0 || msg.IndexOf("incorrect user", StringComparison.OrdinalIgnoreCase) >= 0))
-                                                    {
-                                                        msg = msg + " (SentCredentials: UserId='" + userIdFromConfig + "', Token='" + tokenMasked + "', HttpStatus=" + portalHttpStatus + ")";
-                                                    }
-                                                }
+                                            if (showJson && (msg.IndexOf("invalid", StringComparison.OrdinalIgnoreCase) >= 0 || msg.IndexOf("incorrect user", StringComparison.OrdinalIgnoreCase) >= 0))
+                                            {
+                                                msg = msg + " (SentCredentials: UserId='" + effectiveUserId + "', Token='" + tokenMasked + "', HttpStatus=" + portalHttpStatus + "', AttemptedUserIds='" + string.Join(", ", attemptedUserIds) + "')";
                                             }
                                         }
                                     }
-                                    catch
-                                    {
-                                        // keep existing msg
-                                    }
-                                }
-
-                                if (status == 1)
-                                {
-                                    msg = data["message"] != null ? data["message"].Value<string>() : msg;
-                                    zirnno = data["Irn"] != null ? data["Irn"].Value<string>() : "";
-                                    zackdt = data["AckDt"] != null ? data["AckDt"].Value<string>() : "";
-                                    zackno = data["AckNo"] != null ? data["AckNo"].Value<string>() : "";
-                                    imgUrl = data["SignedQrCodeImgUrl"] != null ? data["SignedQrCodeImgUrl"].Value<string>() : "";
-
-                                    var imageFileUrl = "";
-                                    var newimageurl = "";
-
-                                    if (imgUrl != "")
-                                    {
-                                        imageFileUrl = imgUrl;
-                                        newimageurl = "https://my.gstzen.in" + imageFileUrl;
-                                    }
-
-                                    SqlConnection GmyConnection = new SqlConnection(_connStr);
-                                    SqlCommand cmd = new SqlCommand("pr_IRN_Transaction_Update_Assgn_N01", GmyConnection);
-                                    cmd.CommandType = CommandType.StoredProcedure;
-                                    cmd.Parameters.AddWithValue("@PTranMID", tranmid);
-                                    cmd.Parameters.AddWithValue("@PIRNNO", zirnno);
-                                    cmd.Parameters.AddWithValue("@PACKNO", zackno);
-                                    DateTime ackDtParsed;
-                                    if (!DateTime.TryParse(zackdt, out ackDtParsed))
-                                    {
-                                        ackDtParsed = DateTime.Now;
-                                    }
-                                    cmd.Parameters.AddWithValue("@PACKDT", ackDtParsed);
-                                    cmd.Parameters.AddWithValue("@PCUSRID", Session["CUSRID"].ToString());
-                                    cmd.Parameters.AddWithValue("@PSignedQRCode", imageFileUrl);
-                                    cmd.Parameters.AddWithValue("@PSignedQRCodeURL", newimageurl);
-                                    GmyConnection.Open();
-                                    cmd.ExecuteNonQuery();
-                                    GmyConnection.Close();
-
-                                    string localFileName = tranmid.ToString() + ".png";
-                                    string path = Server.MapPath("~/QrCode");
-
-                                    WebClient webClient = new WebClient();
-                                    try
-                                    {
-                                        if (!System.IO.Directory.Exists(path))
-                                        {
-                                            System.IO.Directory.CreateDirectory(path);
-                                        }
-
-                                        webClient.DownloadFile(newimageurl, path + "\\" + localFileName);
-                                    }
-                                    catch
-                                    {
-                                        // ignore QR download failures; IRN is already updated
-                                    }
-
-                                    SqlConnection XmyConnection = new SqlConnection(_connStr);
-                                    SqlCommand Xcmd = new SqlCommand("pr_Transaction_QrCode_Path_Update_Assgn", XmyConnection);
-                                    Xcmd.CommandType = CommandType.StoredProcedure;
-                                    Xcmd.Parameters.AddWithValue("@PTranMID", tranmid);
-                                    Xcmd.Parameters.AddWithValue("@PPath", path + "\\" + localFileName);
-                                    XmyConnection.Open();
-                                    Xcmd.ExecuteNonQuery();
-                                    XmyConnection.Close();
-
-                                    msg = "Uploaded Succesfully";
                                 }
                             }
+                            catch
+                            {
+                            }
+                        }
+
+                        if (showJson && !string.IsNullOrWhiteSpace(msg)
+                            && (msg.IndexOf("invalid", StringComparison.OrdinalIgnoreCase) >= 0
+                                || msg.IndexOf("credential", StringComparison.OrdinalIgnoreCase) >= 0
+                                || msg.IndexOf("unauthor", StringComparison.OrdinalIgnoreCase) >= 0))
+                        {
+                            msg = msg + " (SentCredentials: UserId='" + effectiveUserId + "', Token='" + tokenMasked + "', HttpStatus=" + portalHttpStatus + "', AttemptedUserIds='" + string.Join(", ", attemptedUserIds) + "')";
+                        }
+
+                        if (status == 1)
+                        {
+                            msg = data["message"] != null ? data["message"].Value<string>() : msg;
+                            zirnno = data["Irn"] != null ? data["Irn"].Value<string>() : "";
+                            zackdt = data["AckDt"] != null ? data["AckDt"].Value<string>() : "";
+                            zackno = data["AckNo"] != null ? data["AckNo"].Value<string>() : "";
+                            imgUrl = data["SignedQrCodeImgUrl"] != null ? data["SignedQrCodeImgUrl"].Value<string>() : "";
+
+                            var imageFileUrl = "";
+                            var newimageurl = "";
+
+                            if (imgUrl != "")
+                            {
+                                imageFileUrl = imgUrl;
+                                newimageurl = "https://my.gstzen.in" + imageFileUrl;
+                            }
+
+                            SqlConnection GmyConnection = new SqlConnection(_connStr);
+                            SqlCommand cmd = new SqlCommand("pr_IRN_Transaction_Update_Assgn_N01", GmyConnection);
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@PTranMID", tranmid);
+                            cmd.Parameters.AddWithValue("@PIRNNO", zirnno);
+                            cmd.Parameters.AddWithValue("@PACKNO", zackno);
+                            DateTime ackDtParsed;
+                            if (!DateTime.TryParse(zackdt, out ackDtParsed))
+                            {
+                                ackDtParsed = DateTime.Now;
+                            }
+                            cmd.Parameters.AddWithValue("@PACKDT", ackDtParsed);
+                            cmd.Parameters.AddWithValue("@PCUSRID", Session["CUSRID"].ToString());
+                            cmd.Parameters.AddWithValue("@PSignedQRCode", imageFileUrl);
+                            cmd.Parameters.AddWithValue("@PSignedQRCodeURL", newimageurl);
+                            GmyConnection.Open();
+                            cmd.ExecuteNonQuery();
+                            GmyConnection.Close();
+
+                            string localFileName = tranmid.ToString() + ".png";
+                            string path = Server.MapPath("~/QrCode");
+
+                            WebClient webClient = new WebClient();
+                            try
+                            {
+                                if (!System.IO.Directory.Exists(path))
+                                {
+                                    System.IO.Directory.CreateDirectory(path);
+                                }
+
+                                webClient.DownloadFile(newimageurl, path + "\\" + localFileName);
+                            }
+                            catch
+                            {
+                            }
+
+                            SqlConnection XmyConnection = new SqlConnection(_connStr);
+                            SqlCommand Xcmd = new SqlCommand("pr_Transaction_QrCode_Path_Update_Assgn", XmyConnection);
+                            Xcmd.CommandType = CommandType.StoredProcedure;
+                            Xcmd.Parameters.AddWithValue("@PTranMID", tranmid);
+                            Xcmd.Parameters.AddWithValue("@PPath", path + "\\" + localFileName);
+                            XmyConnection.Open();
+                            Xcmd.ExecuteNonQuery();
+                            XmyConnection.Close();
+
+                            msg = "Uploaded Succesfully";
                         }
                     }
 
