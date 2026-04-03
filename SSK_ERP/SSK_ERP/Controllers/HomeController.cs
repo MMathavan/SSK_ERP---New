@@ -2,6 +2,9 @@ using SSK_ERP.Data;
 using SSK_ERP.Models;
 using DocumentFormat.OpenXml.Office2010.Excel;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
 using log4net;
 using Microsoft.AspNet.Identity;
 using System;
@@ -9,6 +12,7 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data;
 using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Web;
@@ -169,6 +173,129 @@ ORDER BY c.column_id", conn))
             catch (Exception ex)
             {
                 return Json(new { Success = false, Message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpGet]
+        public ActionResult DownloadDailyReportExcel(DateTime? asOnDate)
+        {
+            try
+            {
+                if (!asOnDate.HasValue)
+                {
+                    return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "As on Date is required.");
+                }
+
+                var dt = new DataTable();
+                using (var conn = new SqlConnection(_db.Database.Connection.ConnectionString))
+                {
+                    conn.Open();
+
+                    var colNames = new List<string>();
+                    using (var cmdCols = new SqlCommand(@"SELECT c.name
+FROM sys.columns c
+INNER JOIN sys.objects o ON o.object_id = c.object_id
+WHERE o.type IN ('V') AND o.name = 'VW_Dashboard_Dailyreport'
+ORDER BY c.column_id", conn))
+                    using (var rdr = cmdCols.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            colNames.Add(Convert.ToString(rdr[0]));
+                        }
+                    }
+
+                    string dateCol = null;
+                    var candidates = new[] { "AsOnDate", "ASONDATE", "Date", "DATE", "TRANDATE", "TranDate", "ReportDate", "REPORTDATE" };
+                    foreach (var c in candidates)
+                    {
+                        if (colNames.Any(x => string.Equals(x, c, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            dateCol = colNames.First(x => string.Equals(x, c, StringComparison.OrdinalIgnoreCase));
+                            break;
+                        }
+                    }
+
+                    string sql = "SELECT * FROM VW_Dashboard_Dailyreport";
+                    var parms = new List<SqlParameter>();
+                    if (!string.IsNullOrWhiteSpace(dateCol))
+                    {
+                        sql += " WHERE CAST([" + dateCol + "] AS date) = @AsOnDate";
+                        parms.Add(new SqlParameter("@AsOnDate", SqlDbType.Date) { Value = asOnDate.Value.Date });
+                    }
+
+                    using (var cmd = new SqlCommand(sql, conn))
+                    {
+                        if (parms.Count > 0)
+                        {
+                            cmd.Parameters.AddRange(parms.ToArray());
+                        }
+
+                        using (var adp = new SqlDataAdapter(cmd))
+                        {
+                            adp.Fill(dt);
+                        }
+                    }
+                }
+
+                using (var ms = new MemoryStream())
+                {
+                    using (var doc = SpreadsheetDocument.Create(ms, SpreadsheetDocumentType.Workbook, true))
+                    {
+                        var workbookPart = doc.AddWorkbookPart();
+                        workbookPart.Workbook = new Workbook();
+
+                        var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
+                        var sheetData = new SheetData();
+                        worksheetPart.Worksheet = new Worksheet(sheetData);
+
+                        var sheets = workbookPart.Workbook.AppendChild(new Sheets());
+                        var sheet = new Sheet
+                        {
+                            Id = workbookPart.GetIdOfPart(worksheetPart),
+                            SheetId = 1,
+                            Name = "Daily Report"
+                        };
+                        sheets.Append(sheet);
+
+                        // Header row
+                        var headerRow = new Row();
+                        foreach (DataColumn col in dt.Columns)
+                        {
+                            headerRow.AppendChild(new Cell
+                            {
+                                DataType = CellValues.String,
+                                CellValue = new CellValue(Convert.ToString(col.ColumnName) ?? string.Empty)
+                            });
+                        }
+                        sheetData.AppendChild(headerRow);
+
+                        // Data rows
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            var r = new Row();
+                            foreach (DataColumn col in dt.Columns)
+                            {
+                                var val = row[col] == DBNull.Value ? string.Empty : Convert.ToString(row[col]);
+                                r.AppendChild(new Cell
+                                {
+                                    DataType = CellValues.String,
+                                    CellValue = new CellValue(val ?? string.Empty)
+                                });
+                            }
+                            sheetData.AppendChild(r);
+                        }
+
+                        workbookPart.Workbook.Save();
+                    }
+
+                    var fileName = "DAILY_REPORT_" + asOnDate.Value.ToString("yyyy-MM-dd") + ".xlsx";
+                    return File(ms.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.InternalServerError, ex.Message);
             }
         }
 

@@ -445,6 +445,9 @@
                 <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;">As on Date</div>
                 <input type="date" id="dailyReportDate" value="@DateTime.Now.ToString("yyyy-MM-dd")" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
             </div>
+            <div>
+                <button type="button" id="btnDailyReportDownload" style="display:inline-block; height:38px; line-height:38px; padding:0 14px; border:1px solid #e2e8f0; border-radius:10px; background:#1e293b; color:#fff; font-weight:700; cursor:pointer;">Download Excel</button>
+            </div>
         </div>
 
         <div id="dailyReportContainer" style="background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0, 0, 0, 0.08);">
@@ -1070,6 +1073,22 @@
             var dateInput = document.getElementById('dailyReportDate');
             if (dateInput) {
                 dateInput.addEventListener('change', loadDailyReport);
+            }
+
+            var btnDl = document.getElementById('btnDailyReportDownload');
+            if (btnDl) {
+                btnDl.addEventListener('click', function () {
+                    var d = dateInput ? dateInput.value : '';
+                    if (!d) {
+                        var container = document.getElementById('dailyReportContainer');
+                        if (container) {
+                            container.innerHTML = '<div style="padding:10px 12px; color:#64748b; font-weight:600;">Please select date to download.</div>';
+                        }
+                        return;
+                    }
+                    var dlUrl = '@Url.Action("DownloadDailyReportExcel", "Home")' + '?asOnDate=' + encodeURIComponent(d);
+                    window.location.href = dlUrl;
+                });
             }
             loadDailyReport();
         });
