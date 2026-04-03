@@ -157,6 +157,11 @@ namespace SSK_ERP.Controllers
                     // Filter to the current TransactionMasterTempId and ensure stable ordering by LineNo
                     var tempDetails = allDetails
                         .Where(d => d.TransactionMasterTempId == masterTempId)
+                        .GroupBy(d => d.LineNo)
+                        .Select(g => g
+                            .OrderByDescending(d => GetMaterialMatchScore(d))
+                            .ThenByDescending(d => NormalizeMaterialMatchText(d.MTRLDESC).Length)
+                            .First())
                         .OrderBy(d => d.LineNo)
                         .ToList();
 
@@ -271,6 +276,7 @@ namespace SSK_ERP.Controllers
             public decimal GrossAmount { get; set; }
             // MTRLID comes from MATERIALMASTER when using PR_TRANSACTIONDETAILMATERIAL_DETAILS
             public int? MTRLID { get; set; }
+            public string MTRLDESC { get; set; }
         }
 
         private class UploadDetailCalcRow
@@ -288,6 +294,128 @@ namespace SSK_ERP.Controllers
             public decimal Sgst { get; set; }
             public decimal Igst { get; set; }
             public decimal Net { get; set; }
+        }
+
+        private static string NormalizeMaterialMatchText(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            string normalized = value.ToUpperInvariant();
+            normalized = normalized.Replace("-", " ");
+            normalized = normalized.Replace(".", " ");
+            normalized = normalized.Replace("%", " ");
+            normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+            return normalized;
+        }
+
+        private static int GetMaterialMatchScore(TransactionDetailTempRow row)
+        {
+            if (row == null)
+            {
+                return int.MinValue;
+            }
+
+            string itemName = NormalizeMaterialMatchText(row.ItemDrugName);
+            string materialName = NormalizeMaterialMatchText(row.MTRLDESC);
+            int score = row.MTRLID.HasValue && row.MTRLID.Value > 0 ? 1000 : 0;
+
+            if (string.IsNullOrWhiteSpace(itemName) || string.IsNullOrWhiteSpace(materialName))
+            {
+                return score;
+            }
+
+            if (string.Equals(itemName, materialName, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 10000;
+            }
+
+            if (itemName.Contains(materialName))
+            {
+                score += 5000;
+            }
+
+            if (materialName.Contains(itemName))
+            {
+                score += 2500;
+            }
+
+            score += materialName.Length;
+            return score;
+        }
+
+        private static bool IsItemRowStart(string line)
+        {
+            return !string.IsNullOrWhiteSpace(line)
+                && Regex.IsMatch(line, @"^\d+(\.\d+)?\s+");
+        }
+
+        private static bool IsItemDetailTerminator(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                return false;
+            }
+
+            return line.StartsWith("Total Amount", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Amount in Words", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Approved Date", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Credit Period", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Receive By", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Total CGST Amt", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Total SGST Amt", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Total IGST Amt", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsItemDetailNoise(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                return true;
+            }
+
+            string normalized = Regex.Replace(line, @"\s+", " ").Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return true;
+            }
+
+            return normalized.StartsWith("Prepared by", StringComparison.OrdinalIgnoreCase)
+                || normalized.StartsWith("Checked by", StringComparison.OrdinalIgnoreCase)
+                || normalized.StartsWith("Approved by", StringComparison.OrdinalIgnoreCase)
+                || normalized.StartsWith("PO #", StringComparison.OrdinalIgnoreCase)
+                || normalized.StartsWith("PO Date", StringComparison.OrdinalIgnoreCase)
+                || Regex.IsMatch(normalized, @"^PO/[A-Z0-9/\-]+$", RegexOptions.IgnoreCase)
+                || Regex.IsMatch(normalized, @"^\d{1,2}/\d{1,2}/\d{4}$")
+                || normalized.Equals("Sno", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Item/Drug Name", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("HSN Code", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Qty", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Free Qty", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("UQC", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Rate/Unit", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Discount", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("CGST", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("SGST", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("IGST", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Gross Amount", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("%", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Sn Item/Drug Name HSN Code Qty Free Qty UQC Rate/Unit Discount CGST SGST IGST Gross Amount", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Sno Item/Drug Name HSN Code Qty Free Qty UQC Rate/Unit Discount CGST SGST IGST Gross Amount", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSplitSerialWholePart(string line)
+        {
+            return !string.IsNullOrWhiteSpace(line)
+                && Regex.IsMatch(line.Trim(), @"^\d+$");
+        }
+
+        private static bool IsSplitSerialDecimalPart(string line)
+        {
+            return !string.IsNullOrWhiteSpace(line)
+                && Regex.IsMatch(line.Trim(), @"^\.\d+$");
         }
 
         [HttpPost]
@@ -616,7 +744,9 @@ namespace SSK_ERP.Controllers
                 ).Single();
 
                 // ---------------- Detail parsing (only item rows) ----------------
-                int itemsHeaderIndex = allLines.FindIndex(l => l.StartsWith("Sno Item/Drug Name", StringComparison.OrdinalIgnoreCase));
+                int itemsHeaderIndex = allLines.FindIndex(l =>
+                    l.StartsWith("Sno Item/Drug Name", StringComparison.OrdinalIgnoreCase)
+                    || l.StartsWith("Sn Item/Drug Name", StringComparison.OrdinalIgnoreCase));
                 if (itemsHeaderIndex >= 0)
                 {
                     var itemBlocks = new List<string>();
@@ -626,12 +756,31 @@ namespace SSK_ERP.Controllers
                     {
                         var line = allLines[i];
 
+                        if (IsSplitSerialWholePart(line)
+                            && i + 2 < allLines.Count
+                            && IsSplitSerialDecimalPart(allLines[i + 1])
+                            && !IsItemDetailNoise(allLines[i + 2]))
+                        {
+                            line = line.Trim() + allLines[i + 1].Trim() + " " + allLines[i + 2].Trim();
+                            i += 2;
+                        }
+
+                        if (IsItemDetailTerminator(line))
+                        {
+                            break;
+                        }
+
                         if (line.StartsWith("Prepared by", StringComparison.OrdinalIgnoreCase))
                         {
                             break;
                         }
 
-                        bool startsWithNumber = Regex.IsMatch(line, @"^\d+(\.\d+)?\s+");
+                        if (IsItemDetailNoise(line))
+                        {
+                            continue;
+                        }
+
+                        bool startsWithNumber = IsItemRowStart(line);
 
                         if (startsWithNumber)
                         {
