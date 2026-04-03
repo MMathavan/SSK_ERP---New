@@ -245,9 +245,55 @@ ORDER BY c.column_id", conn))
                         var workbookPart = doc.AddWorkbookPart();
                         workbookPart.Workbook = new Workbook();
 
+                        var stylesPart = workbookPart.AddNewPart<WorkbookStylesPart>();
+                        stylesPart.Stylesheet = new Stylesheet(
+                            new Fonts(
+                                new Font(),
+                                new Font(new Bold(), new FontSize() { Val = 14 })
+                            ),
+                            new Fills(
+                                new Fill(new PatternFill() { PatternType = PatternValues.None }),
+                                new Fill(new PatternFill() { PatternType = PatternValues.Gray125 }),
+                                new Fill(new PatternFill(new ForegroundColor { Rgb = new HexBinaryValue("FFEFF3F8") }) { PatternType = PatternValues.Solid })
+                            ),
+                            new Borders(
+                                new Border(
+                                    new LeftBorder(),
+                                    new RightBorder(),
+                                    new TopBorder(),
+                                    new BottomBorder(),
+                                    new DiagonalBorder()
+                                )
+                            ),
+                            new CellFormats(
+                                new CellFormat(),
+                                new CellFormat { FontId = 1, ApplyFont = true, Alignment = new Alignment { Horizontal = HorizontalAlignmentValues.Center, Vertical = VerticalAlignmentValues.Center }, ApplyAlignment = true },
+                                new CellFormat { FontId = 1, FillId = 2, BorderId = 0, ApplyFont = true, ApplyFill = true }
+                            )
+                        );
+                        stylesPart.Stylesheet.Save();
+
                         var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
                         var sheetData = new SheetData();
-                        worksheetPart.Worksheet = new Worksheet(sheetData);
+
+                        var columns = new Columns();
+                        int colCount = dt.Columns.Count;
+                        for (int i = 0; i < colCount; i++)
+                        {
+                            int maxLen = 0;
+                            var header = Convert.ToString(dt.Columns[i].ColumnName) ?? string.Empty;
+                            if (header.Length > maxLen) maxLen = header.Length;
+                            foreach (DataRow rr in dt.Rows)
+                            {
+                                var v = rr[dt.Columns[i]] == DBNull.Value ? string.Empty : Convert.ToString(rr[dt.Columns[i]]) ?? string.Empty;
+                                if (v.Length > maxLen) maxLen = v.Length;
+                            }
+                            double width = Math.Min(60, Math.Max(10, maxLen + 2));
+                            columns.Append(new Column { Min = (uint)(i + 1), Max = (uint)(i + 1), Width = width, CustomWidth = true });
+                        }
+
+                        var mergeCells = new MergeCells();
+                        worksheetPart.Worksheet = new Worksheet(columns, sheetData, mergeCells);
 
                         var sheets = workbookPart.Workbook.AppendChild(new Sheets());
                         var sheet = new Sheet
@@ -258,6 +304,41 @@ ORDER BY c.column_id", conn))
                         };
                         sheets.Append(sheet);
 
+                        string lastColLetter;
+                        {
+                            int n = Math.Max(1, dt.Columns.Count);
+                            int d = n;
+                            string s = string.Empty;
+                            while (d > 0)
+                            {
+                                int mod = (d - 1) % 26;
+                                s = Convert.ToChar('A' + mod) + s;
+                                d = (d - mod) / 26;
+                            }
+                            lastColLetter = s;
+                        }
+
+                        // Title row
+                        var titleRow = new Row { Height = 22D, CustomHeight = true };
+                        var titleText = "DAILY REPORT (" + asOnDate.Value.ToString("yyyy-MM-dd") + ")";
+                        titleRow.AppendChild(new Cell
+                        {
+                            DataType = CellValues.String,
+                            CellValue = new CellValue(titleText),
+                            StyleIndex = 1U
+                        });
+                        for (int i = 1; i < dt.Columns.Count; i++)
+                        {
+                            titleRow.AppendChild(new Cell
+                            {
+                                DataType = CellValues.String,
+                                CellValue = new CellValue(string.Empty),
+                                StyleIndex = 1U
+                            });
+                        }
+                        sheetData.AppendChild(titleRow);
+                        mergeCells.Append(new MergeCell { Reference = new StringValue("A1:" + lastColLetter + "1") });
+
                         // Header row
                         var headerRow = new Row();
                         foreach (DataColumn col in dt.Columns)
@@ -266,6 +347,8 @@ ORDER BY c.column_id", conn))
                             {
                                 DataType = CellValues.String,
                                 CellValue = new CellValue(Convert.ToString(col.ColumnName) ?? string.Empty)
+                                ,
+                                StyleIndex = 2U
                             });
                         }
                         sheetData.AppendChild(headerRow);
