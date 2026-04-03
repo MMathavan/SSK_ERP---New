@@ -438,6 +438,21 @@
     </div>
 
     <div class="charts-section" style="margin-top: 30px;">
+        <h2 class="section-title" style="margin-bottom: 20px;">Daily Report</h2>
+
+        <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom: 14px;">
+            <div>
+                <div style="font-size:12px; font-weight:700; color:#1e293b; margin-bottom:6px;">As on Date</div>
+                <input type="date" id="dailyReportDate" value="@DateTime.Now.ToString("yyyy-MM-dd")" style="height:38px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;" />
+            </div>
+        </div>
+
+        <div id="dailyReportContainer" style="background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0, 0, 0, 0.08);">
+            <div style="padding:10px 12px; color:#64748b; font-weight:600;">Loading...</div>
+        </div>
+    </div>
+
+    <div class="charts-section" style="margin-top: 30px;">
         <h2 class="section-title" style="margin-bottom: 20px;">Transactions</h2>
 
         @{
@@ -939,6 +954,45 @@
 
 <script>
     (function () {
+        function escapeHtml(s) {
+            if (s == null) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function loadDailyReport() {
+            var dateInput = document.getElementById('dailyReportDate');
+            var container = document.getElementById('dailyReportContainer');
+            if (!dateInput || !container) return;
+
+            var d = dateInput.value;
+            if (!d) {
+                container.innerHTML = '<div style="padding:10px 12px; color:#64748b; font-weight:600;">Please select date.</div>';
+                return;
+            }
+
+            container.innerHTML = '<div style="padding:10px 12px; color:#64748b; font-weight:600;">Loading...</div>';
+            var url = '@Url.Action("GetDailyReport", "Home")' + '?asOnDate=' + encodeURIComponent(d);
+
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j && j.Success) {
+                        container.innerHTML = j.Html || '';
+                        initTablePager('tblDailyReport', 'pagerDailyReport', 5);
+                    } else {
+                        container.innerHTML = '<div style="padding:10px 12px; color:#b91c1c; font-weight:700;">' + escapeHtml((j && j.Message) ? j.Message : 'Unable to load data.') + '</div>';
+                    }
+                })
+                .catch(function (e) {
+                    container.innerHTML = '<div style="padding:10px 12px; color:#b91c1c; font-weight:700;">' + escapeHtml(e && e.message ? e.message : 'Error loading data.') + '</div>';
+                });
+        }
+
         function initTablePager(tableId, pagerId, pageSize) {
             var table = document.getElementById(tableId);
             var pager = document.getElementById(pagerId);
@@ -1012,22 +1066,28 @@
             initTablePager('tblPendingSalesInvoice', 'pagerPendingSalesInvoice', 3);
             initTablePager('tblPartialPurchaseInvoice', 'pagerPartialPurchaseInvoice', 3);
             initTablePager('tblOthersPendingPurchaseInvoice', 'pagerOthersPendingPurchaseInvoice', 3);
+
+            var dateInput = document.getElementById('dailyReportDate');
+            if (dateInput) {
+                dateInput.addEventListener('change', loadDailyReport);
+            }
+            loadDailyReport();
         });
+
     })();
 </script>
 
-@{
-    var materialGroupLabels = ViewBag.MaterialGroupLabels as List<string>;
-    var materialGroupCounts = ViewBag.MaterialGroupCounts as List<int>;
-    var transactionTypeLabels = ViewBag.TransactionTypeLabels as List<string>;
-    var transactionTypeCounts = ViewBag.TransactionTypeCounts as List<int>;
-    
-    // Ensure lists are not null
-    if (materialGroupLabels == null) { materialGroupLabels = new List<string>(); }
-    if (materialGroupCounts == null) { materialGroupCounts = new List<int>(); }
-    if (transactionTypeLabels == null) { transactionTypeLabels = new List<string>(); }
-    if (transactionTypeCounts == null) { transactionTypeCounts = new List<int>(); }
-}
+        @{ 
+            var materialGroupLabels = ViewBag.MaterialGroupLabels as List<string>;
+            var materialGroupCounts = ViewBag.MaterialGroupCounts as List<int>;
+            var transactionTypeLabels = ViewBag.TransactionTypeLabels as List<string>;
+            var transactionTypeCounts = ViewBag.TransactionTypeCounts as List<int>;
+
+            if (materialGroupLabels == null) { materialGroupLabels = new List<string>(); }
+            if (materialGroupCounts == null) { materialGroupCounts = new List<int>(); }
+            if (transactionTypeLabels == null) { transactionTypeLabels = new List<string>(); }
+            if (transactionTypeCounts == null) { transactionTypeCounts = new List<int>(); }
+        }
 
 <script>
     // Chart.js Configuration

@@ -1,5 +1,4 @@
 using SSK_ERP.Data;
-using SSK_ERP.Filters;
 using SSK_ERP.Models;
 using DocumentFormat.OpenXml.Office2010.Excel;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
@@ -8,8 +7,10 @@ using Microsoft.AspNet.Identity;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Net;
 using System.Web;
 using System.Web.Mvc;
 
@@ -25,7 +26,6 @@ namespace SSK_ERP.Controllers
         {
             _db = new ApplicationDbContext();
         }
-
 
         public ActionResult AdminDashboard()
         {
@@ -60,6 +60,116 @@ namespace SSK_ERP.Controllers
             }
 
             return View();
+        }
+
+        [HttpGet]
+        public JsonResult GetDailyReport(DateTime? asOnDate)
+        {
+            try
+            {
+                if (!asOnDate.HasValue)
+                {
+                    return Json(new { Success = false, Message = "As on Date is required." }, JsonRequestBehavior.AllowGet);
+                }
+
+                var dt = new DataTable();
+                using (var conn = new SqlConnection(_db.Database.Connection.ConnectionString))
+                {
+                    conn.Open();
+
+                    var colNames = new List<string>();
+                    using (var cmdCols = new SqlCommand(@"SELECT c.name
+FROM sys.columns c
+INNER JOIN sys.objects o ON o.object_id = c.object_id
+WHERE o.type IN ('V') AND o.name = 'VW_Dashboard_Dailyreport'
+ORDER BY c.column_id", conn))
+                    using (var rdr = cmdCols.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            colNames.Add(Convert.ToString(rdr[0]));
+                        }
+                    }
+
+                    string dateCol = null;
+                    var candidates = new[] { "AsOnDate", "ASONDATE", "Date", "DATE", "TRANDATE", "TranDate", "ReportDate", "REPORTDATE" };
+                    foreach (var c in candidates)
+                    {
+                        if (colNames.Any(x => string.Equals(x, c, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            dateCol = colNames.First(x => string.Equals(x, c, StringComparison.OrdinalIgnoreCase));
+                            break;
+                        }
+                    }
+
+                    string sql = "SELECT * FROM VW_Dashboard_Dailyreport";
+                    var parms = new List<SqlParameter>();
+                    if (!string.IsNullOrWhiteSpace(dateCol))
+                    {
+                        sql += " WHERE CAST([" + dateCol + "] AS date) = @AsOnDate";
+                        parms.Add(new SqlParameter("@AsOnDate", SqlDbType.Date) { Value = asOnDate.Value.Date });
+                    }
+
+                    using (var cmd = new SqlCommand(sql, conn))
+                    {
+                        if (parms.Count > 0)
+                        {
+                            cmd.Parameters.AddRange(parms.ToArray());
+                        }
+                        using (var adp = new SqlDataAdapter(cmd))
+                        {
+                            adp.Fill(dt);
+                        }
+                    }
+                }
+
+                string html;
+                if (dt.Rows.Count == 0)
+                {
+                    html = "<div style=\"padding:10px 12px; color:#64748b; font-weight:600;\">No data found.</div>";
+                }
+                else
+                {
+                    var sb = new System.Text.StringBuilder();
+                    sb.Append("<div style=\"overflow-x:auto;\">");
+                    sb.Append("<table id=\"tblDailyReport\" style=\"width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden;\">");
+                    sb.Append("<thead><tr style=\"background:#f8fafc;\">");
+                    foreach (DataColumn col in dt.Columns)
+                    {
+                        sb.Append("<th style=\"text-align:left; padding:10px 12px; border-bottom:1px solid #e2e8f0; white-space:nowrap;\">");
+                        sb.Append(WebUtility.HtmlEncode(col.ColumnName));
+                        sb.Append("</th>");
+                    }
+                    sb.Append("</tr></thead><tbody>");
+
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        sb.Append("<tr>");
+                        foreach (DataColumn col in dt.Columns)
+                        {
+                            var val = row[col] == DBNull.Value ? string.Empty : Convert.ToString(row[col]);
+                            sb.Append("<td style=\"padding:10px 12px; border-bottom:1px solid #f1f5f9; white-space:nowrap;\">");
+                            sb.Append(WebUtility.HtmlEncode(val));
+                            sb.Append("</td>");
+                        }
+                        sb.Append("</tr>");
+                    }
+
+                    sb.Append("</tbody></table></div>");
+                    sb.Append("<div id=\"pagerDailyReport\" style=\"position:relative !important; width:100% !important; margin-top:8px; min-height:34px; padding:0 70px;\">");
+                    sb.Append("<button type=\"button\" data-action=\"prev\" style=\"position:absolute !important; left:0 !important; top:0 !important; display:inline-block !important; width:auto !important; padding:6px 10px; border:1px solid #e2e8f0; background:#fff; border-radius:6px; cursor:pointer; white-space:nowrap;\">Prev</button>");
+                    sb.Append("<div data-role=\"info\" style=\"text-align:center; font-size:12px; color:#64748b; font-weight:600; line-height:34px;\"></div>");
+                    sb.Append("<button type=\"button\" data-action=\"next\" style=\"position:absolute !important; right:0 !important; top:0 !important; display:inline-block !important; width:auto !important; padding:6px 10px; border:1px solid #e2e8f0; background:#fff; border-radius:6px; cursor:pointer; white-space:nowrap;\">Next</button>");
+                    sb.Append("</div>");
+                    html = sb.ToString();
+                }
+
+                return Json(new { Success = true, Html = html }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { Success = false, Message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
 
         public ActionResult Index(DateTime? fromDate, DateTime? toDate)
