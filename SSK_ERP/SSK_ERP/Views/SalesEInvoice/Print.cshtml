@@ -429,11 +429,11 @@
         <table class="inv-info-table" style="margin-top: 2px; table-layout: fixed;">
             <tr>
                 <th style="width: 8%; padding: 2px 4px; white-space: nowrap; font-size: 12px;">IRN No</th>
-                <td style="width: 42%; padding: 2px 4px; white-space: nowrap; font-size: 11px;">@Model.IrnNo</td>
+                <td style="width: 42%; padding: 2px 4px; white-space: nowrap; font-size: 14px; font-weight: 700;">@Model.IrnNo</td>
                 <th style="width: 8%; padding: 2px 4px; white-space: nowrap; font-size: 12px;">Ack No</th>
-                <td style="width: 14%; padding: 2px 4px; white-space: nowrap; font-size: 12px;">@Model.AckNo</td>
+                <td style="width: 14%; padding: 2px 4px; white-space: nowrap; font-size: 13px; font-weight: 700;">@Model.AckNo</td>
                 <th style="width: 13%; padding: 2px 4px; white-space: nowrap; font-size: 12px;">Ack Date &amp; Time</th>
-                <td style="width: 15%; padding: 2px 4px; white-space: nowrap; font-size: 12px;">@(Model.AckDate.HasValue ? Model.AckDate.Value.ToString("dd/MM/yyyy hh:mm tt") : string.Empty)</td>
+                <td style="width: 15%; padding: 2px 4px; white-space: nowrap; font-size: 13px; font-weight: 700;">@(Model.AckDate.HasValue ? Model.AckDate.Value.ToString("dd/MM/yyyy hh:mm tt") : string.Empty)</td>
             </tr>
         </table>
 
@@ -716,7 +716,15 @@
         <div class="footer-row">
             <table>
                 <tr>
-                    <td style="width: 35%; border-right: 1px solid #000;">
+                    <td style="width: 25%; border-right: 1px solid #000;">
+                        <div class="terms-title">Terms &amp; Conditions</div>
+                        <div class="terms-body">
+                            Goods once sold will not be taken back or exchanged.<br />
+                            All disputes subject to  Jurisdication only.<br />
+                            Bills not paid due date will attract 24% interest.
+                        </div>
+                    </td>
+                    <td style="width: 15%; text-align: center; vertical-align: middle; border-right: 1px solid #000;">
                         @{
                             var qrCodePath = Model.QrCodePath ?? string.Empty;
                             var qrCodeSrc = string.Empty;
@@ -748,24 +756,15 @@
                                 qrCodeSrc = "data:image/png;base64," + Convert.ToBase64String(qrBytes);
                             }
                         }
-                        <div class="footer-einvoice-wrap">
-                            <div class="footer-einvoice-text">
-                                <div class="terms-title">Terms &amp; Conditions</div>
-                                <div class="terms-body">
-                                    Goods once sold will not be taken back or exchanged.<br />
-                                    All disputes subject to  Jurisdication only.<br />
-                                    Bills not paid due date will attract 24% interest.
-                                </div>
+                        <div class="terms-title">Einvoice</div>
+                        @if (!string.IsNullOrWhiteSpace(qrCodeSrc))
+                        {
+                            <div style="margin-top: 5px; display: flex; justify-content: center; align-items: center; height: 100%;">
+                                <img src="@qrCodeSrc" alt="QR Code" style="width: 100%; height: 180px; object-fit: contain;" />
                             </div>
-                            @if (!string.IsNullOrWhiteSpace(qrCodeSrc))
-                            {
-                                <div class="footer-einvoice-qr">
-                                    <img src="@qrCodeSrc" alt="QR Code" />
-                                </div>
-                            }
-                        </div>
+                        }
                     </td>
-                    <td style="width: 35%; border-right: 1px solid #000;">
+                    <td style="width: 25%; border-right: 1px solid #000;">
                         <div class="terms-title">Bank Details</div>
                         <div class="terms-body bank-details-wrap">
                             <div class="bank-details-text">
@@ -777,7 +776,7 @@
                             <img class="bank-qr" src="@Url.Content("~/Content/images/qrcode_ssk.png")" alt="QR" />
                         </div>
                     </td>
-                    <td style="width: 15%; text-align: center; border-right: 1px solid #000;" class="sig-td">
+                    <td style="width: 20%; text-align: center; border-right: 1px solid #000;" class="sig-td">
                         <div>For @(!string.IsNullOrWhiteSpace(Model.CompanyName) ? Model.CompanyName : "SSK ENTERPRISE")</div>
                         <div class="sig-cell-bottom">Signature</div>
                     </td>
