@@ -158,11 +158,27 @@
                 @Html.HiddenFor(m => m.PurchaseTranMid)
                 @Html.HiddenFor(m => m.StateType, new { id = "siStateType" })
 
+                if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+                }
+
+                if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+                }
+
                 <div class="section-title">
                     <span>Invoice Details</span>
                 </div>
 
                 <div class="row">
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label class="control-label">Bill Number</label>
+                            @Html.TextBoxFor(m => m.BillNumber, new { @class = "form-control", type = "number", min = "1" })
+                        </div>
+                    </div>
                     <div class="col-md-2">
                         <div class="form-group">
                             <label class="control-label">Sales Invoice No</label>

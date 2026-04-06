@@ -119,6 +119,14 @@
         color: white;
         transform: translateY(-1px);
     }
+
+    .btn-disabled {
+        opacity: 0.5;
+        pointer-events: none;
+        cursor: not-allowed;
+        box-shadow: none !important;
+        transform: none !important;
+    }
 </style>
 
 <div class="si-main-container">
@@ -289,9 +297,13 @@
                             var id = row['TRANMID'];
                             var uploadUrl = '@Url.Action("CInvoice", "SalesEInvoice")' + '/' + id;
                             var printUrl = '@Url.Action("Print", "SalesEInvoice")' + '?id=' + id;
+                            var ackNo = $.trim(row['AckNo'] || '');
+                            var isLocked = ackNo.length > 0;
 
                             var html = '';
-                            if (canUpload) {
+                            if (isLocked) {
+                                html += '<span class="btn btn-action btn-upload btn-disabled"><i class="fa fa-upload"></i> Upload</span>';
+                            } else if (canUpload) {
                                 html += '<a href="javascript:void(0)" class="btn btn-action btn-upload EInvoice" id="' + id + '"><i class="fa fa-upload"></i> Upload</a>';
                             } else {
                                 html += '<a href="#" class="btn btn-action btn-upload" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Upload\');"><i class="fa fa-upload"></i> Upload</a>';

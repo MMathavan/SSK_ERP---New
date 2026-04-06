@@ -183,6 +183,14 @@
         color: #ffffff;
     }
 
+    .btn-disabled {
+        opacity: 0.5;
+        pointer-events: none;
+        cursor: not-allowed;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
     .badge {
         font-weight: 600;
     }
@@ -377,11 +385,21 @@
                             var id = row['TRANMID'];
                             var editUrl = '@Url.Action("Form", "SalesInvoice")' + '?id=' + id;
                             var printUrl = '@Url.Action("Print", "SalesInvoice")' + '?id=' + id;
+                            var ackNo = $.trim(row['AckNo'] || '');
+                            var isLocked = ackNo.length > 0;
 
                             var html = '';
-                            html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
+                            if (isLocked) {
+                                html += '<span class="btn btn-action btn-edit btn-disabled"><i class="fa fa-edit"></i> Edit</span>';
+                            } else {
+                                html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
+                            }
                             html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
-                            html += '<button type="button" class="btn btn-action btn-delete" onclick="deleteSalesInvoice(' + id + ');"><i class="fa fa-trash"></i> Delete</button>';
+                            if (isLocked) {
+                                html += '<span class="btn btn-action btn-delete btn-disabled"><i class="fa fa-trash"></i> Delete</span>';
+                            } else {
+                                html += '<button type="button" class="btn btn-action btn-delete" onclick="deleteSalesInvoice(' + id + ');"><i class="fa fa-trash"></i> Delete</button>';
+                            }
                             return html;
                         }
                     }

@@ -285,13 +285,6 @@ namespace SSK_ERP.Controllers
         [Authorize(Roles = "SalesEInvoiceUpload")]
         public ActionResult Upload(int id)
         {
-            var master = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == id && t.REGSTRID == 20);
-            if (master != null && !string.IsNullOrWhiteSpace(master.ACKNO))
-            {
-                TempData["ErrorMessage"] = "Acknowledge Number already present. Upload is not allowed.";
-                return RedirectToAction("Index");
-            }
-
             TempData["ErrorMessage"] = "Upload is not implemented yet.";
             return RedirectToAction("Index");
         }
@@ -299,42 +292,10 @@ namespace SSK_ERP.Controllers
         [Authorize(Roles = "SalesEInvoicePrint")]
         public ActionResult Print(int id)
         {
-            var salesInvoiceController = new SalesInvoiceController();
-            var result = salesInvoiceController.Print(id) as ViewResult;
-
-            if (result != null)
-            {
-                var model = result.Model as SalesInvoicePrintViewModel;
-                if (model != null && !string.IsNullOrWhiteSpace(model.QrCodePath))
-                {
-                    var qrPath = model.QrCodePath.Trim();
-                    var isPhysicalFilePath = qrPath.Contains(":\\") || qrPath.Contains(":/");
-
-                    if (!qrPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                        && !qrPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-                        && !qrPath.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
-                        && !qrPath.StartsWith("~")
-                        && !isPhysicalFilePath)
-                    {
-                        if (qrPath.StartsWith("/"))
-                        {
-                            model.QrCodePath = "https://my.gstzen.in" + qrPath;
-                        }
-                        else
-                        {
-                            model.QrCodePath = "https://" + qrPath;
-                        }
-                    }
-                }
-
-                return View("~/Views/SalesEInvoice/Print.cshtml", model ?? result.Model);
-            }
-
-            TempData["ErrorMessage"] = "Sales EInvoice print data could not be loaded.";
-            return RedirectToAction("Index");
+            return RedirectToAction("Print", "SalesInvoice", new { id });
         }
 
-        public async Task<ActionResult> oRG_CInvoice(int id = 0)/*10rs.reminder*/
+        public async Task<ActionResult> CInvoice(int id = 0)/*10rs.reminder*/
         {
             SqlConnection myConnection = null;
             try
@@ -1117,308 +1078,17 @@ SELECT
             }
         }
 
-        public async Task CInvoice(int id = 0)/*10rs.reminder*/
-        {
-            var master = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == id && t.REGSTRID == SalesInvoiceRegisterId);
-            if (master != null && !string.IsNullOrWhiteSpace(master.ACKNO))
-            {
-                Response.StatusCode = 409;
-                Response.Write("Acknowledge Number already present. Upload is not allowed.");
-                return;
-            }
-
-            SqlDataReader reader = null;
-            //SqlDataReader Sreader = null;
-            string _connStr = ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"].ConnectionString;
-            SqlConnection myConnection = new SqlConnection(_connStr);
-
-            string _SconnStr = ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"].ConnectionString;
-            SqlConnection SmyConnection = new SqlConnection(_SconnStr);
-
-            var tranmid = id;// Convert.ToInt32(Request.Form.Get("id"));// Convert.ToInt32(ids);
-
-            SqlCommand sqlCmd = new SqlCommand();
-            sqlCmd.CommandType = CommandType.Text;
-            sqlCmd.CommandText = "Select * from Z_NEW_SALES_EINVOICE_DETAILS Where TRANMID = " + tranmid;
-            sqlCmd.Connection = myConnection;
-            myConnection.Open();
-            reader = sqlCmd.ExecuteReader();
-
-            int custgid = 0;
-            string suptyp = "";
-            string stringjson = "";
-
-            decimal itemamt = 0;
-            decimal taxblamt = 0;
-            decimal discamt = 0;
-            decimal roff_amt = 0;
-
-            decimal cgst_amt = 0;
-            decimal sgst_amt = 0;
-            decimal igst_amt = 0;
-
-            string ewaybillno = null;
-            string trnsprtgstinno = null;
-            string trnsprtname = null;
-            int distance = 0;
-            string TransDocNo = null;
-            string TransDocDt = null;
-            string vhlno = null;
-            string VehType = null;
-            string TransMode = null;
-
-            while (reader.Read())
-            {
-                //if (reader["EWAYBILLNO"].ToString() != "")
-                //{
-                //    ewaybillno = reader["EWAYBILLNO"].ToString();
-                //    trnsprtgstinno = reader["TRNSPRTGSTINNO"].ToString();
-                //    trnsprtname = reader["TRNSPRTNAME"].ToString();
-                //    distance = Convert.ToInt32(reader["DISTANCE"]);
-                //    TransDocNo = reader["TRANDNO"].ToString();
-                //    TransDocDt = Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy");
-                //    vhlno = reader["VHLNO"].ToString();
-                //    VehType = "R";
-                //    TransMode = "1";
-                //}
-
-
-                itemamt = Convert.ToDecimal(reader["DGAMT"]);
-                taxblamt = Convert.ToDecimal(reader["TRANGAMT"]);
-
-                cgst_amt = Convert.ToDecimal(reader["TRANCGSTAMT"]);
-                sgst_amt = Convert.ToDecimal(reader["TRANSGSTAMT"]);
-                igst_amt = Convert.ToDecimal(reader["TRANIGSTAMT"]);
-
-                discamt = 0;// Convert.ToDecimal(reader["DISCAMT"]);
-
-                roff_amt = Convert.ToDecimal(reader["TRANROAMT"]);
-
-                custgid = 1;// Convert.ToInt32(reader["CUSTGID"]);
-                switch (custgid)
-                {
-                    case 6:
-                        suptyp = "SEZWP";
-                        break;
-                    default:
-                        suptyp = "B2B";
-                        break;
-                }
-
-                var response = new Response()
-                {
-                    Version = "1.1",
-
-                    TranDtls = new TranDtls()
-                    {
-                        TaxSch = "GST",
-                        SupTyp = suptyp,//"B2B",
-                        RegRev = "N",
-                        EcmGstin = null,
-                        IgstOnIntra = "N"
-                    },
-
-                    DocDtls = new DocDtls()
-                    {
-                        Typ = "INV",
-                        No = reader["TRANDNO"].ToString(),
-                        Dt = Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy")
-                    },
-
-                    SellerDtls = new SellerDtls()
-                    {
-                        Gstin = reader["COMPGSTNO"].ToString(),//"33AADCG4992P1Z0",
-                        LglNm = reader["COMPNAME"].ToString(),
-                        Addr1 = reader["COMPADDR1"].ToString(),
-                        Addr2 = reader["COMPADDR2"].ToString(),
-                        Loc = reader["COMPLOCTDESC"].ToString(),
-                        Pin = Convert.ToInt32(reader["COMPPINCODE"]),
-                        Stcd = reader["COMPSTATECODE"].ToString(),
-                        Ph = reader["COMPPHN1"].ToString(),
-                        Em = reader["COMPMAIL"].ToString()
-                    },
-
-                    BuyerDtls = new BuyerDtls()
-                    {
-                        Gstin = reader["CATEBGSTNO"].ToString(),
-                        LglNm = reader["TRANREFNAME"].ToString(),
-                        Pos = reader["STATECODE"].ToString(),
-                        Addr1 = reader["TRAN_CUST_ADDR1"].ToString(),
-                        Addr2 = reader["TRAN_CUST_ADDR2"].ToString(),
-                        Loc = reader["TRAN_CUST_LOCTDESC"].ToString(),
-                        Pin = Convert.ToInt32(reader["TRAN_CUST_PINCODE"]),
-                        Stcd = reader["STATECODE"].ToString(),
-                        Ph = reader["CATECPHN1"].ToString(),
-                        Em = null// reader["CATEMAIL"].ToString()
-                    },
-
-                    ValDtls = new ValDtls()
-                    {
-                        AssVal = taxblamt,// Convert.ToDecimal(reader["HANDL_TAXABLE_AMT"]),
-                        CesVal = 0,
-                        CgstVal = cgst_amt,// Convert.ToDecimal(reader["HANDL_CGST_AMT"]),
-                        IgstVal = igst_amt,// Convert.ToDecimal(reader["HANDL_IGST_AMT"]),
-                        OthChrg = 0,
-                        SgstVal = sgst_amt,// Convert.ToDecimal(reader["HANDL_sGST_AMT"]),
-                        Discount = discamt,
-                        StCesVal = 0,
-                        RndOffAmt = roff_amt,
-                        TotInvVal = Convert.ToDecimal(reader["TRANNAMT"]),
-                        TotItemValSum = taxblamt,//Convert.ToDecimal(reader["TOTALITEMVAL"])
-                    },
-
-                    //EwbDtls = new EwbDtls()
-                    //{
-                    //    TransId = trnsprtgstinno,// reader["EWAYBILLNO"].ToString(),// Convert.ToDecimal(reader["HANDL_TAXABLE_AMT"]),
-                    //    TransName = trnsprtname,//reader["TRNSPRTNAME"].ToString(),
-                    //    Distance = distance,//Convert.ToInt32(reader["DISTANCE"]),
-                    //    TransDocNo = TransDocNo,//reader["TRANDNO"].ToString(),
-                    //    TransDocDt = TransDocDt,//Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy"),
-                    //    VehNo = vhlno,//reader["VHLNO"].ToString(),
-                    //    VehType = VehType,//"R",
-                    //    TransMode = TransMode,//"1"
-                    //},
-
-                    ItemList = GetItemList(tranmid),
-
-                };
-
-                stringjson = JsonConvert.SerializeObject(response);
-
-
-            }
-
-            SmyConnection.Close();
-            myConnection.Close();
-
-            string msg = "";
-
-            using (var httpClient = new HttpClient())
-            {
-                using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
-                {
-                    // Replace with your authorization code de3a3a01-273a-4a81-8b75-13fe37f14dc6 
-                    request.Headers.TryAddWithoutValidation("Token", "3a3b2ee0-677a-4cb7-b8d4-5e26adf35dce");
-
-                    //// Replace with your E-Invoice JSON data
-                    request.Content = new StringContent(stringjson);
-                    request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-
-                    var response = await httpClient.SendAsync(request);
-
-                    //var url = "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/";
-                    //var content = new StringContent(stringjson, Encoding.UTF8, "application/json");
-                    //var zresponse = await httpClient.PostAsync(url, content);
-                    if (response != null)
-                    {
-                        var jsonString = await response.Content.ReadAsStringAsync();
-                        //var zjsonString = JsonConvert.DeserializeObject<object>(jsonString);
-                        var data = (JObject)JsonConvert.DeserializeObject(jsonString);
-                        //return JsonConvert.DeserializeObject<object>(jsonString);
-
-                        //var jsonObject = $.parseJSON(zjsonString);
-                        //console.debug(jsonObject.responseText.amount);
-
-                        //string timeZone = data["status"].Value<string>();
-                        //string zmsg = data["message"].Value<string>();
-
-                        //jsonString = jsonString.Replace("<br>", "~");
-                        //jsonString = jsonString.Replace("=>", "!");
-                        //var zparam = jsonString.Split('~');
-
-                        var status = 0;
-                        string zirnno = "";// param[2].ToString();
-                        string zackdt = "";//param[3].ToString();
-                        string zackno = "";//param[4].ToString();
-                        string imgUrl = "";
-
-                        msg = data["message"].Value<string>();
-
-                        status = data["status"].Value<int>();
-
-                        //if (zparam[0] != "") { status = (Convert.ToInt32(zparam[0].Substring(9))); } else { status = 0; }
-                        //if (zparam[1] != "") { msg = zparam[1].Substring(10); } else { msg = ""; }
-                        if (status == 1)
-                        {
-                            msg = data["message"].Value<string>();
-                            zirnno = data["Irn"].Value<string>();
-                            zackdt = data["AckDt"].Value<string>();
-                            zackno = data["AckNo"].Value<string>();
-                            imgUrl = data["SignedQrCodeImgUrl"].Value<string>();
-
-                            //imgUrl = "";// "~fnsjdjszvw/a/invoices/bb3a9424-5aef-48b9-aeeb-38feee471b03/einvoice/qrcode";
-                            var imageFileUrl = "";
-                            var newimageurl = "";
-
-                            //if (imgUrl != "")
-                            //{
-                            //    imageFileUrl = imgUrl.Substring(7, imgUrl.Length - 7);
-                            //    newimageurl = "https://my.gstzen.in/~jdhwmhsdtr/a/invoices/" + imageFileUrl + "/einvoice/qrcode/.png/";
-                            //}
-
-                            if (imgUrl != "")
-                            {
-                                imageFileUrl = imgUrl;// imgUrl.Substring(7, imgUrl.Length - 7);
-                                                      //newimageurl = "https://my.gstzen.in/~jdhwmhsdtr/a/invoices/" + imageFileUrl + "/einvoice/qrcode/.png/";
-                                newimageurl = "https://my.gstzen.in" + imageFileUrl;// + "/.png/";
-                            }
-
-                            SqlConnection GmyConnection = new SqlConnection(_connStr);
-                            SqlCommand cmd = new SqlCommand("pr_IRN_Transaction_Update_Assgn_N01", GmyConnection);
-                            cmd.CommandType = CommandType.StoredProcedure;
-                            //cmd.Parameters.AddWithValue("@CustomerID", 0);    
-                            cmd.Parameters.AddWithValue("@PTranMID", tranmid);
-                            cmd.Parameters.AddWithValue("@PIRNNO", zirnno);
-                            cmd.Parameters.AddWithValue("@PACKNO", zackno);
-                            cmd.Parameters.AddWithValue("@PACKDT", Convert.ToDateTime(zackdt));
-                            cmd.Parameters.AddWithValue("@PCUSRID", Session["CUSRID"].ToString());
-                            cmd.Parameters.AddWithValue("@PSignedQRCode", imageFileUrl);
-                            cmd.Parameters.AddWithValue("@PSignedQRCodeURL", newimageurl);
-                            GmyConnection.Open();
-                            cmd.ExecuteNonQuery();
-                            GmyConnection.Close();
-
-                            //string remoteFileUrl = "https://my.gstzen.in/" + imgUrl;
-                            //string remoteFileUrl = "https://fusiontec.com//entexebill//images//qrcode.png";
-                            string localFileName = tranmid.ToString() + ".png";
-
-                            string path = Server.MapPath("~/QrCode");
-
-
-                            WebClient webClient = new WebClient();
-                            //webClient.DownloadFile(remoteFileUrl, path + "\\" + localFileName);
-                            webClient.DownloadFile(newimageurl, path + "\\" + localFileName);
-
-                            SqlConnection XmyConnection = new SqlConnection(_connStr);
-                            SqlCommand Xcmd = new SqlCommand("pr_Transaction_QrCode_Path_Update_Assgn", XmyConnection);
-                            Xcmd.CommandType = CommandType.StoredProcedure;
-                            //cmd.Parameters.AddWithValue("@CustomerID", 0);    
-                            Xcmd.Parameters.AddWithValue("@PTranMID", tranmid);
-                            Xcmd.Parameters.AddWithValue("@PPath", path + "\\" + localFileName);
-                            XmyConnection.Open();
-                            Xcmd.ExecuteNonQuery();
-                            //result = cmd.ExecuteScalar().ToString();
-                            XmyConnection.Close();
-
-                            msg = "Uploaded Succesfully";
-                        }
-                        else
-                        {
-
-                        }
-                    }
-
-                }
-            }
-            Response.Write(msg);
-            //return Content(stringjson);
-
-        }
-
         private List<Models.EInvoice.ItemList> GetItemList(int id)
         {
             SqlDataReader reader = null;
-            string _connStr = ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"].ConnectionString;
+            var connSettings = ConfigurationManager.ConnectionStrings["DefaultConnection"]
+                ?? ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"];
+            if (connSettings == null || string.IsNullOrWhiteSpace(connSettings.ConnectionString))
+            {
+                return new List<Models.EInvoice.ItemList>();
+            }
+
+            string _connStr = connSettings.ConnectionString;
             SqlConnection myConnection = new SqlConnection(_connStr);
 
             SqlCommand sqlCmd = new SqlCommand("pr_EInvoice_Sales_Transaction_Detail_Assgn", myConnection);
@@ -1436,22 +1106,22 @@ SELECT
                 ItemList.Add(new Models.EInvoice.ItemList
                 {
                     SlNo = 1,
-                    PrdDesc = reader["PrdDesc"].ToString(),
+                    PrdDesc = GetString(reader, "PrdDesc"),
                     IsServc = "Y",
-                    HsnCd = reader["HsnCd"].ToString(),
+                    HsnCd = GetString(reader, "HsnCd"),
                     Barcde = "123456",
-                    Qty = Convert.ToDecimal(reader["Qty"]),
+                    Qty = GetDecimal(reader, "Qty"),
                     FreeQty = 0,
-                    Unit = reader["UnitCode"].ToString(),
-                    UnitPrice = Convert.ToDecimal(reader["UnitPrice"]),
-                    TotAmt = Convert.ToDecimal(reader["TotAmt"]),
-                    Discount = Convert.ToDecimal(reader["DiscAmt"]),
+                    Unit = GetString(reader, "UnitCode"),
+                    UnitPrice = GetDecimal(reader, "UnitPrice"),
+                    TotAmt = GetDecimal(reader, "TotAmt"),
+                    Discount = GetDecimal(reader, "DiscAmt"),
                     PreTaxVal = 1,
-                    AssAmt = Convert.ToDecimal(reader["AssAmt"]),
-                    GstRt = Convert.ToDecimal(reader["GstRt"]),
-                    IgstAmt = Convert.ToDecimal(reader["IgstAmt"]),
-                    CgstAmt = Convert.ToDecimal(reader["CgstAmt"]),
-                    SgstAmt = Convert.ToDecimal(reader["SgstAmt"]),
+                    AssAmt = GetDecimal(reader, "AssAmt"),
+                    GstRt = GetDecimal(reader, "GstRt"),
+                    IgstAmt = GetDecimal(reader, "IgstAmt"),
+                    CgstAmt = GetDecimal(reader, "CgstAmt"),
+                    SgstAmt = GetDecimal(reader, "SgstAmt"),
                     CesRt = 0,
                     CesAmt = 0,
                     CesNonAdvlAmt = 0,
@@ -1459,7 +1129,7 @@ SELECT
                     StateCesAmt = 0,
                     StateCesNonAdvlAmt = 0,
                     OthChrg = 0,
-                    TotItemVal = Convert.ToDecimal(reader["TotItemVal"])
+                    TotItemVal = GetDecimal(reader, "TotItemVal")
                     //OrdLineRef = "",
                     //OrgCntry = "",
                     //PrdSlNo = ""
@@ -1469,69 +1139,6 @@ SELECT
 
             return ItemList;
         }
-
-
-        //private List<Models.EInvoice.ItemList> GetItemList(int id)
-        //{
-        //    SqlDataReader reader = null;
-        //    var connSettings = ConfigurationManager.ConnectionStrings["DefaultConnection"]
-        //        ?? ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"];
-        //    if (connSettings == null || string.IsNullOrWhiteSpace(connSettings.ConnectionString))
-        //    {
-        //        return new List<Models.EInvoice.ItemList>();
-        //    }
-
-        //    string _connStr = connSettings.ConnectionString;
-        //    SqlConnection myConnection = new SqlConnection(_connStr);
-
-        //    SqlCommand sqlCmd = new SqlCommand("pr_EInvoice_Sales_Transaction_Detail_Assgn", myConnection);
-        //    sqlCmd.CommandType = CommandType.StoredProcedure;
-        //    sqlCmd.Parameters.AddWithValue("@PTranMID", id);
-        //    sqlCmd.Connection = myConnection;
-        //    myConnection.Open();
-        //    reader = sqlCmd.ExecuteReader();
-
-        //    List<Models.EInvoice.ItemList> ItemList = new List<Models.EInvoice.ItemList>();
-
-        //    while (reader.Read())
-        //    {
-
-        //        ItemList.Add(new Models.EInvoice.ItemList
-        //        {
-        //            SlNo = 1,
-        //            PrdDesc = GetString(reader, "PrdDesc"),
-        //            IsServc = "Y",
-        //            HsnCd = GetString(reader, "HsnCd"),
-        //            Barcde = "123456",
-        //            Qty = GetDecimal(reader, "Qty"),
-        //            FreeQty = 0,
-        //            Unit = GetString(reader, "UnitCode"),
-        //            UnitPrice = GetDecimal(reader, "UnitPrice"),
-        //            TotAmt = GetDecimal(reader, "TotAmt"),
-        //            Discount = GetDecimal(reader, "DiscAmt"),
-        //            PreTaxVal = 1,
-        //            AssAmt = GetDecimal(reader, "AssAmt"),
-        //            GstRt = GetDecimal(reader, "GstRt"),
-        //            IgstAmt = GetDecimal(reader, "IgstAmt"),
-        //            CgstAmt = GetDecimal(reader, "CgstAmt"),
-        //            SgstAmt = GetDecimal(reader, "SgstAmt"),
-        //            CesRt = 0,
-        //            CesAmt = 0,
-        //            CesNonAdvlAmt = 0,
-        //            StateCesRt = 0,
-        //            StateCesAmt = 0,
-        //            StateCesNonAdvlAmt = 0,
-        //            OthChrg = 0,
-        //            TotItemVal = GetDecimal(reader, "TotItemVal")
-        //            //OrdLineRef = "",
-        //            //OrgCntry = "",
-        //            //PrdSlNo = ""
-        //        });
-        //    }
-
-
-        //    return ItemList;
-        //}
 
     }
 }

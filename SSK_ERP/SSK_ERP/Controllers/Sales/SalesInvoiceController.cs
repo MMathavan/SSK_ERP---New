@@ -27,6 +27,7 @@ namespace SSK_ERP.Controllers
             public string TRANREFNAME { get; set; }
             public decimal TRANNAMT { get; set; }
             public short DISPSTATUS { get; set; }
+            public string ACKNO { get; set; }
         }
 
         private class PoNumberResultLocal
@@ -92,6 +93,7 @@ namespace SSK_ERP.Controllers
 
             // Header information
             public string SalesInvoiceNo { get; set; }
+            public int BillNumber { get; set; }
             public string PurchaseInvoiceNo { get; set; }
             // Used as Sales Invoice Date on create/edit forms
             public DateTime PurchaseDate { get; set; }
@@ -499,6 +501,7 @@ namespace SSK_ERP.Controllers
                             : (t.TRANREFNO ?? "-"),
                         CustomerName = t.TRANREFNAME ?? string.Empty,
                         Amount = t.TRANNAMT,
+                        AckNo = t.ACKNO ?? string.Empty,
                         Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled"
                     })
                     .ToList();
@@ -525,6 +528,11 @@ namespace SSK_ERP.Controllers
                 if (master == null)
                 {
                     return Json(new { success = false, message = "Sales Invoice not found." });
+                }
+
+                if (!string.IsNullOrWhiteSpace(master.ACKNO))
+                {
+                    return Json(new { success = false, message = "This Sales Invoice already has an Acknowledge Number, so delete is not allowed." });
                 }
 
                 db.Database.ExecuteSqlCommand(
@@ -998,6 +1006,7 @@ namespace SSK_ERP.Controllers
                 PurchaseTranMid = purchase != null ? purchase.TRANMID : 0,
                 SalesTranMid = sales.TRANMID,
                 SalesInvoiceNo = sales.TRANDNO ?? sales.TRANNO.ToString("D4"),
+                BillNumber = sales.TRANNO,
                 PurchaseInvoiceNo = purchaseInvoiceNo,
                 PurchaseDate = sales.TRANDATE,
                 RefNo = refNo,
@@ -1088,6 +1097,27 @@ namespace SSK_ERP.Controllers
                 existing.TRAN_CRDPRDT = model.CreditDays;
                 existing.TRANPONUM = model.PoNumber;
                 existing.TRANTAXBILLNO = model.RefNo;
+                if (model.BillNumber <= 0)
+                {
+                    TempData["ErrorMessage"] = "Bill Number is required.";
+                    return RedirectToAction("Form", new { id = existing.TRANMID });
+                }
+
+                string updatedTrandNo = GenerateSalesInvoiceNumber(model.PurchaseDate, model.BillNumber);
+                bool billNumberExists = IsSalesInvoiceBillNumberExists(
+                    existing.COMPYID,
+                    model.PurchaseDate,
+                    model.BillNumber,
+                    existing.TRANMID);
+
+                if (billNumberExists)
+                {
+                    TempData["ErrorMessage"] = "Bill Number Already Exsist!";
+                    return RedirectToAction("Form", new { id = existing.TRANMID });
+                }
+
+                existing.TRANNO = model.BillNumber;
+                existing.TRANDNO = updatedTrandNo;
                 if (customerId > 0)
                 {
                     existing.TRANREFID = customerId;
@@ -2251,7 +2281,11 @@ namespace SSK_ERP.Controllers
                     UserName = master.LMUSRID,
                     BillingTime = master.TRANTIME,
                     TotalDisc = totalDisc,
-                    CourierCharges = courierCharges
+                    CourierCharges = courierCharges,
+                    IrnNo = master.IRNNO,
+                    AckNo = master.ACKNO,
+                    AckDate = master.ACKDT,
+                    QrCodePath = master.QRCODEPATH
                 };
 
                 return View(model);
@@ -2284,6 +2318,29 @@ namespace SSK_ERP.Controllers
             // Use a five-digit running sequence (e.g. A00001) instead of four digits
             string runningPart = tranNo.ToString("D5");
             return fyPart + "/A" + runningPart;
+        }
+
+        private Tuple<DateTime, DateTime> GetFinancialYearBounds(DateTime invoiceDate)
+        {
+            int fyStartYear = invoiceDate.Month >= 4 ? invoiceDate.Year : invoiceDate.Year - 1;
+            var fyStartDate = new DateTime(fyStartYear, 4, 1);
+            var fyEndExclusive = fyStartDate.AddYears(1);
+            return Tuple.Create(fyStartDate, fyEndExclusive);
+        }
+
+        private bool IsSalesInvoiceBillNumberExists(int compyId, DateTime invoiceDate, int billNumber, int currentTranMid)
+        {
+            var fyBounds = GetFinancialYearBounds(invoiceDate);
+            var fyStartDate = fyBounds.Item1;
+            var fyEndExclusive = fyBounds.Item2;
+
+            return db.TransactionMasters.Any(t =>
+                t.COMPYID == compyId
+                && t.REGSTRID == SalesInvoiceRegisterId
+                && t.TRANMID != currentTranMid
+                && t.TRANDATE >= fyStartDate
+                && t.TRANDATE < fyEndExclusive
+                && t.TRANNO == billNumber);
         }
 
         private string ConvertAmountToWords(decimal amount)
@@ -2989,6 +3046,10 @@ namespace SSK_ERP.Controllers
         public DateTime BillingTime { get; set; }
         public decimal TotalDisc { get; set; }
         public decimal CourierCharges { get; set; }
+        public string IrnNo { get; set; }
+        public string AckNo { get; set; }
+        public DateTime? AckDate { get; set; }
+        public string QrCodePath { get; set; }
     }
 
     public class SalesInvoicePrintItemViewModel
