@@ -656,7 +656,8 @@ WHERE TM.TRANMID = @tranmid";
                         {
                             Typ = "INV",
                             No = GetString(reader, "TRANDNO"),
-                            Dt = GetDateString(reader, "TRANDATE", "dd/MM/yyyy")
+                            Dt = Convert.ToDateTime(reader["TRANDATE"])
+                                        .ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
                         },
 
                         SellerDtls = new SellerDtls()
@@ -1144,6 +1145,10 @@ SELECT
             myConnection.Open();
             reader = sqlCmd.ExecuteReader();
 
+            // ADD THIS CODE HERE (Line ~1147):
+            System.Diagnostics.Debug.WriteLine("=== DEBUG START ===");
+            System.Diagnostics.Debug.WriteLine("Transaction ID: " + tranmid);
+
             int custgid = 0;
             string suptyp = "";
             string stringjson = "";
@@ -1182,6 +1187,9 @@ SELECT
                 //    TransMode = "1";
                 //}
 
+                // ADD THIS CODE HERE (Line ~1171):
+                var actualGstin = reader["COMPGSTNO"]?.ToString() ?? "NULL";
+                System.Diagnostics.Debug.WriteLine("Database GSTIN: " + actualGstin);
 
                 itemamt = Convert.ToDecimal(reader["DGAMT"]);
                 taxblamt = Convert.ToDecimal(reader["TRANGAMT"]);
@@ -1222,12 +1230,13 @@ SELECT
                     {
                         Typ = "INV",
                         No = reader["TRANDNO"].ToString(),
-                        Dt = Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy")
+                        Dt = Convert.ToDateTime(reader["TRANDATE"])
+                                .ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
                     },
 
                     SellerDtls = new SellerDtls()
                     {
-                        Gstin = reader["COMPGSTNO"].ToString(),//"33AADCG4992P1Z0",
+                        Gstin = "33AOZPS5038P1ZV", //reader["COMPGSTNO"].ToString(), //"33AOZPS5038P1ZV",
                         LglNm = reader["COMPNAME"].ToString(),
                         Addr1 = reader["COMPADDR1"].ToString(),
                         Addr2 = reader["COMPADDR2"].ToString(),
@@ -1284,8 +1293,9 @@ SELECT
                 };
 
                 stringjson = JsonConvert.SerializeObject(response);
-
-
+                // ADD THIS CODE HERE (Line ~1287):
+                System.Diagnostics.Debug.WriteLine("JSON Length: " + stringjson.Length);
+                System.Diagnostics.Debug.WriteLine("JSON Preview: " + stringjson.Substring(0, Math.Min(200, stringjson.Length)));
             }
 
             SmyConnection.Close();
@@ -1304,6 +1314,10 @@ SELECT
                     request.Content = new StringContent(stringjson);
                     request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
 
+                    // ADD THIS CODE HERE (Line ~1306):
+                    System.Diagnostics.Debug.WriteLine("Sending API Request...");
+                    System.Diagnostics.Debug.WriteLine("Token: 3a3b2ee0-677a-4cb7-b8d4-5e26adf35dce"); 
+
                     var response = await httpClient.SendAsync(request);
 
                     //var url = "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/";
@@ -1312,6 +1326,11 @@ SELECT
                     if (response != null)
                     {
                         var jsonString = await response.Content.ReadAsStringAsync();
+
+                        // ADD THIS CODE HERE (Line ~1315):
+                        System.Diagnostics.Debug.WriteLine("API Response: " + jsonString);
+                        System.Diagnostics.Debug.WriteLine("=== DEBUG END ===");
+
                         //var zjsonString = JsonConvert.DeserializeObject<object>(jsonString);
                         var data = (JObject)JsonConvert.DeserializeObject(jsonString);
                         //return JsonConvert.DeserializeObject<object>(jsonString);
