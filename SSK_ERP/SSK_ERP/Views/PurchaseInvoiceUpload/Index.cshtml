@@ -5,11 +5,38 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <style>
     .upload-main-container {
         background: white;
         min-height: 100vh;
         padding: 20px 0;
+    }
+
+    .input-group > .select2-container {
+        flex: 1 1 auto;
+        width: 1% !important;
+        min-width: 0;
+    }
+
+    .input-group > .select2-container .select2-selection--single {
+        height: calc(1.5em + .75rem + 2px);
+        padding: .375rem .75rem;
+        border: 1px solid #ced4da;
+        border-radius: .25rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-group > .select2-container .select2-selection--single .select2-selection__rendered {
+        padding-left: 0;
+        line-height: normal;
+    }
+
+    .input-group > .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 100%;
+        top: 0;
     }
 
     .upload-content-wrapper {
@@ -321,10 +348,14 @@
                 $supplier.select2({ width: '100%' });
             }
 
+            var $poDropdown = $('#purchaseOrderDropdown');
+            if ($.fn.select2 && $poDropdown.length) {
+                $poDropdown.select2({ width: '100%' });
+            }
+
             // AJAX to fetch Purchase Orders when Supplier changes
             $supplier.on('change', function () {
                 var supplierId = $(this).val();
-                var $poDropdown = $('#purchaseOrderDropdown');
 
                 $poDropdown.empty().append('<option value="">-- Select PO Number --</option>');
 
@@ -341,6 +372,10 @@
                                         text: item.text
                                     }));
                                 });
+                            }
+
+                            if ($.fn.select2 && $poDropdown.length) {
+                                $poDropdown.trigger('change.select2');
                             }
                         },
                         error: function () {
