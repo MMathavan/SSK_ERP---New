@@ -121,6 +121,40 @@
         margin-top: 1.25em !important;
         margin-bottom: 1.25em !important;
     }
+
+    .upload-grid-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    /* Keep the actual product selector wider without changing description wrapping */
+    .upload-grid-table th:nth-child(2),
+    .upload-grid-table td:nth-child(2) {
+        width: 400px;
+        min-width: 400px;
+    }
+
+    .upload-grid-table td:nth-child(2) .select2-container {
+        width: 100% !important;
+        min-width: 100%;
+    }
+
+    .upload-grid-table th:nth-child(3),
+    .upload-grid-table td:nth-child(3) {
+        width: 200px;
+        min-width: 200px;
+    }
+
+    .upload-grid-table th:nth-child(10),
+    .upload-grid-table td:nth-child(10) {
+        width: 80px;
+        min-width: 80px;
+    }
+
+    .upload-grid-table td:nth-child(3) {
+        white-space: normal;
+        word-break: break-word;
+    }
 </style>
 
 <div class="upload-main-container">
@@ -244,15 +278,15 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 60px;">S.No</th>
-                                        <th style="width: 180px;">Actual Product</th>
-                                        <th>Product Description</th>
+                                        <th style="width: 400px;">Actual Product</th>
+                                        <th style="width: 200px;">Product Description</th>
                                         <th style="width: 100px;">HSN Code</th>
                                         <th style="width: 80px;">Unit UOM</th>
                                         <th style="width: 100px;">Batch No.</th>
                                         <th style="width: 90px;">Expiry</th>
                                         <th style="width: 110px;">Total/No of Boxes</th>
                                         <th style="width: 140px;">Packing</th>
-                                        <th style="width: 90px;">Total Qty</th>
+                                        <th style="width: 80px;">Total Qty</th>
                                         <th style="width: 110px;">Price per Unit</th>
                                         <th style="width: 90px;">P.T.R</th>
                                         <th style="width: 90px;">M.R.P</th>
