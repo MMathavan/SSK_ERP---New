@@ -596,6 +596,83 @@ namespace SSK_ERP.Controllers
             }
         }
 
+        [HttpGet]
+        public JsonResult GetSalesInvoiceDetails(int customerId, string billNo, int materialId)
+        {
+            try
+            {
+                if (customerId <= 0 || string.IsNullOrWhiteSpace(billNo) || materialId <= 0)
+                {
+                    return Json(new { success = false, message = "Invalid input." }, JsonRequestBehavior.AllowGet);
+                }
+
+                var tranMid = db.TransactionMasters
+                    .Where(t => t.REGSTRID == SalesInvoiceRegisterId
+                                && t.TRANREFID == customerId
+                                && t.TRANREFNO == billNo)
+                    .Select(t => (int?)t.TRANMID)
+                    .FirstOrDefault();
+
+                if (!tranMid.HasValue)
+                {
+                    return Json(new { success = false, message = "Sales invoice not found for the selected customer and bill number." }, JsonRequestBehavior.AllowGet);
+                }
+
+                var results = new List<Dictionary<string, object>>();
+
+                var connection = db.Database.Connection;
+                try
+                {
+                    if (connection.State != ConnectionState.Open)
+                    {
+                        connection.Open();
+                    }
+
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "PR_GET_SALESINV_DET_CRDBN";
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        command.Parameters.Add(new SqlParameter("@PTRANMID", tranMid.Value));
+                        command.Parameters.Add(new SqlParameter("@PTRANDREFID", materialId));
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                var row = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    var name = reader.GetName(i);
+                                    object value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                    row[name] = value;
+                                }
+                                results.Add(row);
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    if (connection.State == ConnectionState.Open)
+                    {
+                        connection.Close();
+                    }
+                }
+
+                if (!results.Any())
+                {
+                    return Json(new { success = false, message = "No invoice detail found for the selected bill and material." }, JsonRequestBehavior.AllowGet);
+                }
+
+                return Json(new { success = true, data = results }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]

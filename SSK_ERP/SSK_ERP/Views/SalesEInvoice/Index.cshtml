@@ -184,6 +184,7 @@
 @section Scripts {
     <script type="text/javascript">
         $(document).ready(function () {
+            var salesEInvoiceIndexUrl = '@Url.Action("Index", "SalesEInvoice")';
             (function setDefaultDatesToToday() {
                 var today = new Date();
                 var yyyy = today.getFullYear();
@@ -354,7 +355,6 @@
                 alert('Invalid invoice id. Please reload the page and try again.');
                 return;
             }
-            base = window.location.origin;
             var showConfirm = function () {
                 if (window.Swal && Swal.fire) {
                     return Swal.fire({
@@ -402,6 +402,14 @@
                             }
 
                             if (serverMsg == "Uploaded Succesfully") {
+                                var refreshSalesEInvoiceGrid = function () {
+                                    try {
+                                        table.ajax.reload(null, false);
+                                    } catch (e) {
+                                        location.replace(salesEInvoiceIndexUrl);
+                                    }
+                                };
+
                                 if (window.Swal && Swal.fire) {
                                     Swal.fire({
                                         title: "Saved",
@@ -409,7 +417,7 @@
                                         icon: "success",
                                         timer: 10000
                                     }).then(function () {
-                                        location.replace(base + "/SalesEInvoice/index");
+                                        refreshSalesEInvoiceGrid();
                                     });
                                 } else {
                                     swal({
@@ -418,7 +426,7 @@
                                         type: "success",
                                         timer: 10000
                                     }).then(function () {
-                                        location.replace(base + "/SalesEInvoice/index");
+                                        refreshSalesEInvoiceGrid();
                                     });
                                 }
                             }
@@ -429,7 +437,7 @@
                                         text: serverMsg,
                                         icon: "warning",
                                     }).then(function () {
-                                        location.replace(base + "/SalesEInvoice/index");
+                                        location.replace(salesEInvoiceIndexUrl);
                                     });
                                 } else {
                                     swal({
@@ -437,7 +445,7 @@
                                         text: serverMsg,
                                         type: "warning",
                                     }).then(function () {
-                                        location.replace(base + "/SalesEInvoice/index");
+                                        location.replace(salesEInvoiceIndexUrl);
                                     });
                                 }
                             }
@@ -455,7 +463,7 @@
                         }
                     });
                 } else if (isCancel) {
-                    location.replace(base + "/SalesEInvoice/index");
+                    location.replace(salesEInvoiceIndexUrl);
                     return false;
                 }
             });

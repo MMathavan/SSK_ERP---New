@@ -199,82 +199,73 @@ namespace SSK_ERP.Controllers
                     }
                 }
 
-                try
+                var compyObj = Session["CompyId"] ?? Session["compyid"];
+                int compyId = compyObj != null ? Convert.ToInt32(compyObj) : 1;
+
+                var startDate = fd ?? new DateTime(1900, 1, 1);
+                var endDate = exclusiveTo.HasValue ? exclusiveTo.Value.AddDays(-1) : new DateTime(2079, 6, 6);
+
+                var data = new List<object>();
+
+                using (var connection = new SqlConnection(db.Database.Connection.ConnectionString))
                 {
-                    var sql =
-                        "SELECT TRANMID, TRANDATE, TRANNO, TRANDNO, TRANREFNO, TRANTAXBILLNO, TRANREFNAME, TRANNAMT, DISPSTATUS, ACKNO " +
-                        "FROM TRANSACTIONMASTER " +
-                        "WHERE REGSTRID = @p0 " +
-                        "AND (@p1 IS NULL OR TRANDATE >= @p1) " +
-                        "AND (@p2 IS NULL OR TRANDATE < @p2)";
-
-                    List<SalesEInvoiceListRow> masters = db.Database
-                        .SqlQuery<SalesEInvoiceListRow>(
-                            sql,
-                            SalesInvoiceRegisterId,
-                            (object)fd ?? DBNull.Value,
-                            (object)exclusiveTo ?? DBNull.Value)
-                        .ToList();
-
-                    var data = masters
-                        .OrderByDescending(t => t.TRANDATE)
-                        .ThenByDescending(t => t.TRANMID)
-                        .Select(t => new
-                        {
-                            t.TRANMID,
-                            t.TRANDATE,
-                            t.TRANNO,
-                            TRANDNO = string.IsNullOrWhiteSpace(t.TRANDNO) ? "0000" : t.TRANDNO,
-                            TRANREFNO = !string.IsNullOrWhiteSpace(t.TRANTAXBILLNO)
-                                ? t.TRANTAXBILLNO
-                                : (t.TRANREFNO ?? "-"),
-                            CustomerName = t.TRANREFNAME ?? string.Empty,
-                            Amount = t.TRANNAMT,
-                            AckNo = t.ACKNO ?? string.Empty,
-                            Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled"
-                        })
-                        .ToList();
-
-                    return Json(new { data }, JsonRequestBehavior.AllowGet);
-                }
-                catch
-                {
-                    var query = db.TransactionMasters.Where(t => t.REGSTRID == SalesInvoiceRegisterId);
-
-                    if (fd.HasValue)
+                    using (var command = new SqlCommand("pr_SearchSalesEInvoice", connection))
                     {
-                        query = query.Where(t => t.TRANDATE >= fd.Value);
-                    }
-
-                    if (exclusiveTo.HasValue)
-                    {
-                        query = query.Where(t => t.TRANDATE < exclusiveTo.Value);
-                    }
-
-                    var masters = query
-                        .OrderByDescending(t => t.TRANDATE)
-                        .ThenByDescending(t => t.TRANMID)
-                        .ToList();
-
-                    var data = masters
-                        .Select(t => new
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.Add(new SqlParameter("@FilterTerm", SqlDbType.NVarChar, 250)
                         {
-                            t.TRANMID,
-                            t.TRANDATE,
-                            t.TRANNO,
-                            TRANDNO = t.TRANDNO ?? "0000",
-                            TRANREFNO = !string.IsNullOrWhiteSpace(t.TRANTAXBILLNO)
-                                ? t.TRANTAXBILLNO
-                                : (t.TRANREFNO ?? "-"),
-                            CustomerName = t.TRANREFNAME ?? string.Empty,
-                            Amount = t.TRANNAMT,
-                            AckNo = t.ACKNO ?? string.Empty,
-                            Status = t.DISPSTATUS == 0 ? "Enabled" : "Disabled"
-                        })
-                        .ToList();
+                            Value = DBNull.Value
+                        });
+                        command.Parameters.AddWithValue("@SortIndex", 0);
+                        command.Parameters.AddWithValue("@SortDirection", "DESC");
+                        command.Parameters.AddWithValue("@StartRowNum", 1);
+                        command.Parameters.AddWithValue("@EndRowNum", int.MaxValue);
+                        command.Parameters.AddWithValue("@PSDate", startDate);
+                        command.Parameters.AddWithValue("@PEDate", endDate);
+                        command.Parameters.AddWithValue("@PCompyid", compyId);
 
-                    return Json(new { data }, JsonRequestBehavior.AllowGet);
+                        var totalRowsParam = new SqlParameter("@TotalRowsCount", SqlDbType.Int)
+                        {
+                            Direction = ParameterDirection.Output
+                        };
+                        var filteredRowsParam = new SqlParameter("@FilteredRowsCount", SqlDbType.Int)
+                        {
+                            Direction = ParameterDirection.Output
+                        };
+
+                        command.Parameters.Add(totalRowsParam);
+                        command.Parameters.Add(filteredRowsParam);
+
+                        connection.Open();
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                var statusText = GetString(reader, "DISPSTATUS", string.Empty);
+                                statusText = string.IsNullOrWhiteSpace(statusText)
+                                    ? "Enabled"
+                                    : statusText;
+
+                                data.Add(new
+                                {
+                                    TRANMID = GetInt32(reader, "TRANMID"),
+                                    TRANDATE = HasColumn(reader, "TRANDATE") && reader["TRANDATE"] != DBNull.Value
+                                        ? Convert.ToDateTime(reader["TRANDATE"])
+                                        : DateTime.MinValue,
+                                    TRANDNO = GetString(reader, "TRANDNO", "0000"),
+                                    TRANREFNO = GetString(reader, "TRANREFNO", "-"),
+                                    CustomerName = GetString(reader, "TRANREFNAME", string.Empty),
+                                    Amount = GetDecimal(reader, "TRANNAMT", 0m),
+                                    AckNo = GetString(reader, "ACKNO", string.Empty),
+                                    Status = statusText
+                                });
+                            }
+                        }
+                    }
                 }
+
+                return Json(new { data }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {

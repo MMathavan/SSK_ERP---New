@@ -339,6 +339,7 @@
     <script>
         var srMaterialList = [];
         var srExistingDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
+        var srInvoiceBatchCache = {};
 
         function getIsSrTranBType1() {
             return parseInt($('#srTranBTypeHidden').val() || '0', 10) === 1;
@@ -599,6 +600,237 @@
             });
         }
 
+        function getSalesInvoiceBatchCacheKey(customerId, billNo, materialId) {
+            return [customerId || 0, billNo || '', materialId || 0].join('|');
+        }
+
+        function normalizeInvoiceDetail(detail) {
+            if (!detail) {
+                return null;
+            }
+
+            var qty = parseFloat(detail.TRANDQTY || detail.QTY || detail.Qty || 0) || 0;
+            var rate = parseFloat(detail.TRANDRATE || detail.RATE || detail.Rate || 0) || 0;
+            var amount = parseFloat(detail.TRANDGAMT || detail.AMOUNT || detail.Amount || 0) || 0;
+            var batchNo = detail.TRANBDNO || detail.BATCHNO || detail.BatchNo || '';
+            var expDate = detail.TRANBEXPDATE || detail.EXPDATE || detail.ExpiryDate || null;
+            var packing = detail.PACKING || detail.PACKMDESC || '';
+            var hsnCode = detail.HSNCODE || detail.HsnCode || detail.hsnCode || '';
+
+            var srcTranBid = parseInt(detail.TRANBID || detail.TranBid || detail.tranBid || 0, 10) || 0;
+            var batchSelectionKey = srcTranBid > 0 ? ('ID:' + srcTranBid) : ('BATCH:' + (batchNo || '').toString().toUpperCase());
+
+            return {
+                qty: qty,
+                rate: rate,
+                amount: amount,
+                batchNo: batchNo,
+                expDate: expDate,
+                packing: packing,
+                hsnCode: hsnCode,
+                packMid: parseInt(detail.PACKMID || 0, 10) || 0,
+                ptr: parseFloat(detail.TRANBPTRRATE || detail.PTR || detail.Ptr || 0) || 0,
+                mrp: parseFloat(detail.TRANBMRP || detail.MRP || detail.Mrp || 0) || 0,
+                boxQty: parseFloat(detail.TRANBQTY || detail.BoxQty || detail.BOXQTY || 0) || 0,
+                srcTranBid: srcTranBid,
+                srcTranDid: parseInt(detail.TRANDID || detail.TrandId || detail.trandId || 0, 10) || 0,
+                srcTranRefId: parseInt(detail.TRANREFID || detail.TranRefId || detail.tranRefId || 0, 10) || 0,
+                batchSelectionKey: batchSelectionKey
+            };
+        }
+
+        function normalizeDateValue(expDate) {
+            if (!expDate) {
+                return '';
+            }
+
+            var expVal = expDate;
+            if (typeof expVal === 'string') {
+                if (expVal.indexOf('Date(') !== -1) {
+                    var m = /Date\((\d+)\)/.exec(expVal);
+                    if (m) {
+                        var dt = new Date(parseInt(m[1], 10));
+                        expVal = dt.toISOString().slice(0, 10);
+                    }
+                } else if (expVal.indexOf('T') > -1) {
+                    expVal = expVal.split('T')[0];
+                }
+            }
+
+            return expVal || '';
+        }
+
+        function getSelectedBatchKeysForRow(currentTr) {
+            var keys = [];
+            $('#srDetailsBody tr').each(function () {
+                var tr = $(this);
+                if (currentTr && tr[0] === currentTr[0]) {
+                    return;
+                }
+
+                var customerId = parseInt($('#customerDropdown').val() || '0', 10);
+                var billNo = tr.find('.sr-billno').val() || '';
+                var materialId = parseInt(tr.find('.sr-material').val() || '0', 10);
+                var rowCustomerId = parseInt(tr.data('customerId') || customerId || 0, 10) || 0;
+                var currentCustomerId = parseInt(currentTr ? (currentTr.data('customerId') || customerId || 0) : customerId, 10) || 0;
+                var currentBillNo = currentTr ? (currentTr.find('.sr-billno').val() || '') : '';
+                var currentMaterialId = currentTr ? (parseInt(currentTr.find('.sr-material').val() || '0', 10) || 0) : 0;
+
+                if (rowCustomerId !== currentCustomerId || billNo !== currentBillNo || materialId !== currentMaterialId) {
+                    return;
+                }
+
+                var batchKey = (tr.data('batchSelectionKey') || '').toString();
+                if (!batchKey) {
+                    var batchNo = (tr.find('.sr-batchno').val() || '').toString().toUpperCase();
+                    if (batchNo) {
+                        batchKey = 'BATCH:' + batchNo;
+                    }
+                }
+
+                if (batchKey) {
+                    keys.push(batchKey);
+                }
+            });
+
+            return keys;
+        }
+
+        function applyBatchDetailToRow(tr, detail) {
+            if (!tr || !tr.length) {
+                return;
+            }
+
+            var previousActualQty = parseFloat(tr.find('.sr-actualqty').val() || 0) || 0;
+            var currentQty = parseFloat(tr.find('.sr-qty').val() || 0) || 0;
+
+            if (!detail) {
+                tr.find('.sr-batchno').val('');
+                tr.find('.sr-expdate').val('');
+                tr.find('.sr-pack').val('');
+                tr.find('.sr-actualqty').val('');
+                tr.find('.sr-boxes').val('');
+                tr.find('.sr-qty').val('');
+                tr.find('.sr-amount').val('');
+                tr.removeData('packmid');
+                tr.removeData('ptr');
+                tr.removeData('mrp');
+                tr.removeData('boxqty');
+                tr.removeData('srcTranBid');
+                tr.removeData('srcTranDid');
+                tr.removeData('srcTranRefId');
+                tr.removeData('batchSelectionKey');
+                recalcRow(tr);
+                return;
+            }
+
+            tr.find('.sr-batchno').val(detail.batchNo || '');
+            tr.find('.sr-expdate').val(normalizeDateValue(detail.expDate));
+            tr.find('.sr-pack').val(detail.packing || '');
+            tr.find('.sr-actualqty').val(detail.qty ? detail.qty : '');
+            tr.find('.sr-boxes').val(detail.boxQty ? detail.boxQty : '');
+
+            if (!currentQty || currentQty > detail.qty || Math.abs(currentQty - previousActualQty) < 0.0001) {
+                tr.find('.sr-qty').val(detail.qty ? detail.qty : '');
+            }
+
+            tr.find('.sr-rate').val(detail.rate ? detail.rate : '');
+            tr.find('.sr-hsn').val(detail.hsnCode || '');
+
+            tr.find('.sr-amount').val('');
+
+            tr.data('packmid', detail.packMid || 0);
+            tr.data('ptr', detail.ptr || 0);
+            tr.data('mrp', detail.mrp || 0);
+            tr.data('boxqty', detail.boxQty || 0);
+            tr.data('srcTranBid', detail.srcTranBid || 0);
+            tr.data('srcTranDid', detail.srcTranDid || 0);
+            tr.data('srcTranRefId', detail.srcTranRefId || 0);
+            tr.data('batchSelectionKey', detail.batchSelectionKey || '');
+
+            recalcRow(tr);
+        }
+
+        function populateBatchDropdown(tr, details, preserveCurrentSelection) {
+            var $ddl = tr.find('.sr-batch-select');
+            if (!$ddl.length) {
+                return;
+            }
+
+            var selectedBatchId = parseInt(tr.data('srcTranBid') || 0, 10) || 0;
+            var selectedBatchKey = (tr.data('batchSelectionKey') || '').toString();
+            var currentBatchNo = tr.find('.sr-batchno').val() || '';
+            if (!selectedBatchKey && currentBatchNo) {
+                selectedBatchKey = 'BATCH:' + currentBatchNo.toString().toUpperCase();
+            }
+
+            var selectedKeys = getSelectedBatchKeysForRow(tr);
+            var isCurrentSelectionTaken = selectedBatchKey && selectedKeys.indexOf(selectedBatchKey) !== -1;
+
+            $ddl.empty();
+            $ddl.append($('<option>').val('').text('-- Select --'));
+
+            (details || []).forEach(function (item) {
+                var detail = normalizeInvoiceDetail(item);
+                if (!detail || !detail.batchNo) {
+                    return;
+                }
+
+                var detailKey = detail.batchSelectionKey || '';
+                var shouldKeepCurrent = preserveCurrentSelection && !isCurrentSelectionTaken && detailKey && detailKey === selectedBatchKey;
+                if (!shouldKeepCurrent && detailKey && selectedKeys.indexOf(detailKey) !== -1) {
+                    return;
+                }
+
+                var option = $('<option>')
+                    .val(detail.srcTranBid)
+                    .text(detail.batchNo)
+                    .data('detail', detail);
+
+                if (selectedBatchKey && detailKey === selectedBatchKey) {
+                    option.prop('selected', true);
+                } else if (!selectedBatchId && currentBatchNo && detail.batchNo === currentBatchNo) {
+                    option.prop('selected', true);
+                }
+
+                $ddl.append(option);
+            });
+
+            if ($ddl.find('option:selected').length === 0 && $ddl.find('option').length > 1) {
+                $ddl.prop('selectedIndex', 1);
+            }
+
+            var selectedOption = $ddl.find('option:selected');
+            var selectedDetail = selectedOption.data('detail');
+
+            if (selectedDetail) {
+                applyBatchDetailToRow(tr, selectedDetail);
+            } else if ($ddl.val()) {
+                applyBatchDetailToRow(tr, normalizeInvoiceDetail(selectedOption.data('detail')));
+            } else {
+                applyBatchDetailToRow(tr, null);
+            }
+        }
+
+        function refreshBatchDropdowns() {
+            $('#srDetailsBody tr').each(function () {
+                var tr = $(this);
+                var customerId = parseInt(tr.data('customerId') || $('#customerDropdown').val() || '0', 10);
+                var billNo = tr.find('.sr-billno').val() || '';
+                var materialId = parseInt(tr.find('.sr-material').val() || '0', 10);
+
+                if (!customerId || !billNo || !materialId) {
+                    return;
+                }
+
+                var key = getSalesInvoiceBatchCacheKey(customerId, billNo, materialId);
+                var details = srInvoiceBatchCache[key];
+                if (details && details.length) {
+                    populateBatchDropdown(tr, details, true);
+                }
+            });
+        }
+
         function loadBillNosForCustomerAndMaterial(customerId, materialId, $ddl) {
             if (!customerId || !materialId) {
                 $ddl.empty();
@@ -621,6 +853,7 @@
                 var existingBillNo = $ddl.closest('tr').data('billno');
                 if (existingBillNo) {
                     $ddl.val(existingBillNo);
+                    tryFetchSalesInvoiceDetail($ddl.closest('tr'), true);
                 }
             });
         }
@@ -649,7 +882,12 @@
             billTd.append(billSelect);
             tr.append(billTd);
             // Batch / Expiry / Packing columns (read-only for now)
-            tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm sr-batchno" readonly>').val(data ? data.BatchNo : '')));
+            var batchTd = $('<td>');
+            var batchSelect = $('<select class="form-control form-control-sm sr-batch-select"></select>');
+            batchSelect.append($('<option>').val('').text('-- Select --'));
+            batchTd.append(batchSelect);
+            batchTd.append($('<input type="hidden" class="sr-batchno">').val(data ? data.BatchNo : ''));
+            tr.append(batchTd);
             tr.append($('<td>').append($('<input type="date" class="form-control form-control-sm sr-expdate" readonly>').val('')));
             tr.append($('<td>').append($('<input type="text" class="form-control form-control-sm sr-pack" readonly>').val(data ? data.Packing : '')));
             tr.append($('<td>').append($('<input type="number" class="form-control form-control-sm sr-actualqty text-end" readonly>').val(data && typeof data.ActualQty !== 'undefined' && data.ActualQty !== null ? data.ActualQty : '')));
@@ -670,6 +908,7 @@
                 }
                 tr.remove();
                 renumberRows();
+                refreshBatchDropdowns();
                 calculateTotals();
             });
             actionTd.append(btnAdd).append(btnDel);
@@ -682,6 +921,7 @@
             }
 
             if (data) {
+                tr.data('customerId', parseInt($('#customerDropdown').val() || '0', 10) || 0);
                 tr.data('packmid', parseInt(data.PackingId || 0, 10) || 0);
                 tr.data('ptr', parseFloat(data.Ptr || 0) || 0);
                 tr.data('mrp', parseFloat(data.Mrp || 0) || 0);
@@ -729,10 +969,15 @@
                 tr.removeData('srcTranBid');
                 tr.removeData('srcTranDid');
                 tr.removeData('srcTranRefId');
+                tr.removeData('batchSelectionKey');
+                tr.data('customerId', customerIdForRow || 0);
 
                 tr.find('.sr-batchno').val('');
+                tr.find('.sr-batch-select').empty().append($('<option>').val('').text('-- Select --'));
                 tr.find('.sr-expdate').val('');
                 tr.find('.sr-pack').val('');
+                tr.find('.sr-actualqty').val('');
+                tr.find('.sr-boxes').val('');
                 tr.find('.sr-qty').val('');
                 tr.find('.sr-amount').val('');
                 billSelect.empty();
@@ -751,6 +996,7 @@
                 var rate = opt.data('rate') || 0;
                 tr.find('.sr-rate').val(rate);
                 recalcRow(tr);
+                refreshBatchDropdowns();
 
                 if (customerIdForRow) {
                     loadBillNosForCustomerAndMaterial(customerIdForRow, parseInt(id || '0', 10), billSelect);
@@ -772,8 +1018,11 @@
 
                 if (!billNoVal) {
                     tr.find('.sr-batchno').val('');
+                    tr.find('.sr-batch-select').empty().append($('<option>').val('').text('-- Select --'));
                     tr.find('.sr-expdate').val('');
                     tr.find('.sr-pack').val('');
+                    tr.find('.sr-actualqty').val('');
+                    tr.find('.sr-boxes').val('');
                     tr.find('.sr-qty').val('');
                     tr.find('.sr-amount').val('');
                     tr.removeData('packmid');
@@ -784,12 +1033,37 @@
                     tr.removeData('srcTranBid');
                     tr.removeData('srcTranDid');
                     tr.removeData('srcTranRefId');
+                    tr.removeData('batchSelectionKey');
+                    refreshBatchDropdowns();
                     recalcRow(tr);
                     return;
                 }
 
+                tr.data('customerId', parseInt($('#customerDropdown').val() || '0', 10) || 0);
                 tr.data('billno', billNoVal);
-                tryFetchSalesInvoiceDetail(tr);
+                tryFetchSalesInvoiceDetail(tr, true);
+            });
+
+            batchSelect.change(function () {
+                var selectedOption = $(this).find('option:selected');
+                var detail = selectedOption.data('detail');
+                applyBatchDetailToRow(tr, detail || null);
+                refreshBatchDropdowns();
+            });
+
+            batchSelect.on('pointerdown mousedown focus', function () {
+                var customerIdForBatch = parseInt(tr.data('customerId') || $('#customerDropdown').val() || '0', 10);
+                var billNoForBatch = tr.find('.sr-billno').val() || '';
+                var materialIdForBatch = parseInt(tr.find('.sr-material').val() || '0', 10);
+                if (!customerIdForBatch || !billNoForBatch || !materialIdForBatch) {
+                    return;
+                }
+
+                var key = getSalesInvoiceBatchCacheKey(customerIdForBatch, billNoForBatch, materialIdForBatch);
+                var details = srInvoiceBatchCache[key];
+                if (details && details.length) {
+                    populateBatchDropdown(tr, details, true);
+                }
             });
         }
 
@@ -945,7 +1219,7 @@
             return rows;
         }
 
-        function tryFetchSalesInvoiceDetail(tr) {
+        function tryFetchSalesInvoiceDetail(tr, refreshAllRows) {
             var customerId = parseInt($('#customerDropdown').val() || '0', 10);
             if (!customerId) {
                 return;
@@ -958,93 +1232,23 @@
                 return;
             }
 
-            $.get('@Url.Action("GetSalesInvoiceDetail", "SalesReturn")', {
+            $.get('@Url.Action("GetSalesInvoiceDetails", "SalesReturn")', {
                 customerId: customerId,
                 billNo: billNo,
                 materialId: materialId
             }, function (res) {
-                if (!res || !res.success || !res.data) {
+                if (!res || !res.success || !res.data || !res.data.length) {
                     return;
                 }
 
-                var d = res.data;
+                var key = getSalesInvoiceBatchCacheKey(customerId, billNo, materialId);
+                srInvoiceBatchCache[key] = res.data || [];
+                tr.data('customerId', customerId);
+                populateBatchDropdown(tr, srInvoiceBatchCache[key], true);
 
-                var qty = d.TRANDQTY || d.QTY || d.Qty || 0;
-                var rate = d.TRANDRATE || d.RATE || d.Rate || 0;
-                var amount = d.TRANDGAMT || d.AMOUNT || d.Amount || 0;
-                var batchNo = d.TRANBDNO || d.BATCHNO || d.BatchNo || '';
-                var expDate = d.TRANBEXPDATE || d.EXPDATE || d.ExpiryDate || null;
-                var packing = d.PACKING || d.PACKMDESC || '';
-                var hsnCode = d.HSNCODE || d.HsnCode || d.hsnCode || '';
-
-                var packMid = d.PACKMID || 0;
-                var ptr = d.TRANBPTRRATE || d.PTR || d.Ptr || 0;
-                var mrp = d.TRANBMRP || d.MRP || d.Mrp || 0;
-                var boxQty = d.TRANBQTY || d.BoxQty || d.BOXQTY || 0;
-
-                var srcTranBid = d.TRANBID || d.TranBid || d.tranBid || 0;
-                var srcTranDid = d.TRANDID || d.TrandId || d.trandId || 0;
-                var srcTranRefId = d.TRANREFID || d.TranRefId || d.tranRefId || 0;
-
-                var actualQty = parseFloat(qty || 0) || 0;
-                if (actualQty) {
-                    tr.find('.sr-actualqty').val(actualQty);
-                    if (!tr.find('.sr-qty').val()) {
-                        tr.find('.sr-qty').val(actualQty);
-                    }
+                if (refreshAllRows) {
+                    refreshBatchDropdowns();
                 }
-                if (rate) {
-                    tr.find('.sr-rate').val(rate);
-                }
-
-                if (batchNo) {
-                    tr.find('.sr-batchno').val(batchNo);
-                }
-
-                if (expDate) {
-                    var expVal = expDate;
-                    if (typeof expDate === 'string') {
-                        if (expDate.indexOf('Date(') !== -1) {
-                            var m = /Date\((\d+)\)/.exec(expDate);
-                            if (m) {
-                                var dt = new Date(parseInt(m[1], 10));
-                                expVal = dt.toISOString().slice(0, 10);
-                            }
-                        } else if (expDate.indexOf('T') > -1) {
-                            expVal = expDate.split('T')[0];
-                        }
-                    }
-                    tr.find('.sr-expdate').val(expVal);
-                }
-
-                if (hsnCode) {
-                    tr.find('.sr-hsn').val(hsnCode);
-                }
-
-                if (packing) {
-                    tr.find('.sr-pack').val(packing);
-                }
-
-                if (boxQty) {
-                    tr.find('.sr-boxes').val(boxQty);
-                }
-
-                if (amount) {
-                    tr.find('.sr-amount').val(parseFloat(amount).toFixed(2));
-                } else {
-                    recalcRow(tr);
-                }
-
-                tr.data('packmid', parseInt(packMid || 0, 10) || 0);
-                tr.data('ptr', parseFloat(ptr || 0) || 0);
-                tr.data('mrp', parseFloat(mrp || 0) || 0);
-                tr.data('boxqty', parseFloat(boxQty || 0) || 0);
-
-                tr.data('srcTranBid', parseInt(srcTranBid || 0, 10) || 0);
-                tr.data('srcTranDid', parseInt(srcTranDid || 0, 10) || 0);
-                tr.data('srcTranRefId', parseInt(srcTranRefId || 0, 10) || 0);
-
-                recalcRow(tr);
             });
         }
     </script>
