@@ -183,8 +183,10 @@
 
 @section Scripts {
     <script type="text/javascript">
+        var salesEInvoiceTable = null;
+        var salesEInvoiceIndexUrl = '@Url.Action("Index", "SalesEInvoice")';
+
         $(document).ready(function () {
-            var salesEInvoiceIndexUrl = '@Url.Action("Index", "SalesEInvoice")';
             (function setDefaultDatesToToday() {
                 var today = new Date();
                 var yyyy = today.getFullYear();
@@ -233,7 +235,7 @@
             var canUpload = @(User.IsInRole("SalesEInvoiceUpload") ? "true" : "false");
             var canPrint = @(User.IsInRole("SalesEInvoicePrint") ? "true" : "false");
 
-            var table = $('#salesEInvoiceTable').DataTable({
+            salesEInvoiceTable = $('#salesEInvoiceTable').DataTable({
                 ajax: {
                     url: '@Url.Action("GetAjaxData", "SalesEInvoice")',
                     type: 'GET',
@@ -338,13 +340,13 @@
                     return;
                 }
 
-                table.ajax.reload();
+                salesEInvoiceTable.ajax.reload();
             });
 
             $('#clearBtn').on('click', function () {
                 $('#fromDate').val('');
                 $('#toDate').val('');
-                table.ajax.reload();
+                salesEInvoiceTable.ajax.reload();
             });
         });
 
@@ -404,7 +406,11 @@
                             if (serverMsg == "Uploaded Succesfully") {
                                 var refreshSalesEInvoiceGrid = function () {
                                     try {
-                                        table.ajax.reload(null, false);
+                                        if (salesEInvoiceTable && salesEInvoiceTable.ajax) {
+                                            salesEInvoiceTable.ajax.reload(null, false);
+                                        } else {
+                                            location.replace(salesEInvoiceIndexUrl);
+                                        }
                                     } catch (e) {
                                         location.replace(salesEInvoiceIndexUrl);
                                     }
