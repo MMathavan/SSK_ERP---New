@@ -167,6 +167,14 @@
         color: #ffffff;
     }
 
+    .btn-disabled {
+        opacity: 0.5;
+        pointer-events: none;
+        cursor: not-allowed;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
     .badge {
         font-weight: 600;
     }
@@ -348,6 +356,7 @@
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
                             var tranBType = row['TranBType'];
+                            var ackNo = row['AckNo'];
                             var editUrl;
 
                             if (tranBType == 0 || tranBType === '0') {
@@ -358,9 +367,16 @@
                             var printUrl = '@Url.Action("Print", "SalesReturn")' + '?id=' + id;
 
                             var html = '';
-                            html += '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>';
                             html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
-                            html += '<button type="button" class="btn btn-action btn-delete" onclick="deleteSalesReturn(' + id + ');"><i class="fa fa-trash"></i> Delete</button>';
+
+                            var hasAck = ackNo && String(ackNo).trim().length > 0;
+                            if (hasAck) {
+                                html = '<span class="btn btn-action btn-edit btn-disabled"><i class="fa fa-edit"></i> Edit</span>' + html;
+                                html += '<span class="btn btn-action btn-delete btn-disabled"><i class="fa fa-trash"></i> Delete</span>';
+                            } else {
+                                html = '<a href="' + editUrl + '" class="btn btn-action btn-edit"><i class="fa fa-edit"></i> Edit</a>' + html;
+                                html += '<button type="button" class="btn btn-action btn-delete" onclick="deleteSalesReturn(' + id + ');"><i class="fa fa-trash"></i> Delete</button>';
+                            }
                             return html;
                         }
                     }

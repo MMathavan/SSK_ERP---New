@@ -119,6 +119,14 @@
         color: white;
         transform: translateY(-1px);
     }
+
+    .btn-disabled {
+        opacity: 0.5;
+        pointer-events: none;
+        cursor: not-allowed;
+        box-shadow: none !important;
+        transform: none !important;
+    }
 </style>
 
 <div class="si-main-container">
@@ -175,6 +183,9 @@
 
 @section Scripts {
     <script type="text/javascript">
+        var creditNoteEInvoiceTable;
+        var creditNoteEInvoiceIndexUrl = '@Url.Action("Index", "CreditNoteEInvoice")';
+
         $(document).ready(function () {
             (function setDefaultDatesToToday() {
                 var today = new Date();
@@ -224,7 +235,7 @@
             var canUpload = @(User.IsInRole("CreditNoteEInvoiceUpload") ? "true" : "false");
             var canPrint = @(User.IsInRole("CreditNoteEInvoicePrint") ? "true" : "false");
 
-            var table = $('#creditNoteEInvoiceTable').DataTable({
+            creditNoteEInvoiceTable = $('#creditNoteEInvoiceTable').DataTable({
                 ajax: {
                     url: '@Url.Action("GetAjaxData", "CreditNoteEInvoice")',
                     type: 'GET',
@@ -287,21 +298,33 @@
                         orderable: false,
                         render: function (data, type, row) {
                             var id = row['TRANMID'];
-                            var uploadUrl = '@Url.Action("Upload", "CreditNoteEInvoice")' + '?id=' + id;
                             var printUrl = '@Url.Action("Print", "CreditNoteEInvoice")' + '?id=' + id;
+                            var hasAckNo = row['AckNo'] && $.trim(row['AckNo']).length > 0;
 
                             var html = '';
-                            if (canUpload) {
-                                html += '<a href="' + uploadUrl + '" class="btn btn-action btn-upload"><i class="fa fa-upload"></i> Upload</a>';
+
+                            // Upload button (enabled only when AckNo is NOT present)
+                            if (hasAckNo) {
+                                html += '<span class="btn btn-action btn-upload btn-disabled"><i class="fa fa-upload"></i> Upload</span>';
                             } else {
-                                html += '<a href="#" class="btn btn-action btn-upload" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Upload\');"><i class="fa fa-upload"></i> Upload</a>';
+                                if (canUpload) {
+                                    html += '<a href="javascript:void(0)" class="btn btn-action btn-upload EInvoice" id="' + id + '"><i class="fa fa-upload"></i> Upload</a>';
+                                } else {
+                                    html += '<a href="#" class="btn btn-action btn-upload" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Upload\');"><i class="fa fa-upload"></i> Upload</a>';
+                                }
                             }
 
-                            if (canPrint) {
-                                html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                            // Print button (enabled only when AckNo IS present)
+                            if (hasAckNo) {
+                                if (canPrint) {
+                                    html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
+                                } else {
+                                    html += '<a href="#" class="btn btn-action btn-print" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Print\');"><i class="fa fa-print"></i> Print</a>';
+                                }
                             } else {
-                                html += '<a href="#" class="btn btn-action btn-print" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Print\');"><i class="fa fa-print"></i> Print</a>';
+                                html += '<span class="btn btn-action btn-print btn-disabled"><i class="fa fa-print"></i> Print</span>';
                             }
+
                             return html;
                         }
                     }
@@ -325,15 +348,141 @@
                     return;
                 }
 
-                table.ajax.reload();
+                creditNoteEInvoiceTable.ajax.reload();
             });
 
             $('#clearBtn').on('click', function () {
                 $('#fromDate').val('');
                 $('#toDate').val('');
-                table.ajax.reload();
+                creditNoteEInvoiceTable.ajax.reload();
             });
         });
+
+        $(document).on("click", "a.EInvoice", function () {
+            var idxRaw = $(this).attr('id');
+            var idx = parseInt(idxRaw, 10);
+            if (!idxRaw || isNaN(idx) || idx <= 0) {
+                alert('Invalid credit note id. Please reload the page and try again.');
+                return;
+            }
+
+            var showConfirm = function () {
+                if (window.Swal && Swal.fire) {
+                    return Swal.fire({
+                        title: "Are you sure?",
+                        text: "Are you sure to Upload this Credit Note ?",
+                        icon: "warning",
+                        confirmButtonText: "Yes",
+                        showCancelButton: true,
+                        cancelButtonText: "No",
+                        showCloseButton: true
+                    });
+                }
+                return swal({
+                    title: "Are you sure?",
+                    text: "Are you sure to Upload this Credit Note ?",
+                    type: "warning",
+                    confirmButtonText: "Yes",
+                    showCancelButton: true,
+                    cancelButtonText: "No",
+                    showCloseButton: true
+                });
+            };
+
+            showConfirm().then((result) => {
+                var isConfirmed = (result && (result.value === true || result.isConfirmed === true));
+                var isCancel = (result && (result.dismiss === 'cancel' || result.isDismissed === true));
+                if (isConfirmed) {
+                    $.ajax({
+                        type: 'post',
+                        url: '@Url.Action("CInvoice", "CreditNoteEInvoice")/' + idx + '?showjson=1',
+                        success: function (jdata) {
+                            var serverMsg = jdata;
+                            if (jdata && typeof jdata === 'object' && jdata.message !== undefined) {
+                                serverMsg = jdata.message;
+                                var combined = 'REQUEST JSON:\n\n' + (jdata.requestJson || '') + '\n\n\nRESPONSE JSON:\n\n' + (jdata.responseJson || '');
+                                if (window.Swal && Swal.fire) {
+                                    Swal.fire({
+                                        title: 'Credit Note EInvoice JSON',
+                                        html: '<textarea class="form-control" style="width:100%;height:360px;" readonly>' + (combined || '') + '</textarea>',
+                                        confirmButtonText: 'OK'
+                                    });
+                                } else {
+                                    alert(combined);
+                                }
+                            }
+
+                            if (serverMsg == "Uploaded Succesfully") {
+                                var refreshCreditNoteEInvoiceGrid = function () {
+                                    try {
+                                        if (creditNoteEInvoiceTable && creditNoteEInvoiceTable.ajax) {
+                                            creditNoteEInvoiceTable.ajax.reload(null, false);
+                                        } else {
+                                            location.replace(creditNoteEInvoiceIndexUrl);
+                                        }
+                                    } catch (e) {
+                                        location.replace(creditNoteEInvoiceIndexUrl);
+                                    }
+                                };
+
+                                if (window.Swal && Swal.fire) {
+                                    Swal.fire({
+                                        title: "Saved",
+                                        text: "Credit Note Uploaded Successfully !!",
+                                        icon: "success",
+                                        timer: 10000
+                                    }).then(function () {
+                                        refreshCreditNoteEInvoiceGrid();
+                                    });
+                                } else {
+                                    swal({
+                                        title: "Saved",
+                                        text: "Credit Note Uploaded Successfully !!",
+                                        type: "success",
+                                        timer: 10000
+                                    }).then(function () {
+                                        refreshCreditNoteEInvoiceGrid();
+                                    });
+                                }
+                            }
+                            else {
+                                if (window.Swal && Swal.fire) {
+                                    Swal.fire({
+                                        title: "Error",
+                                        text: serverMsg,
+                                        icon: "warning",
+                                    }).then(function () {
+                                        location.replace(creditNoteEInvoiceIndexUrl);
+                                    });
+                                } else {
+                                    swal({
+                                        title: "Error",
+                                        text: serverMsg,
+                                        type: "warning",
+                                    }).then(function () {
+                                        location.replace(creditNoteEInvoiceIndexUrl);
+                                    });
+                                }
+                            }
+                        },
+                        error: function (xhr, status, err) {
+                            var details = '';
+                            if (xhr && xhr.responseText) {
+                                details = xhr.responseText;
+                            } else if (err) {
+                                details = err;
+                            } else {
+                                details = status;
+                            }
+                            alert('Failed to save data: ' + details);
+                        }
+                    });
+                } else if (isCancel) {
+                    location.replace(creditNoteEInvoiceIndexUrl);
+                    return false;
+                }
+            });
+        });//End
 
         function noAccess(actionName) {
             var msg = (actionName || 'This action') + ' is not allowed. Please contact your administrator.';

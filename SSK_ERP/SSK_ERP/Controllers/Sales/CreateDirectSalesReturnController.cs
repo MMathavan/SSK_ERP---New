@@ -39,6 +39,12 @@ namespace SSK_ERP.Controllers
                     return RedirectToAction("Index", "SalesReturn");
                 }
 
+                if (!string.IsNullOrWhiteSpace(model.ACKNO))
+                {
+                    TempData["ErrorMessage"] = "This Credit Note already has an Acknowledge Number, so edit is not allowed.";
+                    return RedirectToAction("Index", "SalesReturn");
+                }
+
                 var details = db.TransactionDetails
                     .Where(d => d.TRANMID == model.TRANMID)
                     .ToList();
