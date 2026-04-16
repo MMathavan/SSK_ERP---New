@@ -323,7 +323,7 @@
                         <tbody>
                             @for (int i = 0; i < (Model.Items != null ? Model.Items.Count : 0); i++)
                             {
-                                <tr data-cgst="@Model.Items[i].CgstRate" data-sgst="@Model.Items[i].SgstRate" data-igst="@Model.Items[i].IgstRate">
+                                <tr data-cgst="@Model.Items[i].CgstRate" data-sgst="@Model.Items[i].SgstRate" data-igst="@Model.Items[i].IgstRate" data-purchase-qty="@Model.Items[i].Qty">
                                     <td class="text-center">
                                         @Html.CheckBoxFor(m => m.Items[i].Selected, new { @class = "row-select" })
                                     </td>
@@ -963,6 +963,15 @@
             $(document).on('input change', '.qty-field', function () {
                 var $tr = $(this).closest('tr');
                 var qty = parseDecimal($(this).val() || '0');
+                var purchaseQty = parseDecimal($tr.data('purchase-qty') || '0');
+
+                // Validate that quantity does not exceed purchase invoice quantity
+                if (qty > purchaseQty) {
+                    alert('Quantity cannot exceed Purchase Invoice quantity (' + purchaseQty + '). Please enter a lower or equal quantity.');
+                    $(this).val(purchaseQty);
+                    qty = purchaseQty;
+                }
+
                 var rate = parseDecimal($tr.find('.rate-field').val() || '0');
                 var amt = qty * rate;
                 $tr.find('.amount-field').val(amt.toFixed(2));
