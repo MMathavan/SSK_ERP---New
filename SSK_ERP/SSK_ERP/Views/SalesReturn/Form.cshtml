@@ -139,6 +139,21 @@
         </div>
 
         <div class="sr-form-body">
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
             @using (Html.BeginForm("savedata", "SalesReturn", FormMethod.Post, new { id = "salesReturnForm" }))
             {
                 @Html.AntiForgeryToken()
@@ -391,7 +406,12 @@
         }
 
         $(document).ready(function () {
-            $('#customerDropdown').select2({ width: '100%' });
+            try {
+                if ($.fn.select2) {
+                    $('#customerDropdown').select2({ width: '100%' });
+                }
+            } catch (e) {
+            }
 
             $('#customerDropdown').on('change', function () {
                 var id = $(this).val();
@@ -493,7 +513,7 @@
                 }
 
                 $('#srDetailRowsJson').val(JSON.stringify(rows));
-                $('#salesReturnForm').submit();
+                document.getElementById('salesReturnForm').submit();
             });
         });
 
@@ -618,6 +638,7 @@
             var hsnCode = detail.HSNCODE || detail.HsnCode || detail.hsnCode || '';
 
             var srcTranBid = parseInt(detail.TRANBID || detail.TranBid || detail.tranBid || 0, 10) || 0;
+            var srcTranBPid = parseInt(detail.TRANBPID || detail.TranBPid || detail.tranBPid || 0, 10) || 0;
             var batchSelectionKey = srcTranBid > 0 ? ('ID:' + srcTranBid) : ('BATCH:' + (batchNo || '').toString().toUpperCase());
 
             return {
@@ -633,6 +654,7 @@
                 mrp: parseFloat(detail.TRANBMRP || detail.MRP || detail.Mrp || 0) || 0,
                 boxQty: parseFloat(detail.TRANBQTY || detail.BoxQty || detail.BOXQTY || 0) || 0,
                 srcTranBid: srcTranBid,
+                srcTranBPid: srcTranBPid,
                 srcTranDid: parseInt(detail.TRANDID || detail.TrandId || detail.trandId || 0, 10) || 0,
                 srcTranRefId: parseInt(detail.TRANREFID || detail.TranRefId || detail.tranRefId || 0, 10) || 0,
                 batchSelectionKey: batchSelectionKey
@@ -851,9 +873,24 @@
                 }
 
                 var existingBillNo = $ddl.closest('tr').data('billno');
+
+                // Add existing bill number to dropdown if not already present
+                if (existingBillNo) {
+                    var billNoExists = false;
+                    $ddl.find('option').each(function() {
+                        if ($(this).val() === existingBillNo) {
+                            billNoExists = true;
+                            return false;
+                        }
+                    });
+                    if (!billNoExists) {
+                        $ddl.append($('<option>').val(existingBillNo).text(existingBillNo));
+                    }
+                }
+
                 if (existingBillNo) {
                     $ddl.val(existingBillNo);
-                    tryFetchSalesInvoiceDetail($ddl.closest('tr'), true);
+                    // Batch details are populated directly from saved data in addRow function
                 }
             });
         }
@@ -926,8 +963,15 @@
                 tr.data('ptr', parseFloat(data.Ptr || 0) || 0);
                 tr.data('mrp', parseFloat(data.Mrp || 0) || 0);
                 tr.data('boxqty', parseFloat(data.BoxQty || 0) || 0);
-                if (data.BillNo) {
-                    tr.data('billno', data.BillNo);
+                // Store other fields for later retrieval when batch details not found
+                tr.data('expiryDate', data.ExpiryDate || '');
+                tr.data('packing', data.Packing || '');
+                tr.data('actualQty', data.ActualQty || '');
+                tr.data('savedBatchNo', data.BatchNo || '');
+                // Use SourceBillNo (actual TRANDNO) for dropdown matching, fallback to BillNo
+                var billNoForDropdown = data.SourceBillNo || data.BillNo;
+                if (billNoForDropdown) {
+                    tr.data('billno', billNoForDropdown);
                 }
                 if (data.SourceBatchId) {
                     tr.data('srcTranBid', parseInt(data.SourceBatchId || 0, 10) || 0);
@@ -954,14 +998,62 @@
                     }
                     tr.find('.sr-expdate').val(expVal);
                 }
+
+                // Mark row as loading existing data to prevent change event from clearing fields
+                tr.data('isLoading', true);
+
+                // Load bill numbers and batch details for edit mode
+                if (data.MaterialId && customerId) {
+                    // Use setTimeout to ensure bill dropdown is fully set up before loading
+                    setTimeout(function() {
+                        loadBillNosForCustomerAndMaterial(customerId, data.MaterialId, billSelect);
+                    }, 100);
+                }
+
+                // Directly populate all fields from saved data (simple and reliable)
+                if (data.BatchNo) {
+                    tr.find('.sr-batchno').val(data.BatchNo);
+                    var batchSelect = tr.find('.sr-batch-select');
+                    batchSelect.empty();
+                    batchSelect.append($('<option>').val('').text('-- Select --'));
+                    batchSelect.append($('<option>').val(data.SourceBatchId || '').text(data.BatchNo).prop('selected', true));
+                }
+                if (data.ExpiryDate) {
+                    var formattedDate = normalizeDateValue(data.ExpiryDate);
+                    tr.find('.sr-expdate').val(formattedDate);
+                }
+                if (data.Packing) {
+                    tr.find('.sr-pack').val(data.Packing);
+                }
+                if (data.ActualQty) {
+                    tr.find('.sr-actualqty').val(data.ActualQty);
+                }
+                if (data.BoxQty) {
+                    tr.find('.sr-boxes').val(data.BoxQty);
+                }
+                if (data.Amount) {
+                    tr.find('.sr-amount').val(data.Amount);
+                }
+
+                // Remove loading flag after a longer delay to prevent material change event from clearing fields
+                setTimeout(function() {
+                    tr.removeData('isLoading');
+                }, 5000);
             }
 
-            // Pre-populate Bill No dropdown for current customer
+            // Pre-populate Bill No dropdown for current customer (only if not loading existing data)
             var customerId = parseInt($('#customerDropdown').val() || '0', 10);
-            billSelect.empty();
-            billSelect.append($('<option>').val('').text('-- Select --'));
+            if (!data) {
+                billSelect.empty();
+                billSelect.append($('<option>').val('').text('-- Select --'));
+            }
 
             matSelect.change(function () {
+                // Don't clear fields if row is loading existing data
+                if (tr.data('isLoading')) {
+                    return;
+                }
+
                 var id = $(this).val();
                 var customerIdForRow = parseInt($('#customerDropdown').val() || '0', 10);
 
@@ -1008,6 +1100,11 @@
             });
 
             billSelect.change(function () {
+                // Don't clear fields if row is loading existing data
+                if (tr.data('isLoading')) {
+                    return;
+                }
+
                 var billNoVal = $(this).val();
                 var matVal = tr.find('.sr-material').val();
                 if (!matVal) {
@@ -1045,6 +1142,11 @@
             });
 
             batchSelect.change(function () {
+                // Don't clear fields if row is loading existing data
+                if (tr.data('isLoading')) {
+                    return;
+                }
+
                 var selectedOption = $(this).find('option:selected');
                 var detail = selectedOption.data('detail');
                 applyBatchDetailToRow(tr, detail || null);
@@ -1182,7 +1284,10 @@
             var rows = [];
             $('#srDetailsBody tr').each(function () {
                 var tr = $(this);
-                var materialId = parseInt(tr.find('.sr-material').val() || 0);
+                var materialId = parseInt(tr.find('.sr-material').val() || 0, 10) || 0;
+                if (!materialId) {
+                    materialId = parseInt(tr.find('.sr-material').data('selected-id') || 0, 10) || 0;
+                }
                 var qty = parseFloat(tr.find('.sr-qty').val() || 0);
                 var rate = parseFloat(tr.find('.sr-rate').val() || 0);
                 var amount = parseFloat(tr.find('.sr-amount').val() || 0);
@@ -1197,7 +1302,7 @@
                 var srcTranDid = parseInt(tr.data('srcTranDid') || 0, 10) || 0;
                 var srcTranRefId = parseInt(tr.data('srcTranRefId') || 0, 10) || 0;
 
-                if (materialId > 0 && qty > 0) {
+                if (materialId > 0 && (qty > 0 || amount > 0)) {
                     rows.push({
                         MaterialId: materialId,
                         Qty: qty,

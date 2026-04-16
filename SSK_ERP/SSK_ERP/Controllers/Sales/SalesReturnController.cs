@@ -71,6 +71,633 @@ namespace SSK_ERP.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]
+        public JsonResult GetMaterialsByCustomer(int tranRefId)
+        {
+            try
+            {
+                if (tranRefId <= 0)
+                {
+                    return Json(new { success = true, materials = new object[0] }, JsonRequestBehavior.AllowGet);
+                }
+
+                var detailsQuery =
+                    from m in db.TransactionMasters
+                    join d in db.TransactionDetails on m.TRANMID equals d.TRANMID
+                    where m.REGSTRID == SalesInvoiceRegisterId
+                          && m.TRANREFID == tranRefId
+                          && m.DISPSTATUS == 0
+                          && d.TRANDREFID > 0
+                    select new
+                    {
+                        m.TRANDATE,
+                        m.TRANMID,
+                        MaterialId = d.TRANDREFID,
+                        DetailName = d.TRANDREFNAME,
+                        d.TRANDRATE
+                    };
+
+                var latestPerMaterial = detailsQuery
+                    .OrderByDescending(x => x.TRANDATE)
+                    .ThenByDescending(x => x.TRANMID)
+                    .ToList()
+                    .GroupBy(x => x.MaterialId)
+                    .Select(g => g.First())
+                    .ToList();
+
+                var materialIds = latestPerMaterial
+                    .Select(x => x.MaterialId)
+                    .Distinct()
+                    .ToList();
+
+                var materialMasterMap = db.MaterialMasters
+                    .Where(mm => materialIds.Contains(mm.MTRLID))
+                    .Select(mm => new { mm.MTRLID, mm.MTRLDESC, mm.HSNID })
+                    .ToList()
+                    .ToDictionary(x => x.MTRLID, x => x);
+
+                var hsnIds = materialMasterMap.Values
+                    .Where(x => x.HSNID > 0)
+                    .Select(x => x.HSNID)
+                    .Distinct()
+                    .ToList();
+
+                var hsnMap = db.HSNCodeMasters
+                    .Where(h => hsnIds.Contains(h.HSNID))
+                    .Select(h => new { h.HSNID, h.HSNCODE })
+                    .ToList()
+                    .ToDictionary(x => x.HSNID, x => x.HSNCODE);
+
+                var materials = latestPerMaterial
+                    .Select(x =>
+                    {
+                        string name = x.DetailName;
+                        string hsnCode = string.Empty;
+
+                        if (materialMasterMap.TryGetValue(x.MaterialId, out var mm))
+                        {
+                            if (!string.IsNullOrWhiteSpace(mm.MTRLDESC))
+                            {
+                                name = mm.MTRLDESC;
+                            }
+
+                            if (mm.HSNID > 0 && hsnMap.TryGetValue(mm.HSNID, out var hsn))
+                            {
+                                hsnCode = hsn;
+                            }
+                        }
+
+                        return new
+                        {
+                            id = x.MaterialId,
+                            name = name,
+                            rate = x.TRANDRATE,
+                            hsnCode = hsnCode
+                        };
+                    })
+                    .OrderBy(x => x.name)
+                    .ToList();
+
+                return Json(new { success = true, materials = materials }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message, materials = new object[0] }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]
+        public JsonResult GetBillNosByCustomerAndMaterial(int customerId, int materialId)
+        {
+            try
+            {
+                if (customerId <= 0 || materialId <= 0)
+                {
+                    return Json(new { success = true, billNos = new string[0] }, JsonRequestBehavior.AllowGet);
+                }
+
+                var billNos = db.TransactionMasters
+                    .Where(m => m.REGSTRID == SalesInvoiceRegisterId
+                                && m.TRANREFID == customerId
+                                && m.DISPSTATUS == 0)
+                    .Join(db.TransactionDetails,
+                          m => m.TRANMID,
+                          d => d.TRANMID,
+                          (m, d) => new { m, d })
+                    .Where(x => x.d.TRANDREFID == materialId)
+                    .Select(x => x.m.TRANDNO)
+                    .Where(b => b != null && b != "")
+                    .Distinct()
+                    .OrderBy(b => b)
+                    .ToList();
+
+                return Json(new { success = true, billNos = billNos }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message, billNos = new string[0] }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]
+        public JsonResult GetSalesInvoiceDetails(int customerId, string billNo, int materialId)
+        {
+            try
+            {
+                if (customerId <= 0 || string.IsNullOrWhiteSpace(billNo) || materialId <= 0)
+                {
+                    return Json(new { success = true, data = new object[0] }, JsonRequestBehavior.AllowGet);
+                }
+
+                var query =
+                    from m in db.TransactionMasters
+                    join d in db.TransactionDetails on m.TRANMID equals d.TRANMID
+                    join mm in db.MaterialMasters on d.TRANDREFID equals mm.MTRLID into mmGroup
+                    from mm in mmGroup.DefaultIfEmpty()
+                    join h in db.HSNCodeMasters on mm.HSNID equals h.HSNID into hGroup
+                    from h in hGroup.DefaultIfEmpty()
+                    where m.REGSTRID == SalesInvoiceRegisterId
+                          && m.TRANREFID == customerId
+                          && m.TRANDNO == billNo
+                          && d.TRANDREFID == materialId
+                          && m.DISPSTATUS == 0
+                    select new
+                    {
+                        d.TRANDID,
+                        d.TRANDQTY,
+                        d.TRANDRATE,
+                        d.TRANDGAMT,
+                        d.TRANDREFID,
+                        TRANREFID = m.TRANREFID,
+                        HSNCODE = h != null ? h.HSNCODE : "",
+                        d.TRANDREFNO
+                    };
+
+                var details = query.ToList();
+
+                var detailIds = details.Select(x => x.TRANDID).ToList();
+                var batchDetails = db.TransactionBatchDetails
+                    .Where(b => detailIds.Contains(b.TRANDID))
+                    .ToList();
+
+                var result = new List<object>();
+
+                foreach (var d in details)
+                {
+                    var batches = batchDetails.Where(b => b.TRANDID == d.TRANDID).ToList();
+                    if (batches.Any())
+                    {
+                        foreach (var b in batches)
+                        {
+                            result.Add(new
+                            {
+                                d.TRANDID,
+                                d.TRANDQTY,
+                                d.TRANDRATE,
+                                d.TRANDGAMT,
+                                d.TRANDREFID,
+                                TRANREFID = d.TRANREFID,
+                                d.HSNCODE,
+                                d.TRANDREFNO,
+                                TRANBDNO = b.TRANBDNO,
+                                TRANBEXPDATE = b.TRANBEXPDATE,
+                                PACKMID = b.PACKMID,
+                                PACKMDESC = b.PACKMID > 0 ? (db.PackingMasters.FirstOrDefault(p => p.PACKMID == b.PACKMID)?.PACKMDESC ?? "") : "",
+                                TRANBPTRRATE = b.TRANBPTRRATE,
+                                TRANBMRP = b.TRANBMRP,
+                                TRANBQTY = b.TRANBQTY,
+                                TRANBID = b.TRANBID,
+                                TRANBPID = b.TRANBPID,
+                                TRANDPID = b.TRANDPID,
+                                TRANBLMID = b.TRANBLMID
+                            });
+                        }
+                    }
+                    else
+                    {
+                        result.Add(new
+                        {
+                            d.TRANDID,
+                            d.TRANDQTY,
+                            d.TRANDRATE,
+                            d.TRANDGAMT,
+                            d.TRANDREFID,
+                            TRANREFID = d.TRANREFID,
+                            d.HSNCODE,
+                            d.TRANDREFNO,
+                            TRANBDNO = "",
+                            TRANBEXPDATE = (DateTime?)null,
+                            PACKMID = 0,
+                            PACKMDESC = "",
+                            TRANBPTRRATE = 0m,
+                            TRANBMRP = 0m,
+                            TRANBQTY = 0m,
+                            TRANBID = 0,
+                            TRANBPID = 0,
+                            TRANDPID = 0,
+                            TRANBLMID = (int?)null
+                        });
+                    }
+                }
+
+                return Json(new { success = true, data = result }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message, data = new object[0] }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]
+        public JsonResult CalculateSalesReturnTax(int stateType, string detailRowsJson)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(detailRowsJson))
+                {
+                    return Json(new { success = false, message = "No detail rows provided" });
+                }
+
+                var detailRows = JsonConvert.DeserializeObject<List<SalesReturnDetailRow>>(detailRowsJson);
+                if (detailRows == null || !detailRows.Any())
+                {
+                    return Json(new { success = false, message = "No detail rows found" });
+                }
+
+                var materialIds = detailRows.Select(r => r.MaterialId).Distinct().ToList();
+                var materials = db.MaterialMasters
+                    .Where(m => materialIds.Contains(m.MTRLID))
+                    .Select(m => new { m.MTRLID, m.HSNID })
+                    .ToList();
+
+                var hsnIds = materials.Where(m => m.HSNID > 0).Select(m => m.HSNID).Distinct().ToList();
+                var hsnMap = db.HSNCodeMasters
+                    .Where(h => hsnIds.Contains(h.HSNID))
+                    .ToDictionary(h => h.HSNID, h => h);
+
+                decimal totalGross = 0;
+                decimal totalCGST = 0;
+                decimal totalSGST = 0;
+                decimal totalIGST = 0;
+
+                foreach (var row in detailRows)
+                {
+                    decimal amount = row.Amount;
+                    totalGross += amount;
+
+                    var material = materials.FirstOrDefault(m => m.MTRLID == row.MaterialId);
+                    if (material != null && material.HSNID > 0 && hsnMap.TryGetValue(material.HSNID, out var hsn))
+                    {
+                        decimal cgstRate = hsn.CGSTEXPRN;
+                        decimal sgstRate = hsn.SGSTEXPRN;
+                        decimal igstRate = hsn.IGSTEXPRN;
+
+                        if (stateType == 0)
+                        {
+                            totalCGST += amount * cgstRate / 100;
+                            totalSGST += amount * sgstRate / 100;
+                        }
+                        else
+                        {
+                            totalIGST += amount * igstRate / 100;
+                        }
+                    }
+                }
+
+                decimal totalNet = totalGross + totalCGST + totalSGST + totalIGST;
+
+                return Json(new
+                {
+                    success = true,
+                    gross = totalGross,
+                    cgst = totalCGST,
+                    sgst = totalSGST,
+                    igst = totalIGST,
+                    net = totalNet
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]
+        public ActionResult savedata(TransactionMaster master, string detailRowsJson)
+        {
+            try
+            {
+                bool isEdit = master.TRANMID > 0 &&
+                              db.TransactionMasters.Any(t => t.TRANMID == master.TRANMID &&
+                                                             t.REGSTRID == SalesReturnRegisterId &&
+                                                             t.TRANBTYPE == 1);
+
+                if (isEdit)
+                {
+                    if (!User.IsInRole("SalesReturnEdit"))
+                    {
+                        TempData["ErrorMessage"] = "You do not have permission to edit Sales Returns.";
+                        return RedirectToAction("Index");
+                    }
+
+                    var existing = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == master.TRANMID &&
+                                                                             t.REGSTRID == SalesReturnRegisterId &&
+                                                                             t.TRANBTYPE == 1);
+                    if (existing == null)
+                    {
+                        TempData["ErrorMessage"] = "Sales Return not found.";
+                        return RedirectToAction("Index");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(existing.ACKNO))
+                    {
+                        TempData["ErrorMessage"] = "This Credit Note already has an Acknowledge Number, so edit is not allowed.";
+                        return RedirectToAction("Index");
+                    }
+                }
+                else
+                {
+                    if (!User.IsInRole("SalesReturnCreate"))
+                    {
+                        TempData["ErrorMessage"] = "You do not have permission to create Sales Returns.";
+                        return RedirectToAction("Index");
+                    }
+                }
+
+                var details = string.IsNullOrWhiteSpace(detailRowsJson)
+                    ? new List<SalesReturnDetailRow>()
+                    : JsonConvert.DeserializeObject<List<SalesReturnDetailRow>>(detailRowsJson) ?? new List<SalesReturnDetailRow>();
+
+                details = details
+                    .Where(d => d != null && d.MaterialId > 0 && d.Qty > 0)
+                    .ToList();
+
+                if (!details.Any())
+                {
+                    TempData["ErrorMessage"] = "Please add at least one detail row.";
+                    if (isEdit)
+                    {
+                        return RedirectToAction("Form", new { id = master.TRANMID, tranBType = 1 });
+                    }
+                    return RedirectToAction("Form", new { tranBType = 1 });
+                }
+
+                var compyObj = Session["CompyId"] ?? Session["compyid"];
+                int compyId = compyObj != null ? Convert.ToInt32(compyObj) : 1;
+                string userName = User != null && User.Identity != null && User.Identity.IsAuthenticated
+                    ? User.Identity.Name
+                    : "System";
+
+                if (master.TRANREFID <= 0)
+                {
+                    TempData["ErrorMessage"] = "Please select a customer.";
+                    if (isEdit)
+                    {
+                        return RedirectToAction("Form", new { id = master.TRANMID, tranBType = 1 });
+                    }
+                    return RedirectToAction("Form", new { tranBType = 1 });
+                }
+
+                short tranStateType = 0;
+                var customer = db.CustomerMasters.FirstOrDefault(c => c.CATEID == master.TRANREFID);
+                if (customer != null)
+                {
+                    master.TRANREFID = customer.CATEID;
+                    master.TRANREFNAME = customer.CATENAME;
+
+                    var state = db.StateMasters.FirstOrDefault(s => s.STATEID == customer.STATEID);
+                    if (state != null)
+                    {
+                        tranStateType = state.STATETYPE;
+                    }
+                }
+
+                master.TRANSTATETYPE = tranStateType;
+                master.TRANTIME = DateTime.Now;
+                master.REGSTRID = SalesReturnRegisterId;
+                master.TRANBTYPE = 1;
+                if (string.IsNullOrWhiteSpace(master.TRANREFNO))
+                {
+                    master.TRANREFNO = "-";
+                }
+
+                if (isEdit)
+                {
+                    var existing = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == master.TRANMID &&
+                                                                             t.REGSTRID == SalesReturnRegisterId &&
+                                                                             t.TRANBTYPE == 1);
+                    if (existing == null)
+                    {
+                        TempData["ErrorMessage"] = "Sales Return not found.";
+                        return RedirectToAction("Index");
+                    }
+
+                    existing.TRANDATE = master.TRANDATE;
+                    existing.TRANTIME = master.TRANTIME;
+                    existing.TRANREFID = master.TRANREFID;
+                    existing.TRANREFNAME = master.TRANREFNAME;
+                    existing.TRANREFNO = master.TRANREFNO;
+                    existing.TRANRMKS = master.TRANRMKS;
+                    existing.TRANSTATETYPE = master.TRANSTATETYPE;
+                    existing.DISPSTATUS = master.DISPSTATUS;
+                    existing.COMPYID = compyId;
+                    existing.LMUSRID = userName;
+                    existing.PRCSDATE = DateTime.Now;
+
+                    var existingDetailIds = db.TransactionDetails
+                        .Where(d => d.TRANMID == existing.TRANMID)
+                        .Select(d => d.TRANDID)
+                        .ToList();
+
+                    var existingBatchDetailIds = db.TransactionBatchDetails
+                        .Where(b => existingDetailIds.Contains(b.TRANDID))
+                        .Select(b => b.TRANBID)
+                        .ToList();
+
+                    db.TransactionBatchDetails.RemoveRange(
+                        db.TransactionBatchDetails.Where(b => existingBatchDetailIds.Contains(b.TRANBID))
+                    );
+                    db.TransactionDetails.RemoveRange(
+                        db.TransactionDetails.Where(d => existingDetailIds.Contains(d.TRANDID))
+                    );
+
+                    db.SaveChanges();
+
+                    InsertDetails(existing, details, compyId, userName);
+                    db.SaveChanges();
+
+                    TempData["SuccessMessage"] = "Sales Return updated successfully.";
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    var maxTranNo = db.TransactionMasters
+                        .Where(t => t.COMPYID == compyId && t.REGSTRID == SalesReturnRegisterId)
+                        .Select(t => (int?)t.TRANNO)
+                        .Max();
+
+                    int nextTranNo = (maxTranNo ?? 0) + 1;
+                    master.TRANNO = nextTranNo;
+                    master.TRANDNO = FormatSalesReturnTrandNo(nextTranNo, master.TRANDATE);
+                    master.DISPSTATUS = 0;
+                    master.COMPYID = compyId;
+                    master.CUSRID = userName;
+                    master.LMUSRID = userName;
+                    master.PRCSDATE = DateTime.Now;
+
+                    db.TransactionMasters.Add(master);
+                    db.SaveChanges();
+
+                    InsertDetails(master, details, compyId, userName);
+                    db.SaveChanges();
+
+                    TempData["SuccessMessage"] = "Sales Return created successfully.";
+                    return RedirectToAction("Index");
+                }
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = "Error: " + ex.Message;
+
+                // Capture EntityValidationErrors if present
+                if (ex is System.Data.Entity.Validation.DbEntityValidationException validationEx)
+                {
+                    var validationErrors = validationEx.EntityValidationErrors
+                        .SelectMany(e => e.ValidationErrors)
+                        .Select(e => $"Property: {e.PropertyName}, Error: {e.ErrorMessage}");
+                    errorMessage += " | Validation Errors: " + string.Join("; ", validationErrors);
+                }
+
+                TempData["ErrorMessage"] = errorMessage;
+                if (master.TRANMID > 0)
+                {
+                    return RedirectToAction("Form", new { id = master.TRANMID, tranBType = 1 });
+                }
+                return RedirectToAction("Form", new { tranBType = 1 });
+            }
+        }
+
+        private void InsertDetails(TransactionMaster master, List<SalesReturnDetailRow> details, int compyId, string userName)
+        {
+            var materialIds = details.Select(r => r.MaterialId).Distinct().ToList();
+            var materials = db.MaterialMasters
+                .Where(m => materialIds.Contains(m.MTRLID))
+                .ToDictionary(m => m.MTRLID, m => m);
+
+            var hsnIds = materials.Values.Where(m => m.HSNID > 0).Select(m => m.HSNID).Distinct().ToList();
+            var hsnMap = db.HSNCodeMasters
+                .Where(h => hsnIds.Contains(h.HSNID))
+                .ToDictionary(h => h.HSNID, h => h);
+
+            var stateType = (int)master.TRANSTATETYPE;
+
+            decimal totalGross = 0m;
+            decimal totalCgst = 0m;
+            decimal totalSgst = 0m;
+            decimal totalIgst = 0m;
+            decimal totalNet = 0m;
+
+            foreach (var row in details)
+            {
+                materials.TryGetValue(row.MaterialId, out var material);
+                string materialName = material != null ? material.MTRLDESC : "";
+
+                decimal qty = row.Qty;
+                decimal rate = row.Rate;
+                decimal gross = row.Amount > 0 ? row.Amount : qty * rate;
+
+                decimal cgstAmt = 0m;
+                decimal sgstAmt = 0m;
+                decimal igstAmt = 0m;
+
+                if (material != null && material.HSNID > 0 && hsnMap.TryGetValue(material.HSNID, out var hsn))
+                {
+                    if (stateType == 0)
+                    {
+                        if (hsn.CGSTEXPRN > 0)
+                        {
+                            cgstAmt = Math.Round((gross * hsn.CGSTEXPRN) / 100m, 2);
+                        }
+                        if (hsn.SGSTEXPRN > 0)
+                        {
+                            sgstAmt = Math.Round((gross * hsn.SGSTEXPRN) / 100m, 2);
+                        }
+                    }
+                    else
+                    {
+                        if (hsn.IGSTEXPRN > 0)
+                        {
+                            igstAmt = Math.Round((gross * hsn.IGSTEXPRN) / 100m, 2);
+                        }
+                    }
+                }
+
+                decimal net = gross + cgstAmt + sgstAmt + igstAmt;
+
+                totalGross += gross;
+                totalCgst += cgstAmt;
+                totalSgst += sgstAmt;
+                totalIgst += igstAmt;
+                totalNet += net;
+
+                var detail = new TransactionDetail
+                {
+                    TRANMID = master.TRANMID,
+                    TRANDREFID = row.MaterialId,
+                    TRANDREFNAME = materialName,
+                    TRANDQTY = row.Qty,
+                    TRANDRATE = row.Rate,
+                    TRANDGAMT = gross,
+                    TRANDCGSTAMT = cgstAmt,
+                    TRANDSGSTAMT = sgstAmt,
+                    TRANDIGSTAMT = igstAmt,
+                    TRANDNAMT = net,
+                    TRANDARATE = rate,
+                    TRANDREFNO = row.BillNo ?? "",
+                    HSNID = material != null ? material.HSNID : 0
+                };
+
+                db.TransactionDetails.Add(detail);
+                db.SaveChanges();
+
+                if (!string.IsNullOrWhiteSpace(row.BatchNo) || row.SourceBatchId > 0)
+                {
+                    var batchDetail = new TransactionBatchDetail
+                    {
+                        TRANDID = detail.TRANDID,
+                        TRANBDNO = row.BatchNo ?? "",
+                        TRANBEXPDATE = row.ExpiryDate ?? DateTime.Now,
+                        PACKMID = row.PackingId,
+                        TRANBPTRRATE = row.Ptr,
+                        TRANBMRP = row.Mrp,
+                        TRANBQTY = (int)row.BoxQty,
+                        TRANBPID = row.SourceBatchId,
+                        TRANDPID = row.SourceDetailId,
+                        TRANBLMID = row.SourceRefId
+                    };
+
+                    db.TransactionBatchDetails.Add(batchDetail);
+                }
+            }
+
+            master.TRANGAMT = totalGross;
+            master.TRANCGSTAMT = totalCgst;
+            master.TRANSGSTAMT = totalSgst;
+            master.TRANIGSTAMT = totalIgst;
+
+            var roundedNet = Math.Round(totalNet, 0, MidpointRounding.AwayFromZero);
+            var roundOff = roundedNet - totalNet;
+            master.TRANROAMT = Math.Round(roundOff, 3, MidpointRounding.AwayFromZero);
+            master.TRANNAMT = roundedNet;
+            master.TRANAMTWRDS = ConvertAmountToWords(master.TRANNAMT);
+        }
+
         [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]
         public ActionResult Form(int? id, int? tranBType)
         {
@@ -180,6 +807,37 @@ namespace SSK_ERP.Controllers
                             actualQty = srcBatch.TRANPTQTY;
                         }
 
+                        // Get the source bill number (TRANDNO) from the source transaction
+                        string sourceBillNo = d.TRANDREFNO;
+                        if (batch != null && batch.TRANBPID > 0)
+                        {
+                            var sourceBatch = sourceBatchMap.ContainsKey(batch.TRANBPID) ? sourceBatchMap[batch.TRANBPID] : null;
+                            if (sourceBatch != null)
+                            {
+                                var sourceDetail = db.TransactionDetails.FirstOrDefault(x => x.TRANDID == sourceBatch.TRANDID);
+                                if (sourceDetail != null)
+                                {
+                                    var sourceMaster = db.TransactionMasters.FirstOrDefault(x => x.TRANMID == sourceDetail.TRANMID);
+                                    if (sourceMaster != null)
+                                    {
+                                        sourceBillNo = sourceMaster.TRANDNO;
+                                    }
+                                }
+                            }
+                        }
+                        // Fallback: If batch.TRANBPID is 0, try to find source by TRANDREFNO
+                        if (sourceBillNo == d.TRANDREFNO && !string.IsNullOrWhiteSpace(d.TRANDREFNO))
+                        {
+                            // Try to find a Sales Invoice with matching TRANDNO or TRANREFNO
+                            var sourceMasterByRef = db.TransactionMasters
+                                .FirstOrDefault(m => m.REGSTRID == SalesInvoiceRegisterId &&
+                                                     (m.TRANDNO == d.TRANDREFNO || m.TRANREFNO == d.TRANDREFNO));
+                            if (sourceMasterByRef != null)
+                            {
+                                sourceBillNo = sourceMasterByRef.TRANDNO;
+                            }
+                        }
+
                         detailRows.Add(new SalesReturnDetailRow
                         {
                             MaterialId = d.TRANDREFID,
@@ -195,6 +853,7 @@ namespace SSK_ERP.Controllers
                             BoxQty = batch != null ? batch.TRANBQTY : 0m,
                             Packing = packingDesc,
                             BillNo = d.TRANDREFNO,
+                            SourceBillNo = sourceBillNo, // Actual TRANDNO for dropdown matching
                             SourceBatchId = batch != null ? batch.TRANBPID : 0,
                             SourceDetailId = batch != null ? batch.TRANDPID : 0,
                             SourceRefId = batch != null && batch.TRANBLMID.HasValue ? batch.TRANBLMID.Value : 0,
@@ -888,6 +1547,7 @@ namespace SSK_ERP.Controllers
             public decimal BoxQty { get; set; }
             public string Packing { get; set; }
             public string BillNo { get; set; }
+            public string SourceBillNo { get; set; } // Actual TRANDNO from source transaction
             public int SourceBatchId { get; set; }
             public int SourceDetailId { get; set; }
             public int SourceRefId { get; set; }

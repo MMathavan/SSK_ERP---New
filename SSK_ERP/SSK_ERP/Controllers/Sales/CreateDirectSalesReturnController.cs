@@ -338,11 +338,23 @@ namespace SSK_ERP.Controllers
                     db.SaveChanges();
                 }
 
+                TempData["SuccessMessage"] = "Direct Sales Return saved successfully.";
                 return RedirectToAction("Index", "SalesReturn");
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = ex.Message;
+                string errorMessage = "Error: " + ex.Message;
+
+                // Capture EntityValidationErrors if present
+                if (ex is System.Data.Entity.Validation.DbEntityValidationException validationEx)
+                {
+                    var validationErrors = validationEx.EntityValidationErrors
+                        .SelectMany(e => e.ValidationErrors)
+                        .Select(e => $"Property: {e.PropertyName}, Error: {e.ErrorMessage}");
+                    errorMessage += " | Validation Errors: " + string.Join("; ", validationErrors);
+                }
+
+                TempData["ErrorMessage"] = errorMessage;
                 return RedirectToAction("Index", "SalesReturn");
             }
         }
