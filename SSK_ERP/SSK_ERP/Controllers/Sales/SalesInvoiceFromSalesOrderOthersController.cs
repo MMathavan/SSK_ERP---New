@@ -516,7 +516,12 @@ namespace SSK_ERP.Controllers
                             var ordBatchId = GetOrd("TRANBID", "BatchId", "BATCHID");
                             var ordBatchNo = GetOrd("BATCHNO2", "BATCHNO", "TRANBDNO", "BatchNo");
                             var ordExp = GetOrd("TRANBEXPDATE", "ExpiryDate", "EXPDATE");
-                            var ordStock = GetOrd("MTRLSTKQTY", "StockQty", "STKQTY");
+
+                            // IMPORTANT: Prefer quantity-style columns when available.
+                            // Some procedures return both stock quantity and box counts.
+                            // We use StockQty on the client for qty-validation, so prefer STKQTY if present.
+                            var ordStock = GetOrd("STKQTY", "StockQty", "MTRLSTKQTY");
+
                             var ordBoxQty = GetOrd("TRANBQTY", "BoxQty", "BOXQTY");
                             var ordPtr = GetOrd("TRANBPTRRATE", "PTR", "Ptr", "PTRRATE");
                             var ordMrp = GetOrd("TRANBMRP", "MRP", "Mrp");

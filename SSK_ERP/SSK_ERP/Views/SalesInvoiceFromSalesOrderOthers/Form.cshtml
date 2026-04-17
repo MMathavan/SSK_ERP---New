@@ -524,6 +524,34 @@
                 }
             }
 
+            function validateBatchQtyForRow($tr) {
+                if (!$tr || !$tr.length) return;
+
+                var $opt = $tr.find('.row-batch option:selected');
+                if (!$opt || !$opt.length) return;
+
+                var batchId = ($opt.val() || '').toString().trim();
+                if (!batchId) return;
+
+                var batchStockQty = parseFloat($opt.attr('data-stockqty') || 0);
+                var boxQty = parseFloat($opt.attr('data-boxqty') || 0);
+                var soQty = parseFloat($tr.find('.row-qty').val() || 0);
+
+                // Some batch endpoints return stock as box-count. If box quantity is available,
+                // compute an effective quantity for validation.
+                var effectiveQty = batchStockQty;
+                if (batchStockQty > 0 && boxQty > 0) {
+                    var computed = batchStockQty * boxQty;
+                    if (!isNaN(computed) && computed > effectiveQty) {
+                        effectiveQty = computed;
+                    }
+                }
+
+                if (effectiveQty > 0 && soQty > 0 && effectiveQty < soQty) {
+                    alert('Warning: Selected batch has quantity ' + effectiveQty + ' which is less than sales order quantity ' + soQty);
+                }
+            }
+
             $('#customerDropdown').select2({ width: '100%', placeholder: '-- Select Customer --' });
             $('#billNoDropdown').select2({ width: '100%', placeholder: '-- Select Bill No --' });
 
@@ -768,7 +796,8 @@
                             ' data-expiry="' + (b.ExpiryDate || '') + '"' +
                             ' data-boxqty="' + (b.BoxQty || 0) + '"' +
                             ' data-ptr="' + (b.Ptr || 0) + '"' +
-                            ' data-mrp="' + (b.Mrp || 0) + '">' +
+                            ' data-mrp="' + (b.Mrp || 0) + '"' +
+                            ' data-stockqty="' + (b.StockQty || 0) + '">' +
                             (b.BatchNo || '') +
                             '</option>'
                         );
@@ -777,6 +806,7 @@
                     if (list.length > 0) {
                         $batch.val(list[0].BatchId);
                         applyBatchToRow($tr, list[0]);
+                        validateBatchQtyForRow($tr);
                     } else {
                         clearBatchFields($tr);
                     }
@@ -792,6 +822,8 @@
                     clearBatchFields($tr);
                     return;
                 }
+
+                validateBatchQtyForRow($tr);
 
                 var b = {
                     ExpiryDate: $opt.attr('data-expiry'),
@@ -1445,7 +1477,7 @@
                         $batch.empty();
                         $batch.append('<option value=""></option>');
                         (bres.data || []).forEach(function (b) {
-                            $batch.append('<option value="' + b.BatchId + '">' + (b.BatchNo || '') + '</option>');
+                            $batch.append('<option value="' + b.BatchId + '" data-stockqty="' + (b.StockQty || 0) + '" data-boxqty="' + (b.BoxQty || 0) + '">' + (b.BatchNo || '') + '</option>');
                         });
 
                         var batchText = (itm.BatchNo || '').trim();
