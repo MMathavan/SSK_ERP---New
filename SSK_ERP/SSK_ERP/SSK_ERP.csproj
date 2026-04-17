@@ -321,6 +321,7 @@
     <Compile Include="Controllers\Reports\ServiceLevelReportController.cs" />
     <Compile Include="Controllers\Reports\SalesReportItemwiseController.cs" />
     <Compile Include="Controllers\Reports\SMADispatchReportController.cs" />
+    <Compile Include="Controllers\Reports\ItemWiseStockReportController.cs" />
     <Compile Include="Controllers\Sales\SalesOrderController.cs" />
     <Compile Include="Controllers\Sales\SalesOrderUploadController.cs" />
     <Compile Include="Controllers\Sales\SalesInvoiceController.cs" />

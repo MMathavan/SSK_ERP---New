@@ -1,0 +1,407 @@
+@{
+    ViewBag.Title = "Item Wise Stock Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .so-main-container {
+        background: white;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .so-content-wrapper {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .so-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .so-header-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .so-table-container {
+        padding: 30px;
+        background: white;
+    }
+
+    .material-item-row.hidden-by-search {
+        display: none !important;
+    }
+
+    .stock-table {
+        margin-top: 20px;
+    }
+
+    .stock-table thead th {
+        background-color: #337ab7;
+        color: white;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 10px;
+    }
+
+    .stock-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    .stock-table tbody tr.material-group-header td {
+        background-color: #e9f3ff;
+        color: #1f4e79;
+        font-weight: 700;
+        font-size: 13px;
+        text-align: left;
+    }
+
+    .stock-table tbody tr.opening-balance-row td {
+        background-color: #f7f7f7;
+        color: #333;
+        font-weight: 600;
+        font-size: 12px;
+    }
+</style>
+
+<div class="so-main-container">
+    <div class="so-content-wrapper">
+        <div class="so-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="so-header-title">
+                    <i class="bi bi-diagram-3-fill"></i>
+                    Item Wise Stock Report
+                </h1>
+            </div>
+        </div>
+
+        <div class="so-table-container">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="fromDate" class="form-label">From Date</label>
+                    <input type="date" id="fromDate" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label for="toDate" class="form-label">To Date</label>
+                    <input type="date" id="toDate" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" id="filterBtn" class="btn btn-primary me-2">
+                        <i class="fa fa-filter"></i> Filter
+                    </button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                        <i class="fa fa-times"></i> Clear
+                    </button>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div id="filterStatus" style="display:none;">
+                        <small class="text-muted"><span id="filterText"></span></small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="border rounded p-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Available Materials</h6>
+                            <button type="button" id="btnSelectAllMaterials" class="btn btn-sm btn-outline-primary">
+                                Select All
+                            </button>
+                        </div>
+                        <input type="text" id="materialSearch" class="form-control mb-2" placeholder="Search material..." onkeyup="filterAvailableMaterials()" />
+                        <div id="availableMaterialList" style="max-height:350px; overflow-y:auto;">
+                            @if (ViewBag.MaterialList != null)
+                            {
+                                foreach (SSK_ERP.Models.MaterialMaster m in ViewBag.MaterialList)
+                                {
+                                    <div class="d-flex justify-content-between align-items-center border-bottom py-1 material-item-row" data-id="@m.MTRLID" data-name="@m.MTRLDESC">
+                                        <span class="material-name">@m.MTRLDESC</span>
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-add-material">Add</button>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border rounded p-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Selected Materials</h6>
+                            <button type="button" id="btnRemoveAllMaterials" class="btn btn-sm btn-outline-danger">
+                                Remove All
+                            </button>
+                        </div>
+                        <input type="text" id="selectedMaterialSearch" class="form-control mb-2" placeholder="Search selected..." onkeyup="filterSelectedMaterials()" />
+                        <div id="selectedMaterialList" style="max-height:350px; overflow-y:auto;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button type="button" id="btnGenerateReport" class="btn btn-success">
+                    <i class="fa fa-file-excel-o"></i> Generate Report
+                </button>
+                <button type="button" id="btnDownloadExcel" class="btn btn-outline-success ms-2">
+                    <i class="fa fa-download"></i> Download Excel
+                </button>
+            </div>
+
+            <div id="reportResult" class="mt-3">
+                <div class="table-responsive">
+                    <table class="table table-bordered stock-table" id="stockReportTable" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Batch</th>
+                                <th>Bill No</th>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Party Name</th>
+                                <th>Qty IN</th>
+                                <th>Qty OUT</th>
+                                <th>Amount</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockReportBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        var selectedMaterials = [];
+
+        function filterAvailableMaterials() {
+            var search = $('#materialSearch').val().toLowerCase();
+            $('.material-item-row').each(function () {
+                var name = $(this).data('name').toLowerCase();
+                if (name.indexOf(search) >= 0) {
+                    $(this).removeClass('hidden-by-search');
+                } else {
+                    $(this).addClass('hidden-by-search');
+                }
+            });
+        }
+
+        function filterSelectedMaterials() {
+            var search = $('#selectedMaterialSearch').val().toLowerCase();
+            $('.selected-material-row').each(function () {
+                var name = $(this).data('name').toLowerCase();
+                if (name.indexOf(search) >= 0) {
+                    $(this).removeClass('hidden-by-search');
+                } else {
+                    $(this).addClass('hidden-by-search');
+                }
+            });
+        }
+
+        function addMaterial(id, name) {
+            if (selectedMaterials.some(m => m.id === id)) {
+                return;
+            }
+            selectedMaterials.push({ id: id, name: name });
+            renderSelectedMaterials();
+        }
+
+        function removeMaterial(id) {
+            selectedMaterials = selectedMaterials.filter(m => m.id !== id);
+            renderSelectedMaterials();
+        }
+
+        function renderSelectedMaterials() {
+            var container = $('#selectedMaterialList');
+            container.empty();
+            selectedMaterials.forEach(function (m) {
+                container.append(
+                    '<div class="d-flex justify-content-between align-items-center border-bottom py-1 selected-material-row" data-id="' + m.id + '" data-name="' + m.name + '">' +
+                    '<span class="material-name">' + m.name + '</span>' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger btn-remove-material">Remove</button>' +
+                    '</div>'
+                );
+            });
+        }
+
+        function htmlEncode(value) {
+            return $('<div/>').text(value == null ? '' : value).html();
+        }
+
+        function formatNumber(value) {
+            var number = parseFloat(value);
+            return isNaN(number) ? '0.00' : number.toFixed(2);
+        }
+
+        $(document).ready(function () {
+            $('#btnSelectAllMaterials').on('click', function () {
+                $('.material-item-row').each(function () {
+                    var id = $(this).data('id');
+                    var name = $(this).data('name');
+                    addMaterial(id, name);
+                });
+            });
+
+            $('#btnRemoveAllMaterials').on('click', function () {
+                selectedMaterials = [];
+                renderSelectedMaterials();
+            });
+
+            $(document).on('click', '.btn-add-material', function () {
+                var $row = $(this).closest('.material-item-row');
+                var id = $row.data('id');
+                var name = $row.data('name');
+                addMaterial(id, name);
+            });
+
+            $(document).on('click', '.btn-remove-material', function () {
+                var $row = $(this).closest('.selected-material-row');
+                var id = $row.data('id');
+                removeMaterial(id);
+            });
+
+            $('#filterBtn').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+                $('#filterStatus').show();
+                $('#filterText').text('From: ' + fromDate + ' To: ' + toDate);
+            });
+
+            $('#clearBtn').on('click', function () {
+                $('#fromDate').val('');
+                $('#toDate').val('');
+                $('#filterStatus').hide();
+                $('#stockReportTable').hide();
+                $('#stockReportBody').empty();
+            });
+
+            $('#btnGenerateReport').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+                var materialIds = selectedMaterials.map(m => m.id).join(',');
+
+                if (selectedMaterials.length === 0) {
+                    alert('Please select at least one material.');
+                    return;
+                }
+
+                $.get('@Url.Action("GetMaterialStock", "ItemWiseStockReport")', {
+                    fromDate: fromDate,
+                    toDate: toDate,
+                    materialIds: materialIds
+                }, function (res) {
+                    if (!res || !res.success) {
+                        alert(res.message || 'Error loading report data.');
+                        return;
+                    }
+
+                    var tbody = $('#stockReportBody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        var lastMaterialId = null;
+                        var serialNo = 0;
+                        var openingRenderedForMaterial = false;
+
+                        res.data.forEach(function (item, index) {
+                            if (lastMaterialId !== item.MTRLID) {
+                                lastMaterialId = item.MTRLID;
+                                serialNo = 0;
+                                openingRenderedForMaterial = false;
+                                tbody.append(
+                                    '<tr class="material-group-header">' +
+                                    '<td colspan="10">Material: ' + htmlEncode(item.MaterialName) + '</td>' +
+                                    '</tr>'
+                                );
+                            }
+
+                            // Don't show Opening as a normal transaction row.
+                            // Render it as a single-line note under the material header.
+                            if (!openingRenderedForMaterial &&
+                                item.TranType &&
+                                item.TranType.toString().toLowerCase() === 'opening') {
+                                openingRenderedForMaterial = true;
+                                tbody.append(
+                                    '<tr class="opening-balance-row">' +
+                                    '<td colspan="10">' +
+                                    '<div class="d-flex justify-content-between">' +
+                                    '<span>Opening Balance as on ' + htmlEncode(item.TranDate) + '</span>' +
+                                    '<span class="text-end">' + formatNumber(item.Balance) + '</span>' +
+                                    '</div>' +
+                                    '</td>' +
+                                    '</tr>'
+                                );
+                                return;
+                            }
+
+                            serialNo++;
+                            tbody.append(
+                                '<tr>' +
+                                '<td>' + serialNo + '</td>' +
+                                '<td>' + htmlEncode(item.BatchNo) + '</td>' +
+                                '<td>' + htmlEncode(item.BillNumber) + '</td>' +
+                                '<td>' + htmlEncode(item.TranDate) + '</td>' +
+                                '<td>' + htmlEncode(item.TranType) + '</td>' +
+                                '<td>' + htmlEncode(item.PartyName) + '</td>' +
+                                '<td class="text-end">' + formatNumber(item.QtyIN) + '</td>' +
+                                '<td class="text-end">' + formatNumber(item.QtyOUT) + '</td>' +
+                                '<td class="text-end">' + formatNumber(item.Amount) + '</td>' +
+                                '<td class="text-end">' + formatNumber(item.Balance) + '</td>' +
+                                '</tr>'
+                            );
+                        });
+                        $('#stockReportTable').show();
+                    } else {
+                        tbody.append('<tr><td colspan="10" class="text-center">No data found</td></tr>');
+                        $('#stockReportTable').show();
+                    }
+                }).fail(function () {
+                    alert('Error loading report data.');
+                });
+            });
+
+            $('#btnDownloadExcel').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+                var materialIds = selectedMaterials.map(m => m.id).join(',');
+
+                if (selectedMaterials.length === 0) {
+                    alert('Please select at least one material.');
+                    return;
+                }
+
+                if (!fromDate || !toDate) {
+                    alert('Please select From Date and To Date.');
+                    return;
+                }
+
+                var url = '@Url.Action("ExportMaterialStockExcel", "ItemWiseStockReport")'
+                    + '?fromDate=' + encodeURIComponent(fromDate)
+                    + '&toDate=' + encodeURIComponent(toDate)
+                    + '&materialIds=' + encodeURIComponent(materialIds);
+
+                window.location = url;
+            });
+        });
+    </script>
+}
