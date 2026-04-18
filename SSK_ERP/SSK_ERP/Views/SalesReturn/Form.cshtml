@@ -1360,7 +1360,8 @@
             $.get('@Url.Action("GetSalesInvoiceDetails", "SalesReturn")', {
                 customerId: customerId,
                 billNo: billNo,
-                materialId: materialId
+                materialId: materialId,
+                excludeReturnId: parseInt($('#TRANMID').val() || '0', 10) || 0
             }, function (res) {
                 if (!res || !res.success || !res.data || !res.data.length) {
                     return;

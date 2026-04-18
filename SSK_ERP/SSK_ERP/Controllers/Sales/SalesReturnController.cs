@@ -203,7 +203,7 @@ namespace SSK_ERP.Controllers
 
         [HttpGet]
         [Authorize(Roles = "SalesReturnCreate,SalesReturnEdit")]
-        public JsonResult GetSalesInvoiceDetails(int customerId, string billNo, int materialId)
+        public JsonResult GetSalesInvoiceDetails(int customerId, string billNo, int materialId, int excludeReturnId = 0)
         {
             try
             {
@@ -243,6 +243,27 @@ namespace SSK_ERP.Controllers
                     .Where(b => detailIds.Contains(b.TRANDID))
                     .ToList();
 
+                var invoiceBatchIds = batchDetails.Select(b => b.TRANBID).Distinct().ToList();
+                var returnedQtyByInvoiceBatchId = new Dictionary<int, decimal>();
+
+                if (invoiceBatchIds.Count > 0)
+                {
+                    var returnBatchQuery =
+                        from tb in db.TransactionBatchDetails
+                        join td in db.TransactionDetails on tb.TRANDID equals td.TRANDID
+                        join tm in db.TransactionMasters on td.TRANMID equals tm.TRANMID
+                        where invoiceBatchIds.Contains(tb.TRANBPID)
+                              && tm.REGSTRID == SalesReturnRegisterId
+                              && tm.DISPSTATUS == 0
+                              && (excludeReturnId <= 0 || tm.TRANMID != excludeReturnId)
+                        select new { InvoiceBatchId = tb.TRANBPID, Qty = (decimal?)td.TRANDQTY };
+
+                    returnedQtyByInvoiceBatchId = returnBatchQuery
+                        .ToList()
+                        .GroupBy(x => x.InvoiceBatchId)
+                        .ToDictionary(g => g.Key, g => g.Sum(x => x.Qty ?? 0m));
+                }
+
                 var result = new List<object>();
 
                 foreach (var d in details)
@@ -252,10 +273,35 @@ namespace SSK_ERP.Controllers
                     {
                         foreach (var b in batches)
                         {
+                            // Prefer per-batch unit qty from source batch detail when available.
+                            decimal invoiceBatchQty = 0m;
+                            if (b.TRANPTQTY > 0)
+                            {
+                                invoiceBatchQty = b.TRANPTQTY;
+                            }
+                            else if (b.TRANPQTY > 0)
+                            {
+                                invoiceBatchQty = b.TRANPQTY;
+                            }
+                            else
+                            {
+                                invoiceBatchQty = d.TRANDQTY;
+                            }
+
+                            decimal returnedQty = 0m;
+                            returnedQtyByInvoiceBatchId.TryGetValue(b.TRANBID, out returnedQty);
+                            decimal remainingQty = invoiceBatchQty - returnedQty;
+
+                            // Only show batches which still have pending qty.
+                            if (remainingQty <= 0m)
+                            {
+                                continue;
+                            }
+
                             result.Add(new
                             {
                                 d.TRANDID,
-                                d.TRANDQTY,
+                                TRANDQTY = remainingQty,
                                 d.TRANDRATE,
                                 d.TRANDGAMT,
                                 d.TRANDREFID,
@@ -272,7 +318,9 @@ namespace SSK_ERP.Controllers
                                 TRANBID = b.TRANBID,
                                 TRANBPID = b.TRANBPID,
                                 TRANDPID = b.TRANDPID,
-                                TRANBLMID = b.TRANBLMID
+                                TRANBLMID = b.TRANBLMID,
+                                InvoiceQty = invoiceBatchQty,
+                                ReturnedQty = returnedQty
                             });
                         }
                     }
