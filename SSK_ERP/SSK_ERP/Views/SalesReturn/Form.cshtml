@@ -502,6 +502,22 @@
                     return;
                 }
 
+                var qtyOk = true;
+                $('#srDetailsBody tr').each(function () {
+                    var tr = $(this);
+                    var qty = parseFloat(tr.find('.sr-qty').val() || 0) || 0;
+                    var actual = parseFloat(tr.find('.sr-actualqty').val() || 0) || 0;
+                    if (actual > 0 && qty > actual) {
+                        alert('Warning: Selected batch has quantity ' + actual + ' which is less than entered quantity ' + qty);
+                        qtyOk = false;
+                        return false;
+                    }
+                });
+
+                if (!qtyOk) {
+                    return;
+                }
+
                 var rows = collectDetailRows();
                 if (rows.length === 0) {
                     alert('Please complete at least one item row.');
@@ -751,6 +767,10 @@
             tr.find('.sr-pack').val(detail.packing || '');
             tr.find('.sr-actualqty').val(detail.qty ? detail.qty : '');
             tr.find('.sr-boxes').val(detail.boxQty ? detail.boxQty : '');
+
+            if (currentQty > 0 && detail.qty > 0 && currentQty > detail.qty) {
+                alert('Warning: Selected batch has quantity ' + detail.qty + ' which is less than entered quantity ' + currentQty);
+            }
 
             if (!currentQty || currentQty > detail.qty || Math.abs(currentQty - previousActualQty) < 0.0001) {
                 tr.find('.sr-qty').val(detail.qty ? detail.qty : '');
