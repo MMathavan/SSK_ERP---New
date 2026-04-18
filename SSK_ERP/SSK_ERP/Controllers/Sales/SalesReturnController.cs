@@ -803,6 +803,42 @@ namespace SSK_ERP.Controllers
                         sourceBatchMap = srcBatches.ToDictionary(b => b.TRANBID, b => b);
                     }
 
+                    var sourceDetailQtyMap = new Dictionary<int, decimal>();
+                    if (sourceBatchMap.Any())
+                    {
+                        var srcDetailIds = sourceBatchMap.Values.Select(b => b.TRANDID).Distinct().ToList();
+                        if (srcDetailIds.Any())
+                        {
+                            sourceDetailQtyMap = db.TransactionDetails
+                                .Where(d => srcDetailIds.Contains(d.TRANDID))
+                                .Select(d => new { d.TRANDID, d.TRANDQTY })
+                                .ToList()
+                                .GroupBy(x => x.TRANDID)
+                                .ToDictionary(g => g.Key, g => g.First().TRANDQTY);
+                        }
+                    }
+
+                    // For edit-mode display: show "Actual Qty" as the remaining/pending qty available for this batch,
+                    // excluding the current Sales Return so the user can still edit this return's qty safely.
+                    var returnedOtherQtyByInvoiceBatchId = new Dictionary<int, decimal>();
+                    if (sourceBatchIds.Any())
+                    {
+                        var returnBatchQuery =
+                            from tb in db.TransactionBatchDetails
+                            join td in db.TransactionDetails on tb.TRANDID equals td.TRANDID
+                            join tm in db.TransactionMasters on td.TRANMID equals tm.TRANMID
+                            where sourceBatchIds.Contains(tb.TRANBPID)
+                                  && tm.REGSTRID == SalesReturnRegisterId
+                                  && tm.DISPSTATUS == 0
+                                  && tm.TRANMID != model.TRANMID
+                            select new { InvoiceBatchId = tb.TRANBPID, Qty = (decimal?)td.TRANDQTY };
+
+                        returnedOtherQtyByInvoiceBatchId = returnBatchQuery
+                            .ToList()
+                            .GroupBy(x => x.InvoiceBatchId)
+                            .ToDictionary(g => g.Key, g => g.Sum(x => x.Qty ?? 0m));
+                    }
+
                     var materialIds = details
                         .Select(d => d.TRANDREFID)
                         .Distinct()
@@ -850,9 +886,37 @@ namespace SSK_ERP.Controllers
                         }
 
                         decimal actualQty = d.TRANDQTY;
-                        if (batch != null && batch.TRANBPID > 0 && sourceBatchMap.TryGetValue(batch.TRANBPID, out var srcBatch))
+                        if (batch != null && batch.TRANBPID > 0)
                         {
-                            actualQty = srcBatch.TRANPTQTY;
+                            sourceBatchMap.TryGetValue(batch.TRANBPID, out var srcBatch);
+
+                            decimal invoiceBatchQty = 0m;
+                            if (srcBatch != null)
+                            {
+                                if (srcBatch.TRANPTQTY > 0)
+                                {
+                                    invoiceBatchQty = srcBatch.TRANPTQTY;
+                                }
+                                else if (srcBatch.TRANPQTY > 0)
+                                {
+                                    invoiceBatchQty = srcBatch.TRANPQTY;
+                                }
+                                else if (sourceDetailQtyMap.TryGetValue(srcBatch.TRANDID, out var detQty))
+                                {
+                                    invoiceBatchQty = detQty;
+                                }
+                            }
+
+                            if (invoiceBatchQty <= 0m)
+                            {
+                                invoiceBatchQty = d.TRANDQTY;
+                            }
+
+                            decimal returnedOther = 0m;
+                            returnedOtherQtyByInvoiceBatchId.TryGetValue(batch.TRANBPID, out returnedOther);
+
+                            var remaining = invoiceBatchQty - returnedOther;
+                            actualQty = remaining > 0m ? remaining : 0m;
                         }
 
                         // Get the source bill number (TRANDNO) from the source transaction
