@@ -525,31 +525,24 @@
             }
 
             function validateBatchQtyForRow($tr) {
-                if (!$tr || !$tr.length) return;
+                if (!$tr || !$tr.length) return true;
 
                 var $opt = $tr.find('.row-batch option:selected');
-                if (!$opt || !$opt.length) return;
+                if (!$opt || !$opt.length) return true;
 
                 var batchId = ($opt.val() || '').toString().trim();
-                if (!batchId) return;
+                if (!batchId) return true;
 
-                var batchStockQty = parseFloat($opt.attr('data-stockqty') || 0);
-                var boxQty = parseFloat($opt.attr('data-boxqty') || 0);
+                // `data-stockqty` is unit stock (TRANDQTY-based). Compare directly with Sales Order qty (units).
+                var batchUnitQty = parseFloat($opt.attr('data-stockqty') || 0);
                 var soQty = parseFloat($tr.find('.row-qty').val() || 0);
 
-                // Some batch endpoints return stock as box-count. If box quantity is available,
-                // compute an effective quantity for validation.
-                var effectiveQty = batchStockQty;
-                if (batchStockQty > 0 && boxQty > 0) {
-                    var computed = batchStockQty * boxQty;
-                    if (!isNaN(computed) && computed > effectiveQty) {
-                        effectiveQty = computed;
-                    }
+                if (soQty > 0 && batchUnitQty < soQty) {
+                    alert('Warning: Selected batch has quantity ' + batchUnitQty + ' which is less than sales order quantity ' + soQty);
+                    return false;
                 }
 
-                if (effectiveQty > 0 && soQty > 0 && effectiveQty < soQty) {
-                    alert('Warning: Selected batch has quantity ' + effectiveQty + ' which is less than sales order quantity ' + soQty);
-                }
+                return true;
             }
 
             $('#customerDropdown').select2({ width: '100%', placeholder: '-- Select Customer --' });
@@ -858,6 +851,13 @@
                         if (!isSelected) {
                             return;
                         }
+
+                        // Block save when selected batch unit stock is less than Sales Order qty.
+                        // (Validation message is shown inside validateBatchQtyForRow)
+                        if (validateBatchQtyForRow($tr) === false) {
+                            rows = null;
+                            return false; // break .each
+                        }
                         var materialId = parseInt($tr.find('.row-materialid').val() || '0', 10);
                         var qty = parseFloat($tr.find('.row-qty').val() || '0');
                         var rate = parseFloat($tr.find('.row-rate').val() || '0');
@@ -886,6 +886,10 @@
                             });
                         }
                     });
+
+                    if (rows === null) {
+                        return;
+                    }
 
                     if (rows.length === 0) {
                         if (typeof Swal !== 'undefined' && Swal.fire) {

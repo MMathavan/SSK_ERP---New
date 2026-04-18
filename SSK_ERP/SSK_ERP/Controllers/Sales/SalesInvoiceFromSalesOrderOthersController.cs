@@ -17,6 +17,18 @@ namespace SSK_ERP.Controllers
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesOrderRegisterId = 1;
         private const int SalesInvoiceRegisterId = 20;
+        private const int PurchaseInvoiceRegisterId = 18;
+
+        private class BatchRow
+        {
+            public int BatchId { get; set; }
+            public string BatchNo { get; set; }
+            public DateTime? ExpiryDate { get; set; }
+            public decimal BoxStockQty { get; set; } // stock in boxes (TRANBQTY-based from SP)
+            public decimal BoxQty { get; set; } // pack size / box qty
+            public decimal Ptr { get; set; }
+            public decimal Mrp { get; set; }
+        }
 
         private class SalesOrderItemRow
         {
@@ -475,7 +487,8 @@ namespace SSK_ERP.Controllers
                 var compyObj = Session["CompyId"] ?? Session["compyid"];
                 int compyId = compyObj != null ? Convert.ToInt32(compyObj) : 1;
 
-                var data = new List<object>();
+                var batches = new List<BatchRow>();
+                var unitStockByBatch = new Dictionary<int, decimal>();
 
                 var conn = db.Database.Connection;
                 var wasClosed = conn.State == ConnectionState.Closed;
@@ -572,7 +585,57 @@ namespace SSK_ERP.Controllers
 
                                 if (!string.IsNullOrWhiteSpace(batchNo))
                                 {
-                                    data.Add(new { BatchId = batchId, BatchNo = batchNo, ExpiryDate = exp, StockQty = stock, BoxQty = boxQty, Ptr = ptr, Mrp = mrp });
+                                    batches.Add(new BatchRow
+                                    {
+                                        BatchId = batchId,
+                                        BatchNo = batchNo,
+                                        ExpiryDate = exp,
+                                        BoxStockQty = stock,
+                                        BoxQty = boxQty,
+                                        Ptr = ptr,
+                                        Mrp = mrp
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // Compute available stock in "units" (Purchase Invoice qty) per batch.
+                    // The current SP returns stock based on TRANBQTY (boxes). Sales Order qty is TRANDQTY (units),
+                    // so for correct validation we must compare against TRANDQTY-based unit stock.
+                    using (var cmd2 = conn.CreateCommand())
+                    {
+                        cmd2.CommandType = CommandType.Text;
+                        cmd2.CommandText =
+                            "SELECT tbd.TRANBID, " +
+                            "SUM(CASE WHEN tm.REGSTRID = @PURCH THEN td.TRANDQTY " +
+                            "         WHEN tm.REGSTRID = @SALE THEN -td.TRANDQTY " +
+                            "         ELSE 0 END) AS UnitStockQty " +
+                            "FROM TRANSACTIONMASTER tm " +
+                            "INNER JOIN TRANSACTIONDETAIL td ON tm.TRANMID = td.TRANMID " +
+                            "INNER JOIN TRANSACTIONBATCHDETAIL tbd ON td.TRANDID = tbd.TRANDID " +
+                            "WHERE tm.DISPSTATUS = 0 " +
+                            "  AND tm.REGSTRID IN (@PURCH, @SALE) " +
+                            "  AND tm.COMPYID = @COMPYID " +
+                            "  AND tbd.AMTRLID = @MTRLID " +
+                            "  AND tbd.PACKMID = @PACKMID " +
+                            "GROUP BY tbd.TRANBID";
+
+                        cmd2.Parameters.Add(new SqlParameter("@PURCH", PurchaseInvoiceRegisterId));
+                        cmd2.Parameters.Add(new SqlParameter("@SALE", SalesInvoiceRegisterId));
+                        cmd2.Parameters.Add(new SqlParameter("@COMPYID", compyId));
+                        cmd2.Parameters.Add(new SqlParameter("@MTRLID", materialId));
+                        cmd2.Parameters.Add(new SqlParameter("@PACKMID", packingId));
+
+                        using (var r2 = cmd2.ExecuteReader())
+                        {
+                            while (r2.Read())
+                            {
+                                int bid = r2["TRANBID"] != DBNull.Value ? Convert.ToInt32(r2["TRANBID"]) : 0;
+                                decimal qty = r2["UnitStockQty"] != DBNull.Value ? Convert.ToDecimal(r2["UnitStockQty"]) : 0m;
+                                if (bid > 0)
+                                {
+                                    unitStockByBatch[bid] = qty;
                                 }
                             }
                         }
@@ -586,9 +649,29 @@ namespace SSK_ERP.Controllers
                     }
                 }
 
-                data = data.OrderBy(x => ((dynamic)x).BatchNo).ToList();
+                var payload = batches
+                    .OrderBy(b => b.BatchNo)
+                    .Select(b =>
+                    {
+                        decimal unitStock = 0m;
+                        unitStockByBatch.TryGetValue(b.BatchId, out unitStock);
+                        return new
+                        {
+                            BatchId = b.BatchId,
+                            BatchNo = b.BatchNo,
+                            ExpiryDate = b.ExpiryDate,
+                            // StockQty is "unit stock" (TRANDQTY-based) for correct Sales Order qty validation.
+                            StockQty = unitStock,
+                            // Keep the box-stock value as an extra field (no behavior change elsewhere).
+                            BoxStockQty = b.BoxStockQty,
+                            BoxQty = b.BoxQty,
+                            Ptr = b.Ptr,
+                            Mrp = b.Mrp
+                        };
+                    })
+                    .ToList();
 
-                return Json(new { success = true, data }, JsonRequestBehavior.AllowGet);
+                return Json(new { success = true, data = payload }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
