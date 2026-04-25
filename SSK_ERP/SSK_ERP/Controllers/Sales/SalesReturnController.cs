@@ -1488,7 +1488,15 @@ namespace SSK_ERP.Controllers
                             var invoiceMaster = db.TransactionMasters.FirstOrDefault(t =>
                                 t.REGSTRID == SalesInvoiceRegisterId &&
                                 t.TRANREFID == master.TRANREFID &&
-                                t.TRANREFNO == d.BillNo);
+                                t.TRANDNO == d.BillNo);
+
+                            if (invoiceMaster == null)
+                            {
+                                invoiceMaster = db.TransactionMasters.FirstOrDefault(t =>
+                                    t.REGSTRID == SalesInvoiceRegisterId &&
+                                    t.TRANREFID == master.TRANREFID &&
+                                    t.TRANREFNO == d.BillNo);
+                            }
 
                             if (invoiceMaster != null)
                             {

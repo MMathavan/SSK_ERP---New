@@ -873,10 +873,11 @@
             });
         }
 
-        function loadBillNosForCustomerAndMaterial(customerId, materialId, $ddl) {
+        function loadBillNosForCustomerAndMaterial(customerId, materialId, $ddl, done) {
             if (!customerId || !materialId) {
                 $ddl.empty();
                 $ddl.append($('<option>').val('').text('-- Select --'));
+                if (typeof done === 'function') done();
                 return;
             }
 
@@ -912,12 +913,15 @@
                     $ddl.val(existingBillNo);
                     // Batch details are populated directly from saved data in addRow function
                 }
+
+                if (typeof done === 'function') done();
             });
         }
 
         function addRow(data) {
             var tbody = $('#srDetailsBody');
             var idx = tbody.find('tr').length + 1;
+            var customerIdForRow = parseInt($('#customerDropdown').val() || '0', 10) || 0;
 
             var tr = $('<tr>');
             tr.append($('<td class="text-center sr-row-index">').text(idx));
@@ -978,7 +982,7 @@
             }
 
             if (data) {
-                tr.data('customerId', parseInt($('#customerDropdown').val() || '0', 10) || 0);
+                tr.data('customerId', customerIdForRow);
                 tr.data('packmid', parseInt(data.PackingId || 0, 10) || 0);
                 tr.data('ptr', parseFloat(data.Ptr || 0) || 0);
                 tr.data('mrp', parseFloat(data.Mrp || 0) || 0);
@@ -1023,10 +1027,12 @@
                 tr.data('isLoading', true);
 
                 // Load bill numbers and batch details for edit mode
-                if (data.MaterialId && customerId) {
-                    // Use setTimeout to ensure bill dropdown is fully set up before loading
-                    setTimeout(function() {
-                        loadBillNosForCustomerAndMaterial(customerId, data.MaterialId, billSelect);
+                if (data.MaterialId && customerIdForRow) {
+                    // Load bill nos, then cache invoice details without touching row values.
+                    setTimeout(function () {
+                        loadBillNosForCustomerAndMaterial(customerIdForRow, data.MaterialId, billSelect, function () {
+                            tryFetchSalesInvoiceDetail(tr, false, true);
+                        });
                     }, 100);
                 }
 
@@ -1062,7 +1068,6 @@
             }
 
             // Pre-populate Bill No dropdown for current customer (only if not loading existing data)
-            var customerId = parseInt($('#customerDropdown').val() || '0', 10);
             if (!data) {
                 billSelect.empty();
                 billSelect.append($('<option>').val('').text('-- Select --'));
@@ -1344,7 +1349,7 @@
             return rows;
         }
 
-        function tryFetchSalesInvoiceDetail(tr, refreshAllRows) {
+        function tryFetchSalesInvoiceDetail(tr, refreshAllRows, suppressApplyToRow) {
             var customerId = parseInt($('#customerDropdown').val() || '0', 10);
             if (!customerId) {
                 return;
@@ -1370,7 +1375,9 @@
                 var key = getSalesInvoiceBatchCacheKey(customerId, billNo, materialId);
                 srInvoiceBatchCache[key] = res.data || [];
                 tr.data('customerId', customerId);
-                populateBatchDropdown(tr, srInvoiceBatchCache[key], true);
+                if (!suppressApplyToRow) {
+                    populateBatchDropdown(tr, srInvoiceBatchCache[key], true);
+                }
 
                 if (refreshAllRows) {
                     refreshBatchDropdowns();
