@@ -837,6 +837,7 @@
             var soCostFactorOptionsHtml = '<option value="">Select Cost Factor</option>';
             var soMaterialList = [];
             var initialSoDetails = @Html.Raw(ViewBag.DetailRowsJson ?? "[]");
+            var embeddedMaterialAndGroups = @Html.Raw(ViewBag.MaterialAndGroupsJson ?? "null");
             var soDetailsInitialized = false;
             var soDetailRowTemplate = null;
             var soTaxRefreshInProgress = false;
@@ -874,11 +875,54 @@
                 var $scope = $context && $context.length ? $context : $('#soDetailsBody');
                 $scope.find('.so-material').each(function () {
                     var $el = $(this);
+                    // Avoid destroying/re-initializing Select2 repeatedly.
+                    // Re-init is expensive and gets noticeably slow when the grid has many rows.
                     if ($el.hasClass('select2-hidden-accessible')) {
-                        $el.select2('destroy');
+                        return;
                     }
                     $el.select2({ width: 'resolve' });
                 });
+            }
+
+            function cleanupSelect2Artifacts($row) {
+                if (!$row || !$row.length) return;
+
+                // Remove select2 containers cloned from an existing row.
+                $row.find('.select2-container').remove();
+
+                // Reset cloned selects so Select2 can be initialized fresh.
+                $row.find('select.so-material').each(function () {
+                    var $sel = $(this);
+                    $sel.removeClass('select2-hidden-accessible')
+                        .removeAttr('data-select2-id')
+                        .removeAttr('tabindex')
+                        .removeAttr('aria-hidden');
+
+                    // Clear Select2 data if it got cloned (defensive).
+                    try { $sel.removeData('select2'); } catch (e) { /* ignore */ }
+                    $sel.find('option').removeAttr('data-select2-id');
+                });
+            }
+
+            function buildSoDetailRowTemplate() {
+                // Build a clean row template (no Select2 DOM) so "Add row" stays fast even with many rows.
+                var $first = $('#soDetailsBody tr:first');
+                if (!$first.length) {
+                    soDetailRowTemplate = null;
+                    return;
+                }
+
+                var $tpl = $first.clone();
+                cleanupSelect2Artifacts($tpl);
+
+                // Clear values and flags from the template.
+                $tpl.find('input').val('');
+                $tpl.find('select').prop('selectedIndex', 0);
+                $tpl.removeAttr('data-so-material-id')
+                    .removeAttr('data-so-detail-id')
+                    .removeAttr('data-so-locked');
+
+                soDetailRowTemplate = $tpl;
             }
 
             function clearCustomerDetails() {
@@ -964,6 +1008,52 @@
             }
 
             function loadMaterialAndGroupData() {
+                // Edit screen optimization: material/group lists are embedded server-side for instant render.
+                if (embeddedMaterialAndGroups && embeddedMaterialAndGroups.success) {
+                    var resp = embeddedMaterialAndGroups;
+
+                    soMaterialGroupMap = {};
+                    soMaterialRateMap = {};
+                    soMaterialProfitMap = {};
+                    soMaterialOptionsHtml = '<option value="">Select Material</option>';
+                    soMaterialList = resp.materials || [];
+
+                    $.each(soMaterialList, function (idx, item) {
+                        if (!item) return;
+                        soMaterialGroupMap[item.id] = item.groupId;
+                        soMaterialRateMap[item.id] = item.rate || 0;
+                        soMaterialProfitMap[item.id] = item.profitPercent || 0;
+                        var name = item.name || '';
+                        soMaterialOptionsHtml += '<option value="' + item.id + '">' + name + '</option>';
+                    });
+
+                    soGroupOptionsHtml = '<option value="">Select Material Group</option>';
+                    $.each(resp.groups || [], function (idx, g) {
+                        if (!g) return;
+                        var gName = g.name || '';
+                        soGroupOptionsHtml += '<option value="' + g.id + '">' + gName + '</option>';
+                    });
+
+                    $('#soDetailsBody .so-material').each(function () {
+                        $(this).html(soMaterialOptionsHtml);
+                    });
+
+                    $('#soDetailsBody .so-material-group').each(function () {
+                        $(this).html(soGroupOptionsHtml);
+                    });
+
+                    if (!soDetailsInitialized && initialSoDetails && initialSoDetails.length) {
+                        initSoDetailRows();
+                    } else {
+                        updateSoRowNumbers();
+                    }
+
+                    initMaterialSelect2();
+                    refreshMaterialDropdowns();
+                    buildSoDetailRowTemplate();
+                    return;
+                }
+
                 $.getJSON('@Url.Action("GetMaterialAndGroups", "SalesOrder")')
                     .done(function (resp) {
                         if (!resp || resp.success === false) {
@@ -1009,6 +1099,7 @@
 
                         initMaterialSelect2();
                         refreshMaterialDropdowns();
+                        buildSoDetailRowTemplate();
                     })
                     .fail(function (xhr, status, error) {
                         console.error('Error loading material/group data:', status, error, xhr && xhr.responseText);
@@ -1024,37 +1115,10 @@
                     return;
                 }
 
-                $('#soDetailsBody .so-material').each(function () {
-                    var $sel = $(this);
-                    var currentVal = parseInt($sel.val() || '0', 10);
-
-                    var wasSelect2 = $sel.hasClass('select2-hidden-accessible');
-                    if (wasSelect2) {
-                        $sel.select2('destroy');
-                    }
-
-                    var optionsHtml = '<option value="">Select Material</option>';
-                    $.each(soMaterialList, function (idx, item) {
-                        if (!item) return;
-                        var id = item.id;
-                        if (!id) return;
-
-                        var name = item.name || '';
-                        optionsHtml += '<option value="' + id + '">' + name + '</option>';
-                    });
-
-                    $sel.html(optionsHtml);
-
-                    if (currentVal > 0) {
-                        $sel.val(String(currentVal));
-                    } else {
-                        $sel.val('');
-                    }
-
-                    if (wasSelect2) {
-                        $sel.select2({ width: 'resolve' });
-                    }
-                });
+                // NOTE: Sales Orders should allow selecting the same material in multiple rows.
+                // Keep this function lightweight (it's called often) and do not restrict options.
+                // (Options are already loaded once via soMaterialOptionsHtml.)
+                return;
             }
 
             function initSoDetailRows() {
@@ -1069,7 +1133,8 @@
                 }
 
                 var $tbody = $('#soDetailsBody');
-                var $template = $tbody.find('tr:first').clone();
+                var $template = soDetailRowTemplate ? soDetailRowTemplate.clone() : $tbody.find('tr:first').clone();
+                cleanupSelect2Artifacts($template);
                 $tbody.empty();
 
                 $.each(initialSoDetails, function (index, item) {
@@ -1178,6 +1243,7 @@
                     $newRow = soDetailRowTemplate.clone();
                 } else {
                     $newRow = $('#soDetailsBody tr:first').clone();
+                    cleanupSelect2Artifacts($newRow);
                 }
 
                 $newRow.find('input').val('');
@@ -1673,8 +1739,9 @@
 
             $(function () {
                 updateSoRowNumbers();
-                // capture a clean template row before select2 is applied
-                soDetailRowTemplate = $('#soDetailsBody tr:first').clone();
+                // Template row will be built after material/group options are loaded.
+                // Capturing it here (before loadMaterialAndGroupData finishes) causes blank material/group in Edit.
+                soDetailRowTemplate = null;
 
                 loadMaterialAndGroupData();
                 loadCostFactors();

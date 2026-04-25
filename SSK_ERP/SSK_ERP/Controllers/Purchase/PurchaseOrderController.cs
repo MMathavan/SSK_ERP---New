@@ -239,6 +239,31 @@ namespace SSK_ERP.Controllers.Purchase
                 ? JsonConvert.SerializeObject(detailRows)
                 : "[]";
 
+            // Embed material/group lists so the reused SalesOrder/Form view can render rows immediately
+            // without waiting for an extra AJAX call.
+            var materials = db.MaterialMasters
+                .OrderBy(m => m.MTRLDESC)
+                .Select(m => new
+                {
+                    id = m.MTRLID,
+                    name = m.MTRLDESC,
+                    groupId = m.MTRLGID,
+                    rate = m.RATE,
+                    profitPercent = m.MTRLPRFT
+                })
+                .ToList();
+
+            var groups = db.MaterialGroupMasters
+                .OrderBy(g => g.MTRLGDESC)
+                .Select(g => new
+                {
+                    id = g.MTRLGID,
+                    name = g.MTRLGDESC
+                })
+                .ToList();
+
+            ViewBag.MaterialAndGroupsJson = JsonConvert.SerializeObject(new { success = true, materials, groups });
+
             ViewBag.FormAction = "SavePoEdit";
             ViewBag.FormController = "PurchaseOrder";
 
@@ -406,6 +431,31 @@ namespace SSK_ERP.Controllers.Purchase
             ViewBag.DetailRowsJson = detailRows.Any()
                 ? JsonConvert.SerializeObject(detailRows)
                 : "[]";
+
+            // Embed material/group lists so the PO-from-SO grid renders immediately (no extra AJAX wait).
+            // This view reuses ~/Views/SalesOrder/Form.cshtml which knows how to consume this payload.
+            var materials = db.MaterialMasters
+                .OrderBy(m => m.MTRLDESC)
+                .Select(m => new
+                {
+                    id = m.MTRLID,
+                    name = m.MTRLDESC,
+                    groupId = m.MTRLGID,
+                    rate = m.RATE,
+                    profitPercent = m.MTRLPRFT
+                })
+                .ToList();
+
+            var groups = db.MaterialGroupMasters
+                .OrderBy(g => g.MTRLGDESC)
+                .Select(g => new
+                {
+                    id = g.MTRLGID,
+                    name = g.MTRLGDESC
+                })
+                .ToList();
+
+            ViewBag.MaterialAndGroupsJson = JsonConvert.SerializeObject(new { success = true, materials, groups });
 
             ViewBag.FormAction = "SavePoFromSalesOrder";
             ViewBag.FormController = "PurchaseOrder";

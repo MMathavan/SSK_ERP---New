@@ -322,6 +322,7 @@
     <Compile Include="Controllers\Reports\SalesReportItemwiseController.cs" />
     <Compile Include="Controllers\Reports\SMADispatchReportController.cs" />
     <Compile Include="Controllers\Reports\ItemWiseStockReportController.cs" />
+    <Compile Include="Controllers\Reports\ChellanWiseStockReportController.cs" />
     <Compile Include="Controllers\Sales\SalesOrderController.cs" />
     <Compile Include="Controllers\Sales\SalesOrderUploadController.cs" />
     <Compile Include="Controllers\Sales\SalesInvoiceController.cs" />
@@ -1191,6 +1192,7 @@
     <Content Include="Views\ChellanToDebitNote\DebitNoteForm.cshtml" />
     <Content Include="Views\ChellanToDebitNote\DebitNotePrint.cshtml" />
     <Content Include="Views\StockViewIndex\Index.cshtml" />
+    <Content Include="Views\ChellanWiseStockReport\Index.cshtml" />
     <EntityDeploy Include="Data\SSK_ERP.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
       <LastGenOutput>SSK_ERP.Designer.cs</LastGenOutput>

@@ -148,8 +148,9 @@ namespace SSK_ERP.Controllers
             TransactionMaster model;
             var detailRows = new List<SalesOrderDetailRow>();
             bool hasPo = false;
+            bool isEdit = id.HasValue && id.Value > 0;
 
-            if (id.HasValue && id.Value > 0)
+            if (isEdit)
             {
                 if (!User.IsInRole("SalesOrderEdit"))
                 {
@@ -349,6 +350,34 @@ namespace SSK_ERP.Controllers
                 "Text",
                 model.TRANSTATETYPE.ToString()
             );
+
+            // For Edit, embed material/group data in the page so the grid populates immediately
+            // without waiting on an extra AJAX call.
+            if (isEdit)
+            {
+                var materials = db.MaterialMasters
+                    .OrderBy(m => m.MTRLDESC)
+                    .Select(m => new
+                    {
+                        id = m.MTRLID,
+                        name = m.MTRLDESC,
+                        groupId = m.MTRLGID,
+                        rate = m.RATE,
+                        profitPercent = m.MTRLPRFT
+                    })
+                    .ToList();
+
+                var groups = db.MaterialGroupMasters
+                    .OrderBy(g => g.MTRLGDESC)
+                    .Select(g => new
+                    {
+                        id = g.MTRLGID,
+                        name = g.MTRLGDESC
+                    })
+                    .ToList();
+
+                ViewBag.MaterialAndGroupsJson = JsonConvert.SerializeObject(new { success = true, materials, groups });
+            }
 
             return View(model);
         }

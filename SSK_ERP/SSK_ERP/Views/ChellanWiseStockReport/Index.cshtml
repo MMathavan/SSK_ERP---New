@@ -1,0 +1,283 @@
+@{
+    ViewBag.Title = "Chellan Wise Stock Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .so-main-container {
+        background: white;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .so-content-wrapper {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .so-header-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+    }
+
+    .so-header-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .so-table-container {
+        padding: 30px;
+        background: white;
+    }
+
+    .stock-table {
+        margin-top: 20px;
+    }
+
+    .stock-table thead th {
+        background-color: #337ab7;
+        color: white;
+        text-align: center;
+        font-size: 12px;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 10px;
+    }
+
+    .stock-table tbody td {
+        vertical-align: middle;
+        font-size: 12px;
+        padding: 8px;
+    }
+</style>
+
+<div class="so-main-container">
+    <div class="so-content-wrapper">
+        <div class="so-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="so-header-title">
+                    <i class="bi bi-check2-circle"></i>
+                    Chellan Wise Stock Report
+                </h1>
+            </div>
+        </div>
+
+        <div class="so-table-container">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="fromDate" class="form-label">From Date</label>
+                    <input type="date" id="fromDate" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label for="toDate" class="form-label">To Date</label>
+                    <input type="date" id="toDate" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" id="filterBtn" class="btn btn-primary me-2">
+                        <i class="fa fa-filter"></i> Filter
+                    </button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                        <i class="fa fa-times"></i> Clear
+                    </button>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div id="filterStatus" style="display:none;">
+                    <small class="text-muted"><span id="filterText"></span></small>
+                </div>
+            </div>
+
+            <div id="reportResult" class="mt-3">
+                <div class="table-responsive">
+                    <table class="table table-bordered stock-table" id="reportTable" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Challan No</th>
+                                <th>Date</th>
+                                <th>Party Name</th>
+                                <th>Ref No</th>
+                                <th>Product Name</th>
+                                <th>Batch No</th>
+                                <th>Qty</th>
+                                <th>Gamt</th>
+                                <th>CGST Amt</th>
+                                <th>SGST Amt</th>
+                                <th>IGST Amt</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportBody"></tbody>
+                    </table>
+                </div>
+                
+                <div class="text-center mt-3" id="downloadSection" style="display:none;">
+                    <button type="button" id="btnDownloadExcel" class="btn btn-success">
+                        <i class="fa fa-download"></i> Download as Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script type="text/javascript">
+        function htmlEncode(value) {
+            return $('<div/>').text(value == null ? '' : value).html();
+        }
+
+        function formatNumber(value) {
+            var number = parseFloat(value);
+            return isNaN(number) ? '0.00' : number.toFixed(2);
+        }
+
+        var dataTableInstance = null;
+
+        function loadReport() {
+            var fromDate = $('#fromDate').val();
+            var toDate = $('#toDate').val();
+
+            // Destroy existing DataTable if it exists
+            if (dataTableInstance) {
+                dataTableInstance.destroy();
+                dataTableInstance = null;
+            }
+
+            var $tbody = $('#reportBody');
+            $tbody.empty();
+
+            $.get('@Url.Action("GetReport", "ChellanWiseStockReport")', {
+                fromDate: fromDate,
+                toDate: toDate
+            }, function (res) {
+                if (!res || !res.success) {
+                    alert((res && res.message) ? res.message : 'Unable to load report');
+                    return;
+                }
+
+                var data = res.data || [];
+
+                if (!data.length) {
+                    $('#reportTable').hide();
+                    return;
+                }
+
+                for (var i = 0; i < data.length; i++) {
+                    var r = data[i] || {};
+                    var rowHtml = '';
+                    rowHtml += '<tr>';
+                    rowHtml += '<td class="text-center">' + (i + 1) + '</td>';
+                    rowHtml += '<td>' + htmlEncode(r.ChallanNo) + '</td>';
+                    rowHtml += '<td class="text-center">' + htmlEncode(r.ChallanDate) + '</td>';
+                    rowHtml += '<td>' + htmlEncode(r.PartyName) + '</td>';
+                    rowHtml += '<td>' + htmlEncode(r.RefNo) + '</td>';
+                    rowHtml += '<td>' + htmlEncode(r.ProductName) + '</td>';
+                    rowHtml += '<td class="text-center">' + htmlEncode(r.BatchNo) + '</td>';
+                    rowHtml += '<td class="text-end">' + formatNumber(r.Qty) + '</td>';
+                    rowHtml += '<td class="text-end">' + formatNumber(r.Gamt) + '</td>';
+                    rowHtml += '<td class="text-end">' + formatNumber(r.CgstAmt) + '</td>';
+                    rowHtml += '<td class="text-end">' + formatNumber(r.SgstAmt) + '</td>';
+                    rowHtml += '<td class="text-end">' + formatNumber(r.IgstAmt) + '</td>';
+                    rowHtml += '<td class="text-end">' + formatNumber(r.Total) + '</td>';
+                    rowHtml += '</tr>';
+
+                    $tbody.append(rowHtml);
+                }
+
+                $('#reportTable').show();
+                $('#downloadSection').show();
+                initializeDataTable();
+            });
+        }
+
+        function initializeDataTable() {
+            if (dataTableInstance) {
+                dataTableInstance.destroy();
+            }
+
+            dataTableInstance = $('#reportTable').DataTable({
+                destroy: true,
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                searching: true,
+                ordering: true,
+                info: true,
+                paging: true,
+                columnDefs: [
+                    { orderable: false, targets: 0 }
+                ]
+            });
+        }
+
+        $(document).ready(function () {
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
+            $('#fromDate').val(todayStr);
+            $('#toDate').val(todayStr);
+
+            $('#filterBtn').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+
+                if (fromDate && toDate && fromDate > toDate) {
+                    alert('From Date should be less than or equal to To Date');
+                    return;
+                }
+
+                $('#filterText').text('Showing results from ' + (fromDate || '-') + ' to ' + (toDate || '-'));
+                $('#filterStatus').show();
+
+                loadReport();
+            });
+
+            $('#clearBtn').on('click', function () {
+                $('#fromDate').val(todayStr);
+                $('#toDate').val(todayStr);
+                $('#filterStatus').hide();
+                $('#filterText').text('');
+                $('#reportBody').empty();
+                $('#reportTable').hide();
+                $('#downloadSection').hide();
+                if (dataTableInstance) {
+                    dataTableInstance.clear().draw();
+                }
+            });
+
+            $('#btnDownloadExcel').on('click', function () {
+                var fromDate = $('#fromDate').val();
+                var toDate = $('#toDate').val();
+                var searchValue = '';
+
+                // Get current search value from DataTable if it exists
+                if (dataTableInstance) {
+                    searchValue = dataTableInstance.search();
+                }
+
+                var url = '@Url.Action("ExportToExcel", "ChellanWiseStockReport")'
+                    + '?fromDate=' + encodeURIComponent(fromDate)
+                    + '&toDate=' + encodeURIComponent(toDate)
+                    + '&searchValue=' + encodeURIComponent(searchValue);
+
+                window.location = url;
+            });
+
+            loadReport();
+        });
+    </script>
+}
