@@ -127,6 +127,13 @@ namespace SSK_ERP.Controllers
             public short Status { get; set; }
             public string Remarks { get; set; }
 
+            public int? TransporterId { get; set; }
+            public string TransporterName { get; set; }
+            public string VehicleNo { get; set; }
+            public string DocumentNo { get; set; }
+            public DateTime? DocumentDate { get; set; }
+            public decimal? Distance { get; set; }
+
             public IList<SalesInvoiceFromPurchaseItemViewModel> Items { get; set; }
         }
 
@@ -423,6 +430,27 @@ namespace SSK_ERP.Controllers
             var roundedNetAmount = Math.Round(netAmount, 0, MidpointRounding.AwayFromZero);
             var roundOffAmount = roundedNetAmount - netAmount;
 
+            int? transporterId = null;
+            string transporterName = null;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(customerName))
+                {
+                    var customerForTransporter = db.CustomerMasters
+                        .FirstOrDefault(c => c.DISPSTATUS == 0 && c.CATENAME == customerName);
+                    if (customerForTransporter != null && customerForTransporter.TRANSPORTERID.HasValue && customerForTransporter.TRANSPORTERID.Value > 0)
+                    {
+                        transporterId = customerForTransporter.TRANSPORTERID.Value;
+                        var transporter = db.TransporterMasters
+                            .FirstOrDefault(t => t.DISPSTATUS == 0 && t.CATEID == transporterId.Value);
+                        transporterName = transporter != null ? transporter.CATENAME : null;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
             var model = new SalesInvoiceFromPurchaseViewModel
             {
                 PurchaseTranMid = purchase.TRANMID,
@@ -449,6 +477,12 @@ namespace SSK_ERP.Controllers
                 RoundOffAmount = Math.Round(roundOffAmount, 3, MidpointRounding.AwayFromZero),
                 Status = 0,
                 Remarks = null,
+                TransporterId = transporterId,
+                TransporterName = transporterName,
+                VehicleNo = null,
+                DocumentNo = null,
+                DocumentDate = null,
+                Distance = null,
                 Items = items
             };
 
@@ -1030,6 +1064,12 @@ namespace SSK_ERP.Controllers
                 TaxFactorsJson = taxFactorsJson,
                 Status = sales.DISPSTATUS,
                 Remarks = sales.TRANRMKS,
+                TransporterId = sales.TRANSPORTERID,
+                TransporterName = sales.TRANSPORTERNAME,
+                VehicleNo = sales.VECHICLENO,
+                DocumentNo = sales.DOCUMENTNO,
+                DocumentDate = sales.DOCUMENTDATE,
+                Distance = sales.DISTANCE,
                 Items = items
             };
 
@@ -1066,6 +1106,12 @@ namespace SSK_ERP.Controllers
                     return RedirectToAction("Index");
                 }
 
+                if (string.IsNullOrWhiteSpace(model.TransporterName) || string.IsNullOrWhiteSpace(model.VehicleNo) || !model.Distance.HasValue || model.Distance.Value <= 0)
+                {
+                    TempData["ErrorMessage"] = "Transporter Name, Vehicle No and Distance are required.";
+                    return View("CreateFromPurchase", model);
+                }
+
                 var existing = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == model.SalesTranMid && t.REGSTRID == SalesInvoiceRegisterId);
                 if (existing == null)
                 {
@@ -1097,6 +1143,23 @@ namespace SSK_ERP.Controllers
                 existing.TRAN_CRDPRDT = model.CreditDays;
                 existing.TRANPONUM = model.PoNumber;
                 existing.TRANTAXBILLNO = model.RefNo;
+
+                existing.TRANSPORTERNAME = model.TransporterName;
+                existing.VECHICLENO = model.VehicleNo;
+                existing.DOCUMENTNO = model.DocumentNo;
+                existing.DOCUMENTDATE = model.DocumentDate;
+                existing.DISTANCE = model.Distance;
+
+                if (model.TransporterId.HasValue && model.TransporterId.Value > 0)
+                {
+                    existing.TRANSPORTERID = model.TransporterId.Value;
+                }
+                else
+                {
+                    var transporter = db.TransporterMasters
+                        .FirstOrDefault(t => t.DISPSTATUS == 0 && t.CATENAME == model.TransporterName);
+                    existing.TRANSPORTERID = transporter != null ? transporter.CATEID : (int?)null;
+                }
                 if (model.BillNumber <= 0)
                 {
                     TempData["ErrorMessage"] = "Bill Number is required.";
@@ -2445,6 +2508,12 @@ namespace SSK_ERP.Controllers
                 return RedirectToAction("Index", "PurchaseInvoice", new { area = "" });
             }
 
+            if (string.IsNullOrWhiteSpace(model.TransporterName) || string.IsNullOrWhiteSpace(model.VehicleNo) || !model.Distance.HasValue || model.Distance.Value <= 0)
+            {
+                TempData["ErrorMessage"] = "Transporter Name, Vehicle No and Distance are required.";
+                return View("CreateFromPurchase", model);
+            }
+
             var allItems = model.Items ?? new List<SalesInvoiceFromPurchaseItemViewModel>();
 
             // Keep original row index so we can reliably map back to purchase detail rows
@@ -2605,8 +2674,25 @@ namespace SSK_ERP.Controllers
                 LMUSRID = userName,
                 PRCSDATE = DateTime.Now,
                 DISPSTATUS = 0,
-                TRANRMKS = model.Remarks
+                TRANRMKS = model.Remarks,
+                TRANSPORTERID = null,
+                TRANSPORTERNAME = model.TransporterName,
+                VECHICLENO = model.VehicleNo,
+                DOCUMENTNO = model.DocumentNo,
+                DOCUMENTDATE = model.DocumentDate,
+                DISTANCE = model.Distance
             };
+
+            if (model.TransporterId.HasValue && model.TransporterId.Value > 0)
+            {
+                master.TRANSPORTERID = model.TransporterId.Value;
+            }
+            else
+            {
+                var transporter = db.TransporterMasters
+                    .FirstOrDefault(t => t.DISPSTATUS == 0 && t.CATENAME == model.TransporterName);
+                master.TRANSPORTERID = transporter != null ? transporter.CATEID : (int?)null;
+            }
 
             db.TransactionMasters.Add(master);
             db.SaveChanges();

@@ -97,6 +97,9 @@ namespace SSK_ERP.Models
         [DisplayName("Credit Period")]
         public int CATE_CRDTPRD { get; set; }
 
+        [Column("TRANSPORTERID")]
+        public int? TRANSPORTERID { get; set; }
+
         // Hidden fields with default values
         [DisplayName("Bank Name")]
         public string CATE_BANK_NAME { get; set; } // NULL

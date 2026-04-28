@@ -176,6 +176,16 @@
                     </div>
                 </div>
 
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label">Transporter Name</label>
+                            @Html.DropDownListFor(model => model.TRANSPORTERID, ViewBag.TRANSPORTERID as List<SelectListItem>, new { @class = "form-control" })
+                            @Html.ValidationMessageFor(m => m.TRANSPORTERID, "", new { @class = "text-danger" })
+                        </div>
+                    </div>
+                </div>
+
                 <div class="section-title">
                     <i class="fa fa-map-marker"></i> Address Information
                 </div>

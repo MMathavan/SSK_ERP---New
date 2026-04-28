@@ -63,6 +63,10 @@ namespace SSK_ERP.Models
         [Remote("ValidateCATECODE", "Common", AdditionalFields = "i_CATECODE", ErrorMessage = "This is already used.")]
         public string CATECODE { get; set; }
 
+        [DisplayName("GST No")]
+        [MaxLength(50)]
+        public string TRANSPORTER_GST_NO { get; set; }
+
         // Created user id (username)
         public string CUSRID { get; set; }
 

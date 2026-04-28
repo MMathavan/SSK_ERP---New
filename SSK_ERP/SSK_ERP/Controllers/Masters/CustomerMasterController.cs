@@ -21,7 +21,7 @@ namespace SSK_ERP.Controllers.Masters
                     @"SELECT CATEID, CATENAME, CATEDNAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4, CATEADDR5, 
                              LOCTID, STATEID, CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATEPNAME, CATEMAIL, 
                              CATE_GST_NO, CATE_PAN_NO, CATE_TAN_NO, CATE_PEST_LIC_NO, CATE_SEED_LIC_NO, 
-                             CATECODE, CATE_CRDTPRD, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATETID, ACHEADID,
+                             CATECODE, CATE_CRDTPRD, TRANSPORTERID, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATETID, ACHEADID,
                              CATE_BANK_NAME, CATE_BRNCH_NAME, CATE_IFSC_CODE, CATE_ACNO, CATE_IBAN_CODE, 
                              CATE_SWIFT_CODE, CATE_DSGNDESC, CATENO, CATESTYPE
                       FROM CUSTOMERMASTER"
@@ -46,7 +46,7 @@ namespace SSK_ERP.Controllers.Masters
                     @"SELECT CATEID, CATENAME, CATEDNAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4, CATEADDR5, 
                              LOCTID, STATEID, CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATEPNAME, CATEMAIL, 
                              CATE_GST_NO, CATE_PAN_NO, CATE_TAN_NO, CATE_PEST_LIC_NO, CATE_SEED_LIC_NO, 
-                             CATECODE, CATE_CRDTPRD, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATETID, ACHEADID,
+                             CATECODE, CATE_CRDTPRD, TRANSPORTERID, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATETID, ACHEADID,
                              CATE_BANK_NAME, CATE_BRNCH_NAME, CATE_IFSC_CODE, CATE_ACNO, CATE_IBAN_CODE, 
                              CATE_SWIFT_CODE, CATE_DSGNDESC, CATENO, CATESTYPE
                       FROM CUSTOMERMASTER"
@@ -132,7 +132,7 @@ namespace SSK_ERP.Controllers.Masters
                     try
                     {
                         tab = context.Database.SqlQuery<CustomerMaster>(
-                            "SELECT * FROM CUSTOMERMASTER WHERE CATEID = {0}", id
+                            "SELECT CATEID, CATENAME, CATEDNAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4, CATEADDR5, LOCTID, STATEID, CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATEPNAME, CATEMAIL, CATE_GST_NO, CATE_PAN_NO, CATE_TAN_NO, CATE_PEST_LIC_NO, CATE_SEED_LIC_NO, CATECODE, CATE_CRDTPRD, TRANSPORTERID, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATETID, ACHEADID, CATE_BANK_NAME, CATE_BRNCH_NAME, CATE_IFSC_CODE, CATE_ACNO, CATE_IBAN_CODE, CATE_SWIFT_CODE, CATE_DSGNDESC, CATENO, CATESTYPE FROM CUSTOMERMASTER WHERE CATEID = {0}", id
                         ).FirstOrDefault();
                         
                         if (tab == null)
@@ -147,6 +147,7 @@ namespace SSK_ERP.Controllers.Masters
                         System.Diagnostics.Debug.WriteLine($"Status: {tab.DISPSTATUS}");
                         System.Diagnostics.Debug.WriteLine($"LOCTID Type: {tab.LOCTID.GetType()}, STATEID Type: {tab.STATEID.GetType()}");
                         System.Diagnostics.Debug.WriteLine($"LOCTID == 0: {tab.LOCTID == 0}, STATEID == 0: {tab.STATEID == 0}");
+                        System.Diagnostics.Debug.WriteLine($"TRANSPORTERID: {tab.TRANSPORTERID}, HasValue: {tab.TRANSPORTERID.HasValue}");
                         
                         ViewBag.msg = "Edit Customer";
                     }
@@ -261,6 +262,53 @@ namespace SSK_ERP.Controllers.Masters
                     }, "Value", "Text");
                 }
 
+                // Transporter dropdown (same pattern as Location and State)
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine($"Loading transporters for customer TRANSPORTERID: {tab.TRANSPORTERID}");
+                    
+                    var transporters = context.TransporterMasters.ToList();
+                    var transporterList = new List<SelectListItem>();
+                    transporterList.Add(new SelectListItem { Value = "", Text = "-- Select Transporter --" });
+                    
+                    // Add only enabled transporters - NO disabled items at all
+                    foreach (var transporter in transporters.Where(t => t.DISPSTATUS == 0).OrderBy(t => t.CATENAME))
+                    {
+                        transporterList.Add(new SelectListItem
+                        {
+                            Value = transporter.CATEID.ToString(),
+                            Text = transporter.CATENAME
+                        });
+                    }
+                    
+                    // If customer has disabled transporter, reset to empty selection (same as Location/State)
+                    var selectedTransporterId = "";
+                    if (tab.TRANSPORTERID.HasValue && tab.TRANSPORTERID.Value != 0 && transporterList.Any(x => x.Value == tab.TRANSPORTERID.Value.ToString()))
+                    {
+                        selectedTransporterId = tab.TRANSPORTERID.Value.ToString();
+                        System.Diagnostics.Debug.WriteLine($"Setting selected transporter ID: {selectedTransporterId}");
+                    }
+                    else if (tab.TRANSPORTERID.HasValue && tab.TRANSPORTERID.Value != 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Customer has disabled transporter ID {tab.TRANSPORTERID.Value} - resetting to empty");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"TRANSPORTERID is null or 0, using empty selection");
+                    }
+                    
+                    ViewBag.TRANSPORTERID = new SelectList(transporterList, "Value", "Text", selectedTransporterId);
+                    System.Diagnostics.Debug.WriteLine($"Transporter dropdown created with {transporterList.Count} items, model TRANSPORTERID: {tab.TRANSPORTERID}, selectedTransporterId: {selectedTransporterId}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error loading transporters: {ex.Message}");
+                    ViewBag.TRANSPORTERID = new SelectList(new List<SelectListItem>
+                    {
+                        new SelectListItem { Value = "", Text = "-- Select Transporter --" }
+                    }, "Value", "Text");
+                }
+
                 return View(tab);
             }
             catch (Exception ex)
@@ -276,6 +324,8 @@ namespace SSK_ERP.Controllers.Masters
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"savedata - TRANSPORTERID received: {tab.TRANSPORTERID}, HasValue: {tab.TRANSPORTERID.HasValue}");
+                
                 var currentUserId = Session["USERID"] != null ? Convert.ToInt32(Session["USERID"]) : 1;
                 var prcsdate = DateTime.Now;
 
@@ -319,6 +369,15 @@ namespace SSK_ERP.Controllers.Masters
                     
                     ViewBag.STATEID = new SelectList(stateList, "Value", "Text");
 
+                    // Transporter dropdown
+                    var transporterList = new List<SelectListItem> { new SelectListItem { Value = "", Text = "-- Select Transporter --" } };
+                    foreach (var t in context.TransporterMasters.Where(x => x.DISPSTATUS == 0).OrderBy(x => x.CATENAME))
+                    {
+                        transporterList.Add(new SelectListItem { Value = t.CATEID.ToString(), Text = t.CATENAME });
+                    }
+                    System.Diagnostics.Debug.WriteLine($"Validation error return - TRANSPORTERID: {tab.TRANSPORTERID}, HasValue: {tab.TRANSPORTERID.HasValue}");
+                    ViewBag.TRANSPORTERID = new SelectList(transporterList, "Value", "Text", tab.TRANSPORTERID.HasValue ? tab.TRANSPORTERID.Value.ToString() : "");
+
                     // Return the same Form view with validation errors
                     return View("Form", tab);
                 }
@@ -339,17 +398,17 @@ namespace SSK_ERP.Controllers.Masters
                           (CATENAME, CATEDNAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4, CATEADDR5, 
                            LOCTID, STATEID, CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATEPNAME, CATEMAIL, 
                            CATE_GST_NO, CATE_PAN_NO, CATE_TAN_NO, CATE_PEST_LIC_NO, CATE_SEED_LIC_NO, 
-                           CATECODE, CATE_CRDTPRD, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATETID, 
+                           CATECODE, CATE_CRDTPRD, TRANSPORTERID, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATETID, 
                            CATENO, CATESTYPE, ACHEADID, 
                            CATE_BANK_NAME, CATE_BRNCH_NAME, CATE_IFSC_CODE, CATE_ACNO, CATE_IBAN_CODE, CATE_SWIFT_CODE, CATE_DSGNDESC) 
                           VALUES 
                           ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, 
-                           {15}, {16}, {17}, {18}, {19}, {20}, {21}, {22}, {23}, {24}, {25}, {26}, {27}, {28}, {29},
-                           {30}, {31}, {32}, {33}, {34}, {35}, {36})",
+                           {15}, {16}, {17}, {18}, {19}, {20}, {21}, {22}, {23}, {24}, {25}, {26}, {27}, {28}, {29}, {30},
+                           {31}, {32}, {33}, {34}, {35}, {36}, {37})",
                         tab.CATENAME, tab.CATEDNAME, tab.CATEADDR1, tab.CATEADDR2, tab.CATEADDR3, tab.CATEADDR4, tab.CATEADDR5,
                         tab.LOCTID, tab.STATEID, tab.CATEPHN1, tab.CATEPHN2, tab.CATEPHN3, tab.CATEPHN4, tab.CATEPNAME, tab.CATEMAIL,
                         tab.CATE_GST_NO, tab.CATE_PAN_NO, tab.CATE_TAN_NO, tab.CATE_PEST_LIC_NO, tab.CATE_SEED_LIC_NO,
-                        tab.CATECODE, tab.CATE_CRDTPRD, tab.CUSRID, tab.LMUSRID, tab.DISPSTATUS, tab.PRCSDATE, tab.CATETID,
+                        tab.CATECODE, tab.CATE_CRDTPRD, tab.TRANSPORTERID, tab.CUSRID, tab.LMUSRID, tab.DISPSTATUS, tab.PRCSDATE, tab.CATETID,
                         tab.CATENO, tab.CATESTYPE, tab.ACHEADID,
                         tab.CATE_BANK_NAME, tab.CATE_BRNCH_NAME, tab.CATE_IFSC_CODE, tab.CATE_ACNO, tab.CATE_IBAN_CODE, tab.CATE_SWIFT_CODE, tab.CATE_DSGNDESC
                     );
@@ -367,15 +426,15 @@ namespace SSK_ERP.Controllers.Masters
                           CATEPHN2 = {11}, CATEPHN3 = {12}, CATEPHN4 = {13}, CATEPNAME = {14}, CATEMAIL = {15}, 
                           CATE_GST_NO = {16}, CATE_PAN_NO = {17}, CATE_TAN_NO = {18}, CATE_PEST_LIC_NO = {19}, 
                           CATE_SEED_LIC_NO = {20}, CATECODE = {21}, CATE_CRDTPRD = {22}, LMUSRID = {23}, 
-                          DISPSTATUS = {24}, PRCSDATE = {25},
-                          CATE_BANK_NAME = {26}, CATE_BRNCH_NAME = {27}, CATE_IFSC_CODE = {28}, CATE_ACNO = {29},
-                          CATE_IBAN_CODE = {30}, CATE_SWIFT_CODE = {31}, CATE_DSGNDESC = {32}
+                          TRANSPORTERID = {24}, DISPSTATUS = {25}, PRCSDATE = {26},
+                          CATE_BANK_NAME = {27}, CATE_BRNCH_NAME = {28}, CATE_IFSC_CODE = {29}, CATE_ACNO = {30},
+                          CATE_IBAN_CODE = {31}, CATE_SWIFT_CODE = {32}, CATE_DSGNDESC = {33}
                           WHERE CATEID = {0}",
                         tab.CATEID, tab.CATENAME, tab.CATEDNAME, tab.CATEADDR1, tab.CATEADDR2, tab.CATEADDR3,
                         tab.CATEADDR4, tab.CATEADDR5, tab.LOCTID, tab.STATEID, tab.CATEPHN1, tab.CATEPHN2,
                         tab.CATEPHN3, tab.CATEPHN4, tab.CATEPNAME, tab.CATEMAIL, tab.CATE_GST_NO, tab.CATE_PAN_NO,
                         tab.CATE_TAN_NO, tab.CATE_PEST_LIC_NO, tab.CATE_SEED_LIC_NO, tab.CATECODE, tab.CATE_CRDTPRD,
-                        tab.LMUSRID, tab.DISPSTATUS, tab.PRCSDATE,
+                        tab.LMUSRID, tab.TRANSPORTERID, tab.DISPSTATUS, tab.PRCSDATE,
                         tab.CATE_BANK_NAME, tab.CATE_BRNCH_NAME, tab.CATE_IFSC_CODE, tab.CATE_ACNO,
                         tab.CATE_IBAN_CODE, tab.CATE_SWIFT_CODE, tab.CATE_DSGNDESC
                     );

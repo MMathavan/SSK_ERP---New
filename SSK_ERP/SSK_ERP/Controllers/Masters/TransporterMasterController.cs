@@ -20,7 +20,7 @@ namespace SSK_ERP.Controllers.Masters
                 var transporters = context.Database.SqlQuery<TransporterMaster>(
                     @"SELECT CATEID, CATETID, CATENAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4,
                              CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATECPNAME, CATEEMAIL,
-                             CATECODE, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATE_TRACKING_LINK
+                             CATECODE, TRANSPORTER_GST_NO, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATE_TRACKING_LINK
                       FROM TRANSPORTERMASTER"
                 ).ToList();
 
@@ -39,7 +39,7 @@ namespace SSK_ERP.Controllers.Masters
                 var transporters = context.Database.SqlQuery<TransporterMaster>(
                     @"SELECT CATEID, CATETID, CATENAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4,
                              CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATECPNAME, CATEEMAIL,
-                             CATECODE, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATE_TRACKING_LINK
+                             CATECODE, TRANSPORTER_GST_NO, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATE_TRACKING_LINK
                       FROM TRANSPORTERMASTER"
                 ).ToList();
 
@@ -86,7 +86,7 @@ namespace SSK_ERP.Controllers.Masters
                     try
                     {
                         tab = context.Database.SqlQuery<TransporterMaster>(
-                            "SELECT * FROM TRANSPORTERMASTER WHERE CATEID = {0}", id
+                            "SELECT CATEID, CATETID, CATENAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4, CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATECPNAME, CATEEMAIL, CATECODE, TRANSPORTER_GST_NO, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATE_TRACKING_LINK FROM TRANSPORTERMASTER WHERE CATEID = {0}", id
                         ).FirstOrDefault();
 
                         if (tab == null)
@@ -156,13 +156,13 @@ namespace SSK_ERP.Controllers.Masters
                         @"INSERT INTO TRANSPORTERMASTER
                           (CATETID, CATENAME, CATEADDR1, CATEADDR2, CATEADDR3, CATEADDR4,
                            CATEPHN1, CATEPHN2, CATEPHN3, CATEPHN4, CATECPNAME, CATEEMAIL,
-                           CATECODE, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATE_TRACKING_LINK)
+                           CATECODE, TRANSPORTER_GST_NO, CUSRID, LMUSRID, DISPSTATUS, PRCSDATE, CATE_TRACKING_LINK)
                           VALUES
-                          ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11},
-                           {12}, {13}, {14}, {15}, {16}, {17})",
+                          ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12},
+                           {13}, {14}, {15}, {16}, {17}, {18})",
                         tab.CATETID, tab.CATENAME, tab.CATEADDR1, tab.CATEADDR2, tab.CATEADDR3, tab.CATEADDR4,
                         tab.CATEPHN1, tab.CATEPHN2, tab.CATEPHN3, tab.CATEPHN4, tab.CATECPNAME, tab.CATEEMAIL,
-                        tab.CATECODE, tab.CUSRID, tab.LMUSRID, tab.DISPSTATUS, tab.PRCSDATE, tab.CATE_TRACKING_LINK
+                        tab.CATECODE, tab.TRANSPORTER_GST_NO, tab.CUSRID, tab.LMUSRID, tab.DISPSTATUS, tab.PRCSDATE, tab.CATE_TRACKING_LINK
                     );
                 }
                 else
@@ -174,11 +174,11 @@ namespace SSK_ERP.Controllers.Masters
                         @"UPDATE TRANSPORTERMASTER SET
                           CATETID = {1}, CATENAME = {2}, CATEADDR1 = {3}, CATEADDR2 = {4}, CATEADDR3 = {5}, CATEADDR4 = {6},
                           CATEPHN1 = {7}, CATEPHN2 = {8}, CATEPHN3 = {9}, CATEPHN4 = {10}, CATECPNAME = {11}, CATEEMAIL = {12},
-                          CATECODE = {13}, LMUSRID = {14}, DISPSTATUS = {15}, PRCSDATE = {16}, CATE_TRACKING_LINK = {17}
+                          CATECODE = {13}, TRANSPORTER_GST_NO = {14}, LMUSRID = {15}, DISPSTATUS = {16}, PRCSDATE = {17}, CATE_TRACKING_LINK = {18}
                           WHERE CATEID = {0}",
                         tab.CATEID, tab.CATETID, tab.CATENAME, tab.CATEADDR1, tab.CATEADDR2, tab.CATEADDR3, tab.CATEADDR4,
                         tab.CATEPHN1, tab.CATEPHN2, tab.CATEPHN3, tab.CATEPHN4, tab.CATECPNAME, tab.CATEEMAIL,
-                        tab.CATECODE, tab.LMUSRID, tab.DISPSTATUS, tab.PRCSDATE, tab.CATE_TRACKING_LINK
+                        tab.CATECODE, tab.TRANSPORTER_GST_NO, tab.LMUSRID, tab.DISPSTATUS, tab.PRCSDATE, tab.CATE_TRACKING_LINK
                     );
                 }
 
