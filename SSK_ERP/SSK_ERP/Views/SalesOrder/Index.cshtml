@@ -238,6 +238,10 @@
                             <i class="fa fa-upload"></i>
                             <span>Upload</span>
                         </button>
+                        <button type="button" id="btnAddExcelUpload" class="so-add-menu-btn">
+                            <i class="fa fa-file-excel"></i>
+                            <span>Excel Upload</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -476,6 +480,10 @@
 
             $('#btnAddUpload').on('click', function () {
                 window.location.href = '@Url.Action("Index", "SalesOrderUpload")';
+            });
+
+            $('#btnAddExcelUpload').on('click', function () {
+                window.location.href = '@Url.Action("Index", "SalesOrderExcelUpload")';
             });
 
             $('#clearBtn').on('click', function () {

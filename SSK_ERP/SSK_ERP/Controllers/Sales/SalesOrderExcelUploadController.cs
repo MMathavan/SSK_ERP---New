@@ -2,16 +2,11 @@ using System;
 using System.Web;
 using System.Web.Mvc;
 using System.IO;
-using System.Text;
 using System.Linq;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
-using System.Text.RegularExpressions;
 using System.Collections.Generic;
-using iText.Kernel.Pdf;
-using iText.Kernel.Pdf.Canvas.Parser;
-using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using ClosedXML.Excel;
 using SSK_ERP.Filters;
 using SSK_ERP.Models;
 
@@ -19,86 +14,18 @@ namespace SSK_ERP.Controllers
 {
     [SessionExpire]
     [Authorize(Roles = "SalesOrderCreate")]
-    public class SalesOrderUploadController : Controller
+    public class SalesOrderExcelUploadController : Controller
     {
         private readonly ApplicationDbContext db = new ApplicationDbContext();
         private const int SalesOrderRegisterId = 1;
-
-        private string ConvertAmountToWords(decimal amount)
-        {
-            try
-            {
-                string[] ones = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine" };
-                string[] teens = { "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
-                string[] tens = { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
-
-                if (amount == 0) return "Zero Rupees Only";
-
-                int rupees = (int)amount;
-                int paise = (int)((amount - rupees) * 100);
-
-                string words = string.Empty;
-
-                if (rupees >= 10000000)
-                {
-                    words += ConvertNumberToWords(rupees / 10000000, ones, teens, tens) + " Crore ";
-                    rupees %= 10000000;
-                }
-                if (rupees >= 100000)
-                {
-                    words += ConvertNumberToWords(rupees / 100000, ones, teens, tens) + " Lakh ";
-                    rupees %= 100000;
-                }
-                if (rupees >= 1000)
-                {
-                    words += ConvertNumberToWords(rupees / 1000, ones, teens, tens) + " Thousand ";
-                    rupees %= 1000;
-                }
-                if (rupees >= 100)
-                {
-                    words += ConvertNumberToWords(rupees / 100, ones, teens, tens) + " Hundred ";
-                    rupees %= 100;
-                }
-                if (rupees > 0)
-                {
-                    words += ConvertNumberToWords(rupees, ones, teens, tens);
-                }
-
-                words = words.Trim() + " Rupees";
-
-                if (paise > 0)
-                {
-                    words += " and " + ConvertNumberToWords(paise, ones, teens, tens) + " Paise";
-                }
-
-                return words + " Only";
-            }
-            catch
-            {
-                return string.Empty;
-            }
-        }
-
-        private string ConvertNumberToWords(int number, string[] ones, string[] teens, string[] tens)
-        {
-            if (number < 10) return ones[number];
-            if (number < 20) return teens[number - 10];
-            if (number < 100) return tens[number / 10] + (number % 10 > 0 ? " " + ones[number % 10] : string.Empty);
-            return string.Empty;
-        }
 
         private void PopulateCustomerList(int? selectedCustomerId = null)
         {
             var customerList = db.CustomerMasters
                 .Where(c => c.DISPSTATUS == 0)
                 .OrderBy(c => c.CATENAME)
-                .Select(c => new
-                {
-                    c.CATEID,
-                    c.CATENAME
-                })
+                .Select(c => new { c.CATEID, c.CATENAME })
                 .ToList();
-
             ViewBag.CustomerList = new SelectList(customerList, "CATEID", "CATENAME", selectedCustomerId);
         }
 
@@ -107,7 +34,7 @@ namespace SSK_ERP.Controllers
         {
             int? selectedCustomerId = null;
 
-            var uploadCustomerIdObj = TempData["UploadCustomerId"] ?? Session["SalesOrderUploadCustomerId"];
+            var uploadCustomerIdObj = TempData["UploadCustomerId"] ?? Session["SalesOrderExcelUploadCustomerId"];
             if (uploadCustomerIdObj != null)
             {
                 int parsedCustomerId;
@@ -217,8 +144,13 @@ namespace SSK_ERP.Controllers
                                 }
 
                                 decimal profitPercent = material != null ? material.MTRLPRFT : 0m;
+                                decimal actualRate = d.RatePerUnit;
+                                if (actualRate > 0 && profitPercent != 0m)
+                                {
+                                    actualRate = Math.Round(actualRate + ((actualRate * profitPercent) / 100m), 2);
+                                }
 
-                                return new SalesOrderUploadItemViewModel
+                                return new SalesOrderExcelUploadItemViewModel
                                 {
                                     DetailId = d.LineNo,
                                     ExtractedItemName = d.ItemDrugName,
@@ -227,7 +159,7 @@ namespace SSK_ERP.Controllers
                                     ProfitPercent = profitPercent,
                                     Qty = d.Qty,
                                     Rate = d.RatePerUnit,
-                                    ActualRate = 0m,
+                                    ActualRate = actualRate,
                                     Amount = d.GrossAmount,
                                     ActualMaterialId = d.MTRLID ?? 0
                                 };
@@ -251,7 +183,7 @@ namespace SSK_ERP.Controllers
             return View();
         }
 
-        public class SalesOrderUploadItemViewModel
+        public class SalesOrderExcelUploadItemViewModel
         {
             public int DetailId { get; set; }
             public string ExtractedItemName { get; set; }
@@ -274,26 +206,8 @@ namespace SSK_ERP.Controllers
             public decimal Qty { get; set; }
             public decimal RatePerUnit { get; set; }
             public decimal GrossAmount { get; set; }
-            // MTRLID comes from MATERIALMASTER when using PR_TRANSACTIONDETAILMATERIAL_DETAILS
             public int? MTRLID { get; set; }
             public string MTRLDESC { get; set; }
-        }
-
-        private class UploadDetailCalcRow
-        {
-            public int MaterialId { get; set; }
-            public string MaterialCode { get; set; }
-            public string MaterialName { get; set; }
-            public decimal ProfitPercent { get; set; }
-            public int HsnId { get; set; }
-            public decimal Qty { get; set; }
-            public decimal Rate { get; set; }
-            public decimal ActualRate { get; set; }
-            public decimal Gross { get; set; }
-            public decimal Cgst { get; set; }
-            public decimal Sgst { get; set; }
-            public decimal Igst { get; set; }
-            public decimal Net { get; set; }
         }
 
         private static string NormalizeMaterialMatchText(string value)
@@ -307,7 +221,7 @@ namespace SSK_ERP.Controllers
             normalized = normalized.Replace("-", " ");
             normalized = normalized.Replace(".", " ");
             normalized = normalized.Replace("%", " ");
-            normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
             return normalized;
         }
 
@@ -346,78 +260,6 @@ namespace SSK_ERP.Controllers
             return score;
         }
 
-        private static bool IsItemRowStart(string line)
-        {
-            return !string.IsNullOrWhiteSpace(line)
-                && Regex.IsMatch(line, @"^\d+(\.\d+)?\s+");
-        }
-
-        private static bool IsItemDetailTerminator(string line)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                return false;
-            }
-
-            return line.StartsWith("Total Amount", StringComparison.OrdinalIgnoreCase)
-                || line.StartsWith("Amount in Words", StringComparison.OrdinalIgnoreCase)
-                || line.StartsWith("Approved Date", StringComparison.OrdinalIgnoreCase)
-                || line.StartsWith("Credit Period", StringComparison.OrdinalIgnoreCase)
-                || line.StartsWith("Receive By", StringComparison.OrdinalIgnoreCase)
-                || line.StartsWith("Total CGST Amt", StringComparison.OrdinalIgnoreCase)
-                || line.StartsWith("Total SGST Amt", StringComparison.OrdinalIgnoreCase)
-                || line.StartsWith("Total IGST Amt", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsItemDetailNoise(string line)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                return true;
-            }
-
-            string normalized = Regex.Replace(line, @"\s+", " ").Trim();
-            if (string.IsNullOrWhiteSpace(normalized))
-            {
-                return true;
-            }
-
-            return normalized.StartsWith("Prepared by", StringComparison.OrdinalIgnoreCase)
-                || normalized.StartsWith("Checked by", StringComparison.OrdinalIgnoreCase)
-                || normalized.StartsWith("Approved by", StringComparison.OrdinalIgnoreCase)
-                || normalized.StartsWith("PO #", StringComparison.OrdinalIgnoreCase)
-                || normalized.StartsWith("PO Date", StringComparison.OrdinalIgnoreCase)
-                || Regex.IsMatch(normalized, @"^PO/[A-Z0-9/\-]+$", RegexOptions.IgnoreCase)
-                || Regex.IsMatch(normalized, @"^\d{1,2}/\d{1,2}/\d{4}$")
-                || normalized.Equals("Sno", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Item/Drug Name", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("HSN Code", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Qty", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Free Qty", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("UQC", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Rate/Unit", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Discount", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("CGST", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("SGST", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("IGST", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Gross Amount", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("%", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Sn Item/Drug Name HSN Code Qty Free Qty UQC Rate/Unit Discount CGST SGST IGST Gross Amount", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("Sno Item/Drug Name HSN Code Qty Free Qty UQC Rate/Unit Discount CGST SGST IGST Gross Amount", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsSplitSerialWholePart(string line)
-        {
-            return !string.IsNullOrWhiteSpace(line)
-                && Regex.IsMatch(line.Trim(), @"^\d+$");
-        }
-
-        private static bool IsSplitSerialDecimalPart(string line)
-        {
-            return !string.IsNullOrWhiteSpace(line)
-                && Regex.IsMatch(line.Trim(), @"^\.\d+$");
-        }
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Index(HttpPostedFileBase file, int? customerId)
@@ -437,17 +279,15 @@ namespace SSK_ERP.Controllers
             }
 
             var extension = Path.GetExtension(file.FileName) ?? string.Empty;
-            if (!extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            if (!extension.Equals(".xlsx", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".xls", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["ErrorMessage"] = "Invalid file type. Only PDF files (.pdf) are allowed.";
+                TempData["ErrorMessage"] = "Invalid file type. Only Excel files (.xlsx, .xls) are allowed.";
                 return View();
             }
 
-            string extractedText = string.Empty;
-
             try
             {
-                var uploadsDir = Server.MapPath("~/Uploads/SalesOrderPdfs");
+                var uploadsDir = Server.MapPath("~/Uploads/SalesOrderExcels");
                 if (!Directory.Exists(uploadsDir))
                 {
                     Directory.CreateDirectory(uploadsDir);
@@ -457,43 +297,144 @@ namespace SSK_ERP.Controllers
                 var ext = Path.GetExtension(file.FileName) ?? string.Empty;
                 var uniqueName = string.Format("{0}_{1:yyyyMMddHHmmssfff}{2}", safeName, DateTime.Now, ext);
                 var fullPath = Path.Combine(uploadsDir, uniqueName);
-
                 file.SaveAs(fullPath);
 
-                using (var reader = new PdfReader(fullPath))
-                using (var pdfDoc = new PdfDocument(reader))
+                // Read Excel file
+                var excelData = ReadExcelFile(fullPath);
+                
+                if (excelData == null || !excelData.Items.Any())
                 {
-                    var sb = new StringBuilder();
-                    int totalPages = pdfDoc.GetNumberOfPages();
-
-                    for (int page = 1; page <= totalPages; page++)
-                    {
-                        var strategy = new SimpleTextExtractionStrategy();
-                        string pageText = PdfTextExtractor.GetTextFromPage(pdfDoc.GetPage(page), strategy);
-                        sb.AppendLine(pageText);
-                    }
-
-                    extractedText = sb.ToString();
+                    // For debugging - show what was read
+                    string debugInfo = $"PO Number: {excelData?.PoNumber ?? "null"}, Items count: {excelData?.Items?.Count ?? 0}";
+                    TempData["ErrorMessage"] = "No data found in the Excel file. " + debugInfo;
+                    return View();
                 }
+
+                // Save temp data
+                return SaveTemp(excelData, file.FileName, customerId);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                TempData["ErrorMessage"] = "There was a problem reading the PDF file.";
+                TempData["ErrorMessage"] = "Error reading Excel file: " + ex.Message;
                 return View();
             }
+        }
 
-            // Directly process extracted text into TransactionMaster / TransactionDetail and temp tables,
-            // then redirect to SalesOrder index (single-step flow for the user).
-            return SaveTemp(extractedText, file.FileName, customerId);
+        private ExcelUploadData ReadExcelFile(string filePath)
+        {
+            var data = new ExcelUploadData();
+
+            using (var workbook = new XLWorkbook(filePath))
+            {
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null)
+                {
+                    return data;
+                }
+
+                // Read PO Number from B1
+                var poNumberCell = worksheet.Cell("B1");
+                data.PoNumber = poNumberCell.GetString().Trim();
+
+                // Finalized Excel format:
+                // Row 1: A1 = PO text, B1 = PO Number
+                // Row 2: headers
+                // Row 3+: items (A=S.No, B=Item/Drug Name, C=Qty, D=Rate/Unit)
+                var lastUsedRow = worksheet.LastRowUsed();
+                if (lastUsedRow == null)
+                {
+                    return data;
+                }
+
+                int lastRowNumber = lastUsedRow.RowNumber();
+                int lineNo = 1;
+
+                for (int r = 3; r <= lastRowNumber; r++)
+                {
+                    try
+                    {
+                        var row = worksheet.Row(r);
+                        var itemName = GetCellValue(row.Cell(2)); // Column B: Item Name
+                        var qty = GetDecimalValue(row.Cell(3)); // Column C: Qty
+                        var rate = GetDecimalValue(row.Cell(4)); // Column D: Rate
+
+                        if (string.IsNullOrWhiteSpace(itemName))
+                        {
+                            continue;
+                        }
+
+                        decimal qtyValue = qty ?? 0m;
+                        decimal rateValue = rate ?? 0m;
+                        decimal amount = qtyValue * rateValue;
+
+                        data.Items.Add(new ExcelDataRow
+                        {
+                            LineNo = lineNo++,
+                            ItemDrugName = itemName,
+                            Qty = qtyValue,
+                            RatePerUnit = rateValue,
+                            GrossAmount = amount
+                        });
+                    }
+                    catch
+                    {
+                        // Skip rows with errors
+                    }
+                }
+            }
+
+            return data;
+        }
+
+        private string GetCellValue(IXLCell cell)
+        {
+            if (cell == null)
+                return string.Empty;
+            return cell.GetString().Trim();
+        }
+
+        private decimal? GetDecimalValue(IXLCell cell)
+        {
+            if (cell == null)
+                return null;
+
+            decimal value;
+            if (cell.TryGetValue(out value))
+            {
+                return value;
+            }
+
+            string strValue = cell.GetString();
+            if (decimal.TryParse(strValue, out value))
+            {
+                return value;
+            }
+
+            return null;
+        }
+
+        public class ExcelUploadData
+        {
+            public string PoNumber { get; set; }
+            public List<ExcelDataRow> Items { get; set; } = new List<ExcelDataRow>();
+        }
+
+        public class ExcelDataRow
+        {
+            public int LineNo { get; set; }
+            public string ItemDrugName { get; set; }
+            public decimal Qty { get; set; }
+            public decimal RatePerUnit { get; set; }
+            public decimal GrossAmount { get; set; }
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult SaveTemp(string extractedText, string originalFileName, int? customerId)
+        public ActionResult SaveTemp(ExcelUploadData excelData, string originalFileName, int? customerId)
         {
-            if (string.IsNullOrWhiteSpace(extractedText))
+            if (excelData == null || !excelData.Items.Any())
             {
-                TempData["ErrorMessage"] = "No extracted data to save.";
+                TempData["ErrorMessage"] = "No data to save.";
                 return RedirectToAction("Index");
             }
 
@@ -503,18 +444,23 @@ namespace SSK_ERP.Controllers
                     ? User.Identity.Name
                     : "Upload";
 
-                // Remember the customer for this upload so that we can recreate the Sales Order
+                // Remember the customer and PO number
                 if (customerId.HasValue && customerId.Value > 0)
                 {
                     TempData["UploadCustomerId"] = customerId.Value;
-                    Session["SalesOrderUploadCustomerId"] = customerId.Value;
+                    Session["SalesOrderExcelUploadCustomerId"] = customerId.Value;
                 }
 
-                // Clean up any previous temp data for this session (if user uploaded again without confirming)
+                if (!string.IsNullOrWhiteSpace(excelData.PoNumber))
+                {
+                    Session["SalesOrderExcelUploadPoNumber"] = excelData.PoNumber;
+                }
+
+                // Clean up previous temp data
                 try
                 {
-                    var lastBatchStr = Session["LastUploadBatchId"] as string;
-                    var lastMasterTempObj = Session["LastTransactionMasterTempId"];
+                    var lastBatchStr = Session["LastExcelUploadBatchId"] as string;
+                    var lastMasterTempObj = Session["LastExcelTransactionMasterTempId"];
 
                     Guid lastBatchGuid;
                     int lastMasterTempId;
@@ -532,193 +478,10 @@ namespace SSK_ERP.Controllers
                 }
                 catch
                 {
-                    // Swallow cleanup errors; do not block new upload
+                    // Swallow cleanup errors
                 }
 
-                // Unique batch id for this upload so we can safely clean up temp rows later
                 var uploadBatchId = Guid.NewGuid();
-
-                string fullText = extractedText ?? string.Empty;
-                var allLines = fullText
-                    .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(l => l.Trim())
-                    .ToList();
-
-                // ---------------- Header parsing ----------------
-                string poNumber = null;
-                DateTime? poDate = null;
-                string billingName = null;
-                string billingCustomerName = null;
-                string billingAddress = null;
-                string billingGstin = null;
-                string supplierName = null;
-                decimal? totalAmount = null;
-                decimal? grossAmount = null;
-                int? creditPeriodDays = null;
-                DateTime? receiveByDate = null;
-                DateTime? approvedDate = null;
-
-                // PO number and PO date
-                var poMatch = Regex.Match(fullText,
-                    @"PO\s*#\s*(?<po>.+?)\s+PO Date\s+(?<date>\d{1,2}/\d{1,2}/\d{4})",
-                    RegexOptions.IgnoreCase);
-                if (poMatch.Success)
-                {
-                    poNumber = poMatch.Groups["po"].Value.Trim();
-                    var dateStr = poMatch.Groups["date"].Value.Trim();
-                    if (DateTime.TryParse(dateStr, CultureInfo.GetCultureInfo("en-IN"), DateTimeStyles.None, out var dtPo))
-                    {
-                        poDate = dtPo;
-                    }
-                }
-
-                // Remember PO Number for reference number in final TransactionMaster
-                Session["SalesOrderUploadPoNumber"] = poNumber;
-
-                // Billing and supplier names (multi-line billing block, then supplier name)
-                int headerIndex = allLines.FindIndex(l => l.StartsWith("Billing Name and Address", StringComparison.OrdinalIgnoreCase));
-                if (headerIndex >= 0)
-                {
-                    int indiaIndex = allLines.FindIndex(headerIndex + 1, l => string.Equals(l, "India", StringComparison.OrdinalIgnoreCase));
-
-                    if (indiaIndex >= 0)
-                    {
-                        // Billing block: from first line under the header up to the line after "India"
-                        int start = headerIndex + 1;
-                        int end = Math.Min(indiaIndex + 1, allLines.Count - 1); // includes GST line after India
-
-                        if (start <= end)
-                        {
-                            var billingLines = allLines
-                                .Skip(start)
-                                .Take(end - start + 1)
-                                .ToList();
-
-                            // First line is billing name (e.g. PHARMA STORE)
-                            if (billingLines.Count > 0)
-                            {
-                                billingName = billingLines[0];
-                            }
-
-                            // Detect GSTIN in last line if present
-                            if (billingLines.Count > 1)
-                            {
-                                var gstCandidate = billingLines[billingLines.Count - 1].Replace(" ", string.Empty);
-                                if (Regex.IsMatch(gstCandidate, @"^[0-9]{2}[A-Z0-9]{13}$", RegexOptions.IgnoreCase))
-                                {
-                                    billingGstin = billingLines[billingLines.Count - 1];
-                                    billingLines.RemoveAt(billingLines.Count - 1);
-                                }
-                            }
-
-                            // Second line contains customer name + maybe part of address
-                            if (billingLines.Count > 1)
-                            {
-                                var secondLine = billingLines[1];
-                                int commaIndex = secondLine.IndexOf(',');
-                                var addrParts = new List<string>();
-
-                                if (commaIndex > 0)
-                                {
-                                    billingCustomerName = secondLine.Substring(0, commaIndex).Trim();
-                                    var restSecond = secondLine.Substring(commaIndex + 1).Trim();
-                                    if (!string.IsNullOrEmpty(restSecond))
-                                    {
-                                        addrParts.Add(restSecond);
-                                    }
-                                }
-                                else
-                                {
-                                    billingCustomerName = secondLine.Trim();
-                                }
-
-                                // Remaining lines (from index 2 onwards) are address lines
-                                for (int i = 2; i < billingLines.Count; i++)
-                                {
-                                    addrParts.Add(billingLines[i]);
-                                }
-
-                                if (addrParts.Count > 0)
-                                {
-                                    billingAddress = string.Join(Environment.NewLine, addrParts);
-                                }
-                            }
-                        }
-
-                        // Supplier name: first line after the billing block (e.g. 8848 SMA REMEDIES)
-                        if (indiaIndex + 2 < allLines.Count)
-                        {
-                            supplierName = allLines[indiaIndex + 2];
-                        }
-                    }
-                    else if (headerIndex + 1 < allLines.Count)
-                    {
-                        // Fallback: at least capture the first line under billing header
-                        billingName = allLines[headerIndex + 1];
-                    }
-                }
-
-                // Totals
-                var totalAmtMatch = Regex.Match(fullText,
-                    @"Total Amount\s+Rs\.\s*(?<amt>[0-9,]+\.\d+)",
-                    RegexOptions.IgnoreCase);
-                if (totalAmtMatch.Success)
-                {
-                    var amtStr = totalAmtMatch.Groups["amt"].Value.Replace(",", "");
-                    if (decimal.TryParse(amtStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var dec))
-                    {
-                        totalAmount = dec;
-                    }
-                }
-
-                var grossAmtMatch = Regex.Match(fullText,
-                    @"Gross Amount\s+Rs\.\s*(?<amt>[0-9,]+\.\d+)",
-                    RegexOptions.IgnoreCase);
-                if (grossAmtMatch.Success)
-                {
-                    var amtStr = grossAmtMatch.Groups["amt"].Value.Replace(",", "");
-                    if (decimal.TryParse(amtStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var dec))
-                    {
-                        grossAmount = dec;
-                    }
-                }
-
-                // Credit period
-                var creditMatch = Regex.Match(fullText,
-                    @"Credit Period\s+(?<days>\d+)\s+days",
-                    RegexOptions.IgnoreCase);
-                if (creditMatch.Success && int.TryParse(creditMatch.Groups["days"].Value, out var days))
-                {
-                    creditPeriodDays = days;
-                }
-
-                // Receive By date
-                var receiveMatch = Regex.Match(fullText,
-                    @"Receive By\s+(?<date>\d{1,2}/\d{1,2}/\d{4})",
-                    RegexOptions.IgnoreCase);
-                if (receiveMatch.Success)
-                {
-                    var dateStr = receiveMatch.Groups["date"].Value.Trim();
-                    if (DateTime.TryParse(dateStr, CultureInfo.GetCultureInfo("en-IN"), DateTimeStyles.None, out var dtRec))
-                    {
-                        receiveByDate = dtRec;
-                    }
-                }
-
-                // Approved Date (full date-time string before "Total CGST Amt")
-                var approvedMatch = Regex.Match(fullText,
-                    @"Approved Date\s+(?<dt>.+?)\s+Total CGST Amt",
-                    RegexOptions.IgnoreCase);
-                if (approvedMatch.Success)
-                {
-                    var dtStr = approvedMatch.Groups["dt"].Value.Trim();
-                    if (DateTime.TryParse(dtStr, CultureInfo.GetCultureInfo("en-IN"), DateTimeStyles.AssumeLocal, out var dtApp))
-                    {
-                        approvedDate = dtApp;
-                    }
-                }
-
-                // Insert structured header row (plus full text)
                 object DbValue(object value) => value ?? (object)DBNull.Value;
 
                 int masterId = db.Database.SqlQuery<int>(
@@ -728,197 +491,53 @@ namespace SSK_ERP.Controllers
                     uploadBatchId,
                     originalFileName ?? string.Empty,
                     uploadedBy,
-                    DbValue(poNumber),
-                    DbValue(poDate),
-                    DbValue(billingName),
-                    DbValue(billingCustomerName),
-                    DbValue(billingAddress),
-                    DbValue(billingGstin),
-                    DbValue(supplierName),
-                    DbValue(totalAmount),
-                    DbValue(grossAmount),
-                    DbValue(creditPeriodDays),
-                    DbValue(receiveByDate),
-                    DbValue(approvedDate),
-                    fullText
-                ).Single();
+                    DbValue(excelData.PoNumber),
+                    DbValue(null),
+                    DbValue("Excel Upload"),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue(null),
+                    DbValue("Excel Upload")).FirstOrDefault();
 
-                // ---------------- Detail parsing (only item rows) ----------------
-                int itemsHeaderIndex = allLines.FindIndex(l =>
-                    l.StartsWith("Sno Item/Drug Name", StringComparison.OrdinalIgnoreCase)
-                    || l.StartsWith("Sn Item/Drug Name", StringComparison.OrdinalIgnoreCase));
-                if (itemsHeaderIndex >= 0)
+                if (masterId <= 0)
                 {
-                    var itemBlocks = new List<string>();
-                    StringBuilder currentItem = null;
-
-                    for (int i = itemsHeaderIndex + 1; i < allLines.Count; i++)
-                    {
-                        var line = allLines[i];
-
-                        if (IsSplitSerialWholePart(line)
-                            && i + 2 < allLines.Count
-                            && IsSplitSerialDecimalPart(allLines[i + 1])
-                            && !IsItemDetailNoise(allLines[i + 2]))
-                        {
-                            line = line.Trim() + allLines[i + 1].Trim() + " " + allLines[i + 2].Trim();
-                            i += 2;
-                        }
-
-                        if (IsItemDetailTerminator(line))
-                        {
-                            break;
-                        }
-
-                        if (line.StartsWith("Prepared by", StringComparison.OrdinalIgnoreCase))
-                        {
-                            break;
-                        }
-
-                        if (IsItemDetailNoise(line))
-                        {
-                            continue;
-                        }
-
-                        bool startsWithNumber = IsItemRowStart(line);
-
-                        if (startsWithNumber)
-                        {
-                            if (currentItem != null)
-                            {
-                                itemBlocks.Add(currentItem.ToString().Trim());
-                            }
-                            currentItem = new StringBuilder();
-                            currentItem.Append(line);
-                        }
-                        else if (currentItem != null)
-                        {
-                            currentItem.Append(" " + line);
-                        }
-                    }
-
-                    if (currentItem != null)
-                    {
-                        itemBlocks.Add(currentItem.ToString().Trim());
-                    }
-
-                    int lineNo = 1;
-
-                    foreach (var block in itemBlocks)
-                    {
-                        var normalized = Regex.Replace(block, @"\s+", " ").Trim();
-                        var tokens = normalized.Split(' ');
-                        if (tokens.Length < 10)
-                        {
-                            continue;
-                        }
-
-                        int hsnIndex = Array.FindIndex(tokens, t => Regex.IsMatch(t, @"^\d{6,8}$"));
-                        if (hsnIndex <= 1)
-                        {
-                            continue;
-                        }
-
-                        string itemName = string.Join(" ", tokens.Skip(1).Take(hsnIndex - 1));
-                        string hsnCode = tokens[hsnIndex];
-
-                        decimal ParseDecimalOrZero(string s)
-                        {
-                            if (string.IsNullOrWhiteSpace(s)) return 0m;
-                            s = s.Replace(",", string.Empty);
-                            if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var val))
-                            {
-                                return val;
-                            }
-                            return 0m;
-                        }
-
-                        decimal qty = 0m;
-                        if (hsnIndex + 1 < tokens.Length)
-                        {
-                            qty = ParseDecimalOrZero(tokens[hsnIndex + 1]);
-                        }
-
-                        int idx = hsnIndex + 2; // skip qty
-                        if (idx < tokens.Length)
-                        {
-                            idx++; // skip Free Qty flag (e.g. "No")
-                        }
-
-                        var uqcParts = new List<string>();
-                        while (idx < tokens.Length && tokens[idx] != "Rs.")
-                        {
-                            uqcParts.Add(tokens[idx]);
-                            idx++;
-                        }
-                        string uqc = string.Join(" ", uqcParts).Trim();
-
-                        decimal ratePerUnit = 0m;
-                        decimal discountPercent = 0m;
-                        decimal cgstPercent = 0m;
-                        decimal sgstPercent = 0m;
-                        decimal igstPercent = 0m;
-                        decimal grossLineAmount = 0m;
-
-                        if (idx < tokens.Length && tokens[idx] == "Rs." && idx + 1 < tokens.Length)
-                        {
-                            ratePerUnit = ParseDecimalOrZero(tokens[idx + 1]);
-                            idx += 2;
-
-                            if (idx < tokens.Length) { discountPercent = ParseDecimalOrZero(tokens[idx]); idx++; }
-                            if (idx < tokens.Length) { cgstPercent = ParseDecimalOrZero(tokens[idx]); idx++; }
-                            if (idx < tokens.Length) { sgstPercent = ParseDecimalOrZero(tokens[idx]); idx++; }
-                            if (idx < tokens.Length) { igstPercent = ParseDecimalOrZero(tokens[idx]); idx++; }
-
-                            int secondRsIndex = Array.FindIndex(tokens, idx, t => t == "Rs.");
-                            if (secondRsIndex >= 0 && secondRsIndex + 1 < tokens.Length)
-                            {
-                                grossLineAmount = ParseDecimalOrZero(tokens[secondRsIndex + 1]);
-                            }
-                            else
-                            {
-                                grossLineAmount = ParseDecimalOrZero(tokens.Last());
-                            }
-                        }
-
-                        var rawLineText = block.Length > 500 ? block.Substring(0, 500) : block;
-
-                        db.Database.ExecuteSqlCommand(
-                            "INSERT INTO TransactionDetailTemp (TransactionMasterTempId, [LineNo], ItemDrugName, HsnCode, Qty, FreeQty, Uqc, RatePerUnit, DiscountPercent, CgstPercent, SgstPercent, IgstPercent, GrossAmount, RawLineText) " +
-                            "VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13);",
-                            masterId,
-                            lineNo,
-                            itemName,
-                            hsnCode,
-                            qty,
-                            0m, // FreeQty
-                            uqc,
-                            ratePerUnit,
-                            discountPercent,
-                            cgstPercent,
-                            sgstPercent,
-                            igstPercent,
-                            grossLineAmount,
-                            rawLineText
-                        );
-
-                        lineNo++;
-                    }
+                    TempData["ErrorMessage"] = "Failed to create temporary record.";
+                    return RedirectToAction("Index");
                 }
 
+                // Insert detail rows
+                foreach (var row in excelData.Items)
+                {
+                    db.Database.ExecuteSqlCommand(
+                        "INSERT INTO TransactionDetailTemp (TransactionMasterTempId, [LineNo], ItemDrugName, HsnCode, Qty, RatePerUnit, GrossAmount) " +
+                        "VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)",
+                        masterId,
+                        row.LineNo,
+                        DbValue(row.ItemDrugName),
+                        DbValue(null),
+                        DbValue(row.Qty),
+                        DbValue(row.RatePerUnit),
+                        DbValue(row.GrossAmount));
+                }
+
+                Session["LastExcelUploadBatchId"] = uploadBatchId.ToString();
+                Session["LastExcelTransactionMasterTempId"] = masterId;
                 TempData["UploadBatchId"] = uploadBatchId.ToString();
                 TempData["TransactionMasterTempId"] = masterId;
 
-                // Track current temp ids in session so we can clean them on next upload if user does not confirm
-                Session["LastUploadBatchId"] = uploadBatchId.ToString();
-                Session["LastTransactionMasterTempId"] = masterId;
+                return RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = "Error saving extracted data: " + ex.Message;
+                TempData["ErrorMessage"] = "Error saving Excel data: " + ex.Message;
+                return RedirectToAction("Index");
             }
-
-            return RedirectToAction("Index");
         }
 
         [HttpPost]
@@ -930,7 +549,6 @@ namespace SSK_ERP.Controllers
             string uploadBatchId,
             int? transactionMasterTempId)
         {
-            // uploadedSalesOrderId is no longer used; a fresh TransactionMaster will be created here
             if (detailIds == null || actualMaterialIds == null || detailIds.Length == 0 || detailIds.Length != actualMaterialIds.Length)
             {
                 TempData["ErrorMessage"] = "Unable to confirm uploaded details. Please try again.";
@@ -951,9 +569,8 @@ namespace SSK_ERP.Controllers
 
             try
             {
-                // Resolve customer from session (selected at upload time)
                 int customerId;
-                var customerIdObj = Session["SalesOrderUploadCustomerId"];
+                var customerIdObj = Session["SalesOrderExcelUploadCustomerId"];
                 if (customerIdObj == null || !int.TryParse(customerIdObj.ToString(), out customerId) || customerId <= 0)
                 {
                     TempData["ErrorMessage"] = "Customer information for this upload could not be found. Please upload again.";
@@ -974,7 +591,6 @@ namespace SSK_ERP.Controllers
                     tranStateType = state.STATETYPE;
                 }
 
-                // Load temp header and detail rows
                 int masterTempId = transactionMasterTempId.Value;
 
                 var tempDetails = db.Database.SqlQuery<TransactionDetailTempRow>(
@@ -988,7 +604,6 @@ namespace SSK_ERP.Controllers
                     return RedirectToAction("Index");
                 }
 
-                // Preload materials and HSN info
                 var distinctMaterialIds = actualMaterialIds.Distinct().ToList();
                 var materialMap = db.MaterialMasters
                     .Where(m => distinctMaterialIds.Contains(m.MTRLID))
@@ -1100,7 +715,6 @@ namespace SSK_ERP.Controllers
                 decimal totalIgst = calcRows.Sum(r => r.Igst);
                 decimal totalNet = calcRows.Sum(r => r.Net);
 
-                // Company and transaction numbering
                 var compyObj = Session["CompyId"] ?? Session["compyid"];
                 int compyId = compyObj != null ? Convert.ToInt32(compyObj) : 1;
 
@@ -1112,7 +726,6 @@ namespace SSK_ERP.Controllers
                 int nextTranNo = (maxTranNo ?? 0) + 1;
                 string trandNo = nextTranNo.ToString("D4");
 
-                // User Ids for stored procedure (int, as originally used by PR_TRANSACTIONMASTER_INSRT)
                 int cusrId = 0;
                 var sessUsr = Session["CUSRID"];
                 if (sessUsr != null)
@@ -1122,7 +735,6 @@ namespace SSK_ERP.Controllers
 
                 int lmusId = cusrId;
 
-                // User name string we want ultimately stored in TRANSACTIONMASTER.CUSRID / LMUSRID
                 string userNameForTran;
                 if (Session["CUSRID"] != null)
                 {
@@ -1141,8 +753,7 @@ namespace SSK_ERP.Controllers
                     userNameForTran = "System";
                 }
 
-                // Use PO number from session (if parsed) as TRANREFNO
-                string poNumberRef = Session["SalesOrderUploadPoNumber"] as string;
+                string poNumberRef = Session["SalesOrderExcelUploadPoNumber"] as string;
                 if (string.IsNullOrWhiteSpace(poNumberRef))
                 {
                     poNumberRef = "-";
@@ -1152,7 +763,6 @@ namespace SSK_ERP.Controllers
                     poNumberRef = poNumberRef.Trim();
                 }
 
-                // Check if this TRANREFNO already exists for Sales Order (REGSTRID = 1)
                 if (!string.IsNullOrWhiteSpace(poNumberRef) && poNumberRef != "-")
                 {
                     var existingOrder = db.TransactionMasters
@@ -1171,11 +781,10 @@ namespace SSK_ERP.Controllers
                 DateTime tranTime = DateTime.Now;
                 DateTime prcsDate = DateTime.Now;
 
-                // Call PR_TRANSACTIONMASTER_INSRT to create TransactionMaster
                 var pCompyId = new SqlParameter("@COMPYID", SqlDbType.Int) { Value = compyId };
                 var pSdptId = new SqlParameter("@SDPTID", SqlDbType.Int) { Value = 0 };
                 var pRegstrId = new SqlParameter("@REGSTRID", SqlDbType.Int) { Value = SalesOrderRegisterId };
-                var pTranBType = new SqlParameter("@TRANBTYPE", SqlDbType.Int) { Value = 1 };
+                var pTranBType = new SqlParameter("@TRANBTYPE", SqlDbType.Int) { Value = 2 };
                 var pTranDate = new SqlParameter("@TRANDATE", SqlDbType.DateTime) { Value = tranDate };
                 var pTranTime = new SqlParameter("@TRANTIME", SqlDbType.DateTime) { Value = tranTime };
                 var pTranNo = new SqlParameter("@TRANNO", SqlDbType.Int) { Value = nextTranNo };
@@ -1238,7 +847,6 @@ namespace SSK_ERP.Controllers
                     throw new Exception("Failed to create TransactionMaster record.");
                 }
 
-                // After the SP insert, update the created TRANSACTIONMASTER row to store the username
                 try
                 {
                     var createdMaster = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == tranmid);
@@ -1252,10 +860,8 @@ namespace SSK_ERP.Controllers
                 }
                 catch
                 {
-                    // Do not block the operation if this post-update fails
                 }
 
-                // Insert detail rows using PR_TRANSACTIONDETAIL_INSRT
                 foreach (var r in calcRows)
                 {
                     var pPtranMid = new SqlParameter("@PTRANMID", SqlDbType.Int) { Value = tranmid };
@@ -1301,7 +907,6 @@ namespace SSK_ERP.Controllers
                         pDetOutId);
                 }
 
-                // Clean up temp tables
                 Guid batchGuid;
                 if (!string.IsNullOrWhiteSpace(uploadBatchId) && Guid.TryParse(uploadBatchId, out batchGuid))
                 {
@@ -1309,22 +914,101 @@ namespace SSK_ERP.Controllers
                         "DELETE FROM TransactionDetailTemp WHERE TransactionMasterTempId = @p0; DELETE FROM TransactionMasterTemp WHERE UploadBatchId = @p1;",
                         masterTempId,
                         batchGuid);
-
-                    // Clear session markers now that temp data has been fully cleaned up for this upload
-                    Session["LastUploadBatchId"] = null;
-                    Session["LastTransactionMasterTempId"] = null;
-                    Session["SalesOrderUploadCustomerId"] = null;
-                    Session["SalesOrderUploadPoNumber"] = null;
                 }
 
-                TempData["SuccessMessage"] = "Sales order uploaded successfully.";
+                Session["LastExcelUploadBatchId"] = null;
+                Session["LastExcelTransactionMasterTempId"] = null;
+                Session["SalesOrderExcelUploadCustomerId"] = null;
+                Session["SalesOrderExcelUploadPoNumber"] = null;
+
+                TempData["SuccessMessage"] = "Sales Order created successfully from Excel upload.";
                 return RedirectToAction("Index");
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = "Error confirming uploaded details: " + ex.Message;
+                TempData["ErrorMessage"] = "Error saving sales order: " + ex.Message;
                 return RedirectToAction("Index");
             }
+        }
+
+        private class UploadDetailCalcRow
+        {
+            public int MaterialId { get; set; }
+            public string MaterialCode { get; set; }
+            public string MaterialName { get; set; }
+            public decimal ProfitPercent { get; set; }
+            public int HsnId { get; set; }
+            public decimal Qty { get; set; }
+            public decimal Rate { get; set; }
+            public decimal ActualRate { get; set; }
+            public decimal Gross { get; set; }
+            public decimal Cgst { get; set; }
+            public decimal Sgst { get; set; }
+            public decimal Igst { get; set; }
+            public decimal Net { get; set; }
+        }
+
+        private string ConvertAmountToWords(decimal amount)
+        {
+            try
+            {
+                string[] ones = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine" };
+                string[] teens = { "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
+                string[] tens = { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
+
+                if (amount == 0) return "Zero Rupees Only";
+
+                int rupees = (int)amount;
+                int paise = (int)((amount - rupees) * 100);
+
+                string words = string.Empty;
+
+                if (rupees >= 10000000)
+                {
+                    words += ConvertNumberToWords(rupees / 10000000, ones, teens, tens) + " Crore ";
+                    rupees %= 10000000;
+                }
+                if (rupees >= 100000)
+                {
+                    words += ConvertNumberToWords(rupees / 100000, ones, teens, tens) + " Lakh ";
+                    rupees %= 100000;
+                }
+                if (rupees >= 1000)
+                {
+                    words += ConvertNumberToWords(rupees / 1000, ones, teens, tens) + " Thousand ";
+                    rupees %= 1000;
+                }
+                if (rupees >= 100)
+                {
+                    words += ConvertNumberToWords(rupees / 100, ones, teens, tens) + " Hundred ";
+                    rupees %= 100;
+                }
+                if (rupees > 0)
+                {
+                    words += ConvertNumberToWords(rupees, ones, teens, tens);
+                }
+
+                words = words.Trim() + " Rupees";
+
+                if (paise > 0)
+                {
+                    words += " and " + ConvertNumberToWords(paise, ones, teens, tens) + " Paise";
+                }
+
+                return words + " Only";
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private string ConvertNumberToWords(int number, string[] ones, string[] teens, string[] tens)
+        {
+            if (number < 10) return ones[number];
+            if (number < 20) return teens[number - 10];
+            if (number < 100) return tens[number / 10] + (number % 10 > 0 ? " " + ones[number % 10] : string.Empty);
+            return string.Empty;
         }
     }
 }

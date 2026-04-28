@@ -325,6 +325,7 @@
     <Compile Include="Controllers\Reports\ChellanWiseStockReportController.cs" />
     <Compile Include="Controllers\Sales\SalesOrderController.cs" />
     <Compile Include="Controllers\Sales\SalesOrderUploadController.cs" />
+    <Compile Include="Controllers\Sales\SalesOrderExcelUploadController.cs" />
     <Compile Include="Controllers\Sales\SalesInvoiceController.cs" />
     <Compile Include="Controllers\Sales\SalesInvoiceFromSalesOrderOthersController.cs" />
     <Compile Include="Controllers\Sales\SalesReturnController.cs" />
@@ -1177,6 +1178,7 @@
     <Content Include="Content\bootstrap-grid.rtl.css.map" />
     <Content Include="Content\bootstrap-grid.min.css.map" />
     <Content Include="Content\bootstrap-grid.css.map" />
+    <Content Include="Views\SalesOrderExcelUpload\Index.cshtml" />
     <Content Include="Views\SalesOrderUpload\Index.cshtml" />
     <Content Include="Views\SalesEInvoice\Index.cshtml" />
     <Content Include="Views\CreditNoteEInvoice\Index.cshtml" />
