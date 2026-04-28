@@ -180,6 +180,46 @@ namespace SSK_ERP.Models
         [Column("PRCSDATE")]
         public DateTime PRCSDATE { get; set; }
 
+        [Column("TRANSPORTERID")]
+        public int? TRANSPORTERID { get; set; }
+
+        [MaxLength(250)]
+        [Column("TRANSPORTERNAME")]
+        public string TRANSPORTERNAME { get; set; }
+
+        [MaxLength(50)]
+        [Column("VECHICLENO")]
+        public string VECHICLENO { get; set; }
+
+        [MaxLength(100)]
+        [Column("DOCUMENTNO")]
+        public string DOCUMENTNO { get; set; }
+
+        [Column("DOCUMENTDATE")]
+        public DateTime? DOCUMENTDATE { get; set; }
+
+        [Column("DISTANCE", TypeName = "numeric")]
+        public decimal? DISTANCE { get; set; }
+
+        [MaxLength(50)]
+        [Column("EWAYBILLNO")]
+        public string EWAYBILLNO { get; set; }
+
+        [Column("EWAYBILLDATE")]
+        public DateTime? EWAYBILLDATE { get; set; }
+
+        [Column("INFODETAILS")]
+        public string INFODETAILS { get; set; }
+
+        [Column("EWAYBILLVALIDTILL")]
+        public DateTime? EWAYBILLVALIDTILL { get; set; }
+
+        [Column("EWAYBILLQRCODEURL")]
+        public string EWAYBILLQRCODEURL { get; set; }
+
+        [Column("EWAYBILLPDFURL")]
+        public string EWAYBILLPDFURL { get; set; }
+
         public virtual ICollection<TransactionDetail> Details { get; set; }
     }
 }

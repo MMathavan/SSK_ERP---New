@@ -1215,6 +1215,13 @@ namespace SSK_ERP.Controllers
                             string refNo2 = material != null ? material.MTRLCODE : string.Empty;
                             string refName2 = material != null ? material.MTRLDESC : (itm.MaterialName ?? string.Empty);
 
+                            decimal profitPercent = material != null ? material.MTRLPRFT : 0m;
+                            decimal actualRate = rate;
+                            if (actualRate > 0 && profitPercent != 0m)
+                            {
+                                actualRate = Math.Round(actualRate + ((actualRate * profitPercent) / 100m), 2);
+                            }
+
                             decimal cgstAmt = 0m;
                             decimal sgstAmt = 0m;
                             decimal igstAmt = 0m;
@@ -1254,12 +1261,12 @@ namespace SSK_ERP.Controllers
                                 TRANDREFID = itm.MaterialId,
                                 TRANDREFNO = refNo2,
                                 TRANDREFNAME = refName2,
-                                TRANDMTRLPRFT = 0,
+                                TRANDMTRLPRFT = profitPercent,
                                 HSNID = hsnId,
                                 PACKMID = packMid,
                                 TRANDQTY = qty,
                                 TRANDRATE = rate,
-                                TRANDARATE = rate,
+                                TRANDARATE = actualRate,
                                 TRANDGAMT = gross,
                                 TRANDCGSTAMT = cgstAmt,
                                 TRANDSGSTAMT = sgstAmt,
@@ -2621,11 +2628,19 @@ namespace SSK_ERP.Controllers
                 string refNo = string.Empty;
                 string refName = item.MaterialName;
 
+                decimal profitPercent = 0m;
+                decimal actualRate = rate;
+
                 if (material != null)
                 {
                     hsnId = material.HSNID;
                     refNo = material.MTRLCODE;
                     refName = material.MTRLDESC;
+                    profitPercent = material.MTRLPRFT;
+                    if (rate > 0 && profitPercent != 0m)
+                    {
+                        actualRate = Math.Round(rate + ((rate * profitPercent) / 100m), 2);
+                    }
                 }
 
                 hsnMap.TryGetValue(hsnId, out var hsn);
@@ -2682,12 +2697,12 @@ namespace SSK_ERP.Controllers
                     TRANDREFID = item.MaterialId,
                     TRANDREFNO = refNo ?? string.Empty,
                     TRANDREFNAME = refName ?? string.Empty,
-                    TRANDMTRLPRFT = 0,
+                    TRANDMTRLPRFT = profitPercent,
                     HSNID = hsnId,
                     PACKMID = packMid,
                     TRANDQTY = qty,
                     TRANDRATE = rate,
-                    TRANDARATE = rate,
+                    TRANDARATE = actualRate,
                     TRANDGAMT = gross,
                     TRANDCGSTAMT = cgstAmt,
                     TRANDSGSTAMT = sgstAmt,
