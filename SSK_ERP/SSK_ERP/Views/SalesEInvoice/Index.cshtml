@@ -239,6 +239,15 @@
                 ajax: {
                     url: '@Url.Action("GetAjaxData", "SalesEInvoice")',
                     type: 'GET',
+                    dataSrc: function (json) {
+                        if (!json) {
+                            return [];
+                        }
+                        if ($.isArray(json)) {
+                            return json;
+                        }
+                        return json.data || [];
+                    },
                     data: function (d) {
                         d.fromDate = $('#fromDate').val();
                         d.toDate = $('#toDate').val();
@@ -300,8 +309,10 @@
                             var id = row['TRANMID'];
                             var uploadUrl = '@Url.Action("CInvoice", "SalesEInvoice")' + '/' + id;
                             var printUrl = '@Url.Action("Print", "SalesEInvoice")' + '?id=' + id;
+                            var ewayPrintUrl = '@Url.Action("EWayPrint", "SalesEInvoice")' + '?id=' + id;
                             var ackNo = $.trim(row['AckNo'] || '');
                             var isLocked = ackNo.length > 0;
+                            var ewayBillNo = $.trim(row['EWayBillNo'] || '');
 
                             var html = '';
                             if (isLocked) {
@@ -316,6 +327,14 @@
                                 html += '<a href="' + printUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Print</a>';
                             } else {
                                 html += '<a href="#" class="btn btn-action btn-print" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Print\');"><i class="fa fa-print"></i> Print</a>';
+                            }
+
+                            if (canPrint && ewayBillNo.length > 0) {
+                                html += '<a href="' + ewayPrintUrl + '" class="btn btn-action btn-print" target="_blank"><i class="fa fa-print"></i> Eway Print</a>';
+                            } else if (canPrint) {
+                                html += '<span class="btn btn-action btn-print btn-disabled"><i class="fa fa-print"></i> Eway Print</span>';
+                            } else {
+                                html += '<a href="#" class="btn btn-action btn-print" style="opacity:0.5;pointer-events:auto;" onclick="return noAccess(\'Eway Print\');"><i class="fa fa-print"></i> Eway Print</a>';
                             }
                             return html;
                         }
@@ -387,11 +406,17 @@
                     $.ajax({
                         type: 'post',
                         url: '@Url.Action("CInvoice", "SalesEInvoice")/' + idx + '?showjson=1',
+                        dataType: 'json',
                         success: function (jdata) {
-                            var serverMsg = jdata;
-                            if (jdata && typeof jdata === 'object' && jdata.message !== undefined) {
-                                serverMsg = jdata.message;
-                                var combined = 'REQUEST JSON:\n\n' + (jdata.requestJson || '') + '\n\n\nRESPONSE JSON:\n\n' + (jdata.responseJson || '');
+                            var parsed = jdata;
+                            if (typeof jdata === 'string') {
+                                try { parsed = JSON.parse(jdata); } catch (e) { parsed = jdata; }
+                            }
+
+                            var serverMsg = parsed;
+                            if (parsed && typeof parsed === 'object' && parsed.message !== undefined) {
+                                serverMsg = parsed.message;
+                                var combined = 'REQUEST JSON:\n\n' + (parsed.requestJson || '') + '\n\n\nRESPONSE JSON:\n\n' + (parsed.responseJson || '');
                                 if (window.Swal && Swal.fire) {
                                     Swal.fire({
                                         title: 'EInvoice JSON',

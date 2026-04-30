@@ -258,6 +258,7 @@ namespace SSK_ERP.Controllers
                                     CustomerName = GetString(reader, "TRANREFNAME", string.Empty),
                                     Amount = GetDecimal(reader, "TRANNAMT", 0m),
                                     AckNo = GetString(reader, "ACKNO", string.Empty),
+                                    EWayBillNo = GetString(reader, "EWAYBILLNO", string.Empty),
                                     Status = statusText
                                 });
                             }
@@ -323,6 +324,71 @@ namespace SSK_ERP.Controllers
 
             TempData["ErrorMessage"] = "Sales EInvoice print data could not be loaded.";
             return RedirectToAction("Index");
+        }
+
+        [Authorize(Roles = "SalesEInvoicePrint")]
+        public ActionResult EWayPrint(int id)
+        {
+            var master = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == id && t.REGSTRID == SalesInvoiceRegisterId);
+            if (master == null)
+            {
+                TempData["ErrorMessage"] = "Sales transaction not found.";
+                return RedirectToAction("Index");
+            }
+
+            if (string.IsNullOrWhiteSpace(master.EWAYBILLNO)
+                && string.IsNullOrWhiteSpace(master.EWAYBILLQRCODEURL)
+                && string.IsNullOrWhiteSpace(master.EWAYBILLPDFURL))
+            {
+                TempData["ErrorMessage"] = "EWay Bill details not available for this invoice. Please upload EWay Bill first.";
+                return RedirectToAction("Index");
+            }
+
+            var salesInvoiceController = new SalesInvoiceController();
+            var result = salesInvoiceController.Print(id) as ViewResult;
+            if (result == null)
+            {
+                TempData["ErrorMessage"] = "Sales invoice print data could not be loaded.";
+                return RedirectToAction("Index");
+            }
+
+            var model = result.Model as SalesInvoicePrintViewModel;
+            if (model != null)
+            {
+                var localQrVirtualPath = "~/QrCodeEWayBill/" + id + ".png";
+                var localQrPhysicalPath = Server.MapPath(localQrVirtualPath);
+                if (System.IO.File.Exists(localQrPhysicalPath))
+                {
+                    model.QrCodePath = localQrPhysicalPath;
+                }
+                else if (!string.IsNullOrWhiteSpace(master.EWAYBILLQRCODEURL))
+                {
+                    var qrUrl = master.EWAYBILLQRCODEURL.Trim();
+                    var isPhysicalFilePath = qrUrl.Contains(":\\") || qrUrl.Contains(":/");
+
+                    if (!qrUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                        && !qrUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                        && !qrUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                        && !qrUrl.StartsWith("~")
+                        && !isPhysicalFilePath)
+                    {
+                        if (qrUrl.StartsWith("/"))
+                        {
+                            model.QrCodePath = "https://my.gstzen.in" + qrUrl;
+                        }
+                        else
+                        {
+                            model.QrCodePath = "https://" + qrUrl;
+                        }
+                    }
+                    else
+                    {
+                        model.QrCodePath = qrUrl;
+                    }
+                }
+            }
+
+            return View("~/Views/SalesEInvoice/EWayPrint.cshtml", model ?? result.Model);
         }
 
         public async Task<ActionResult> oRG_CInvoice(int id = 0)/*10rs.reminder*/
@@ -1111,6 +1177,9 @@ SELECT
 
         public async Task CInvoice(int id = 0)/*10rs.reminder*/
         {
+            var showPortalResponse = string.Equals(Request.QueryString["showresponse"], "1", StringComparison.OrdinalIgnoreCase);
+            var showJson = string.Equals(Request.QueryString["showjson"], "1", StringComparison.OrdinalIgnoreCase);
+
             var master = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == id && t.REGSTRID == SalesInvoiceRegisterId);
             if (master != null && !string.IsNullOrWhiteSpace(master.ACKNO))
             {
@@ -1162,6 +1231,7 @@ SELECT
             string vhlno = null;
             string VehType = null;
             string TransMode = null;
+            var shouldIncludeEwayBillDetails = false;
 
             while (reader.Read())
             {
@@ -1177,6 +1247,99 @@ SELECT
                 //    VehType = "R";
                 //    TransMode = "1";
                 //}
+
+                if (HasColumn(reader, "EWAYBILLNO") && reader["EWAYBILLNO"] != DBNull.Value)
+                {
+                    ewaybillno = Convert.ToString(reader["EWAYBILLNO"]);
+                }
+
+                if (HasColumn(reader, "TRNSPRTGSTINNO") && reader["TRNSPRTGSTINNO"] != DBNull.Value)
+                {
+                    trnsprtgstinno = Convert.ToString(reader["TRNSPRTGSTINNO"]);
+                }
+                else if (HasColumn(reader, "TRANSPORTER_GST_NO") && reader["TRANSPORTER_GST_NO"] != DBNull.Value)
+                {
+                    trnsprtgstinno = Convert.ToString(reader["TRANSPORTER_GST_NO"]);
+                }
+
+                if (HasColumn(reader, "TRNSPRTNAME") && reader["TRNSPRTNAME"] != DBNull.Value)
+                {
+                    trnsprtname = Convert.ToString(reader["TRNSPRTNAME"]);
+                }
+                else if (HasColumn(reader, "TRANSPORTERNAME") && reader["TRANSPORTERNAME"] != DBNull.Value)
+                {
+                    trnsprtname = Convert.ToString(reader["TRANSPORTERNAME"]);
+                }
+
+                if (HasColumn(reader, "DISTANCE") && reader["DISTANCE"] != DBNull.Value)
+                {
+                    try
+                    {
+                        distance = Convert.ToInt32(Convert.ToDecimal(reader["DISTANCE"]));
+                    }
+                    catch
+                    {
+                        distance = 0;
+                    }
+                }
+
+                if (HasColumn(reader, "TRANDNO") && reader["TRANDNO"] != DBNull.Value)
+                {
+                    TransDocNo = Convert.ToString(reader["TRANDNO"]);
+                }
+                if (HasColumn(reader, "DOCUMENTNO") && reader["DOCUMENTNO"] != DBNull.Value)
+                {
+                    var docNoCandidate = Convert.ToString(reader["DOCUMENTNO"]);
+                    if (!string.IsNullOrWhiteSpace(docNoCandidate))
+                    {
+                        TransDocNo = docNoCandidate;
+                    }
+                }
+
+                if (HasColumn(reader, "TRANDATE") && reader["TRANDATE"] != DBNull.Value)
+                {
+                    try
+                    {
+                        TransDocDt = Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+                    }
+                    catch
+                    {
+                        TransDocDt = null;
+                    }
+                }
+                if (HasColumn(reader, "DOCUMENTDATE") && reader["DOCUMENTDATE"] != DBNull.Value)
+                {
+                    try
+                    {
+                        TransDocDt = Convert.ToDateTime(reader["DOCUMENTDATE"]).Date.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+                    }
+                    catch
+                    {
+                        TransDocDt = TransDocDt;
+                    }
+                }
+
+                if (HasColumn(reader, "VHLNO") && reader["VHLNO"] != DBNull.Value)
+                {
+                    vhlno = Convert.ToString(reader["VHLNO"]);
+                }
+                else if (HasColumn(reader, "VECHICLENO") && reader["VECHICLENO"] != DBNull.Value)
+                {
+                    vhlno = Convert.ToString(reader["VECHICLENO"]);
+                }
+
+                VehType = "R";
+                TransMode = "1";
+
+                shouldIncludeEwayBillDetails =
+                    distance > 0
+                    && !string.IsNullOrWhiteSpace(trnsprtgstinno)
+                    && !string.IsNullOrWhiteSpace(trnsprtname)
+                    && !string.IsNullOrWhiteSpace(TransDocNo)
+                    && !string.IsNullOrWhiteSpace(TransDocDt)
+                    && !string.IsNullOrWhiteSpace(vhlno)
+                    && !string.IsNullOrWhiteSpace(VehType)
+                    && !string.IsNullOrWhiteSpace(TransMode);
 
                 // ADD THIS CODE HERE (Line ~1171):
                 var actualGstin = reader["COMPGSTNO"]?.ToString() ?? "NULL";
@@ -1283,7 +1446,27 @@ SELECT
 
                 };
 
-                stringjson = JsonConvert.SerializeObject(response);
+                if (shouldIncludeEwayBillDetails)
+                {
+                    var requestObj = JObject.FromObject(response);
+                    requestObj["EwbDtls"] = JObject.FromObject(new EwbDtls
+                    {
+                        TransId = trnsprtgstinno,
+                        TransName = trnsprtname,
+                        Distance = distance,
+                        TransDocNo = TransDocNo,
+                        TransDocDt = TransDocDt,
+                        VehNo = vhlno,
+                        VehType = VehType,
+                        TransMode = TransMode
+                    });
+
+                    stringjson = requestObj.ToString(Formatting.None);
+                }
+                else
+                {
+                    stringjson = JsonConvert.SerializeObject(response);
+                }
                 // ADD THIS CODE HERE (Line ~1287):
                 System.Diagnostics.Debug.WriteLine("JSON Length: " + stringjson.Length);
                 System.Diagnostics.Debug.WriteLine("JSON Preview: " + stringjson.Substring(0, Math.Min(200, stringjson.Length)));
@@ -1317,6 +1500,13 @@ SELECT
                     if (response != null)
                     {
                         var jsonString = await response.Content.ReadAsStringAsync();
+
+                        if (showPortalResponse)
+                        {
+                            Response.ContentType = "application/json";
+                            Response.Write(string.IsNullOrWhiteSpace(jsonString) ? "{}" : jsonString);
+                            return;
+                        }
 
                         // ADD THIS CODE HERE (Line ~1315):
                         System.Diagnostics.Debug.WriteLine("API Response: " + jsonString);
@@ -1410,6 +1600,58 @@ SELECT
                             //result = cmd.ExecuteScalar().ToString();
                             XmyConnection.Close();
 
+                            try
+                            {
+                                var ewayBillNoFromApi = data["EwbNo"] != null ? data["EwbNo"].Value<string>() : null;
+                                var ewayBillDateFromApi = data["EwbDt"] != null ? data["EwbDt"].Value<string>() : null;
+                                var ewayBillValidTillFromApi = data["EwbValidTill"] != null ? data["EwbValidTill"].Value<string>() : null;
+                                var ewayBillQrCodeUrlFromApi = data["EWayBillQrCodeUrl"] != null ? data["EWayBillQrCodeUrl"].Value<string>() : null;
+                                var ewayBillPdfUrlFromApi = data["EWayBillPdfUrl"] != null ? data["EWayBillPdfUrl"].Value<string>() : null;
+
+                                var infoDtlsToken = data["InfoDtls"];
+                                var infoDtlsJson = infoDtlsToken != null ? JsonConvert.SerializeObject(infoDtlsToken) : null;
+
+                                DateTime ewayBillDateParsed;
+                                DateTime? ewayBillDateValue = null;
+                                if (!string.IsNullOrWhiteSpace(ewayBillDateFromApi) && DateTime.TryParse(ewayBillDateFromApi, out ewayBillDateParsed))
+                                {
+                                    ewayBillDateValue = ewayBillDateParsed;
+                                }
+
+                                DateTime ewayValidTillParsed;
+                                DateTime? ewayValidTillValue = null;
+                                if (!string.IsNullOrWhiteSpace(ewayBillValidTillFromApi) && DateTime.TryParse(ewayBillValidTillFromApi, out ewayValidTillParsed))
+                                {
+                                    ewayValidTillValue = ewayValidTillParsed;
+                                }
+
+                                if (!string.IsNullOrWhiteSpace(ewayBillNoFromApi)
+                                    || !string.IsNullOrWhiteSpace(ewayBillQrCodeUrlFromApi)
+                                    || !string.IsNullOrWhiteSpace(ewayBillPdfUrlFromApi))
+                                {
+                                    using (var ewbConn = new SqlConnection(_connStr))
+                                    using (var ewbCmd = new SqlCommand("pr_EWayBill_Transaction_Update_Assgn_N01", ewbConn))
+                                    {
+                                        ewbCmd.CommandType = CommandType.StoredProcedure;
+                                        ewbCmd.Parameters.AddWithValue("@PTranMID", tranmid);
+                                        ewbCmd.Parameters.AddWithValue("@PEwayBillNo", (object)ewayBillNoFromApi ?? DBNull.Value);
+                                        ewbCmd.Parameters.AddWithValue("@PEwayBillDate", (object)ewayBillDateValue ?? DBNull.Value);
+                                        ewbCmd.Parameters.AddWithValue("@PInfoDetails", (object)infoDtlsJson ?? DBNull.Value);
+                                        ewbCmd.Parameters.AddWithValue("@PEwayBillValidTill", (object)ewayValidTillValue ?? DBNull.Value);
+                                        ewbCmd.Parameters.AddWithValue("@PEwayBillQrCodeUrl", (object)ewayBillQrCodeUrlFromApi ?? DBNull.Value);
+                                        ewbCmd.Parameters.AddWithValue("@PEwayBillPdfUrl", (object)ewayBillPdfUrlFromApi ?? DBNull.Value);
+                                        ewbCmd.Parameters.AddWithValue("@PCUSRID", (object)(Session["CUSRID"] != null ? Session["CUSRID"].ToString() : "") ?? DBNull.Value);
+
+                                        ewbConn.Open();
+                                        ewbCmd.ExecuteNonQuery();
+                                        ewbConn.Close();
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                            }
+
                             msg = "Uploaded Succesfully";
                         }
                         else
@@ -1418,6 +1660,30 @@ SELECT
                         }
                     }
 
+                }
+
+                if (showJson)
+                {
+                    var payload = new
+                    {
+                        message = msg,
+                        requestJson = stringjson,
+                        ewayDebug = new
+                        {
+                            shouldIncludeEwayBillDetails = shouldIncludeEwayBillDetails,
+                            distance = distance,
+                            transporterGstin = trnsprtgstinno,
+                            transporterName = trnsprtname,
+                            transDocNo = TransDocNo,
+                            transDocDt = TransDocDt,
+                            vehicleNo = vhlno,
+                            vehicleType = VehType,
+                            transportMode = TransMode
+                        }
+                    };
+                    Response.ContentType = "application/json";
+                    Response.Write(JsonConvert.SerializeObject(payload));
+                    return;
                 }
             }
             Response.Write(msg);
@@ -1542,6 +1808,340 @@ SELECT
 
         //    return ItemList;
         //}
+
+        public async Task<ActionResult> CInvoiceDebug(int id = 0)
+        {
+            SqlDataReader reader = null;
+            string _connStr = ConfigurationManager.ConnectionStrings["SSK_DefaultConnection"].ConnectionString;
+            SqlConnection myConnection = new SqlConnection(_connStr);
+            SqlConnection SmyConnection = new SqlConnection(_connStr);
+            var tranmid = id;
+
+            SqlCommand sqlCmd = new SqlCommand();
+            sqlCmd.CommandType = CommandType.Text;
+            sqlCmd.CommandText = "Select * from Z_NEW_SALES_EINVOICE_DETAILS Where TRANMID = " + tranmid;
+            sqlCmd.Connection = myConnection;
+            myConnection.Open();
+            reader = sqlCmd.ExecuteReader();
+
+            int custgid = 0;
+            string suptyp = "";
+            string stringjson = "";
+
+            decimal itemamt = 0;
+            decimal taxblamt = 0;
+            decimal discamt = 0;
+            decimal roff_amt = 0;
+            decimal cgst_amt = 0;
+            decimal sgst_amt = 0;
+            decimal igst_amt = 0;
+
+            string ewaybillno = null;
+            string trnsprtgstinno = null;
+            string trnsprtname = null;
+            int distance = 0;
+            string TransDocNo = null;
+            string TransDocDt = null;
+            string vhlno = null;
+            string VehType = null;
+            string TransMode = null;
+            var shouldIncludeEwayBillDetails = false;
+
+            while (reader.Read())
+            {
+                if (HasColumn(reader, "EWAYBILLNO") && reader["EWAYBILLNO"] != DBNull.Value)
+                {
+                    ewaybillno = Convert.ToString(reader["EWAYBILLNO"]);
+                }
+
+                if (HasColumn(reader, "TRNSPRTGSTINNO") && reader["TRNSPRTGSTINNO"] != DBNull.Value)
+                {
+                    trnsprtgstinno = Convert.ToString(reader["TRNSPRTGSTINNO"]);
+                }
+                else if (HasColumn(reader, "TRANSPORTER_GST_NO") && reader["TRANSPORTER_GST_NO"] != DBNull.Value)
+                {
+                    trnsprtgstinno = Convert.ToString(reader["TRANSPORTER_GST_NO"]);
+                }
+
+                if (HasColumn(reader, "TRNSPRTNAME") && reader["TRNSPRTNAME"] != DBNull.Value)
+                {
+                    trnsprtname = Convert.ToString(reader["TRNSPRTNAME"]);
+                }
+                else if (HasColumn(reader, "TRANSPORTERNAME") && reader["TRANSPORTERNAME"] != DBNull.Value)
+                {
+                    trnsprtname = Convert.ToString(reader["TRANSPORTERNAME"]);
+                }
+
+                if (HasColumn(reader, "DISTANCE") && reader["DISTANCE"] != DBNull.Value)
+                {
+                    try
+                    {
+                        distance = Convert.ToInt32(Convert.ToDecimal(reader["DISTANCE"]));
+                    }
+                    catch
+                    {
+                        distance = 0;
+                    }
+                }
+
+                if (HasColumn(reader, "TRANDNO") && reader["TRANDNO"] != DBNull.Value)
+                {
+                    TransDocNo = Convert.ToString(reader["TRANDNO"]);
+                }
+                if (HasColumn(reader, "DOCUMENTNO") && reader["DOCUMENTNO"] != DBNull.Value)
+                {
+                    var docNoCandidate = Convert.ToString(reader["DOCUMENTNO"]);
+                    if (!string.IsNullOrWhiteSpace(docNoCandidate))
+                    {
+                        TransDocNo = docNoCandidate;
+                    }
+                }
+
+                if (HasColumn(reader, "TRANDATE") && reader["TRANDATE"] != DBNull.Value)
+                {
+                    TransDocDt = Convert.ToDateTime(reader["TRANDATE"]).Date.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+                }
+                if (HasColumn(reader, "DOCUMENTDATE") && reader["DOCUMENTDATE"] != DBNull.Value)
+                {
+                    try
+                    {
+                        TransDocDt = Convert.ToDateTime(reader["DOCUMENTDATE"]).Date.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+                    }
+                    catch
+                    {
+                        TransDocDt = TransDocDt;
+                    }
+                }
+
+                if (HasColumn(reader, "VHLNO") && reader["VHLNO"] != DBNull.Value)
+                {
+                    vhlno = Convert.ToString(reader["VHLNO"]);
+                }
+                else if (HasColumn(reader, "VECHICLENO") && reader["VECHICLENO"] != DBNull.Value)
+                {
+                    vhlno = Convert.ToString(reader["VECHICLENO"]);
+                }
+
+                VehType = "R";
+                TransMode = "1";
+
+                shouldIncludeEwayBillDetails =
+                    distance > 0
+                    && !string.IsNullOrWhiteSpace(trnsprtgstinno)
+                    && !string.IsNullOrWhiteSpace(trnsprtname)
+                    && !string.IsNullOrWhiteSpace(TransDocNo)
+                    && !string.IsNullOrWhiteSpace(TransDocDt)
+                    && !string.IsNullOrWhiteSpace(vhlno)
+                    && !string.IsNullOrWhiteSpace(VehType)
+                    && !string.IsNullOrWhiteSpace(TransMode);
+
+                itemamt = Convert.ToDecimal(reader["DGAMT"]);
+                taxblamt = Convert.ToDecimal(reader["TRANGAMT"]);
+                cgst_amt = Convert.ToDecimal(reader["TRANCGSTAMT"]);
+                sgst_amt = Convert.ToDecimal(reader["TRANSGSTAMT"]);
+                igst_amt = Convert.ToDecimal(reader["TRANIGSTAMT"]);
+                discamt = 0;
+                roff_amt = Convert.ToDecimal(reader["TRANROAMT"]);
+                custgid = 1;
+                switch (custgid)
+                {
+                    case 6:
+                        suptyp = "SEZWP";
+                        break;
+                    default:
+                        suptyp = "B2B";
+                        break;
+                }
+
+                var response = new Response()
+                {
+                    Version = "1.1",
+                    TranDtls = new TranDtls()
+                    {
+                        TaxSch = "GST",
+                        SupTyp = suptyp,
+                        RegRev = "N",
+                        EcmGstin = null,
+                        IgstOnIntra = "N"
+                    },
+                    DocDtls = new DocDtls()
+                    {
+                        Typ = "INV",
+                        No = reader["TRANDNO"].ToString(),
+                        Dt = Convert.ToDateTime(reader["TRANDATE"]).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+                    },
+                    SellerDtls = new SellerDtls()
+                    {
+                        Gstin = "33AOZPS5038P1ZV",
+                        LglNm = reader["COMPNAME"].ToString(),
+                        Addr1 = reader["COMPADDR1"].ToString(),
+                        Addr2 = reader["COMPADDR2"].ToString(),
+                        Loc = reader["COMPLOCTDESC"].ToString(),
+                        Pin = Convert.ToInt32(reader["COMPPINCODE"]),
+                        Stcd = reader["COMPSTATECODE"].ToString(),
+                        Ph = reader["COMPPHN1"].ToString(),
+                        Em = reader["COMPMAIL"].ToString()
+                    },
+                    BuyerDtls = new BuyerDtls()
+                    {
+                        Gstin = reader["CATEBGSTNO"].ToString(),
+                        LglNm = reader["TRANREFNAME"].ToString(),
+                        Pos = reader["STATECODE"].ToString(),
+                        Addr1 = reader["TRAN_CUST_ADDR1"].ToString(),
+                        Addr2 = reader["TRAN_CUST_ADDR2"].ToString(),
+                        Loc = reader["TRAN_CUST_LOCTDESC"].ToString(),
+                        Pin = Convert.ToInt32(reader["TRAN_CUST_PINCODE"]),
+                        Stcd = reader["STATECODE"].ToString(),
+                        Ph = reader["CATECPHN1"].ToString(),
+                        Em = null
+                    },
+                    ValDtls = new ValDtls()
+                    {
+                        AssVal = taxblamt,
+                        CesVal = 0,
+                        CgstVal = cgst_amt,
+                        IgstVal = igst_amt,
+                        OthChrg = 0,
+                        SgstVal = sgst_amt,
+                        Discount = discamt,
+                        StCesVal = 0,
+                        RndOffAmt = roff_amt,
+                        TotInvVal = Convert.ToDecimal(reader["TRANNAMT"]),
+                        TotItemValSum = taxblamt
+                    },
+                    ItemList = GetItemList(tranmid),
+                };
+
+                if (shouldIncludeEwayBillDetails)
+                {
+                    var requestObj = JObject.FromObject(response);
+                    requestObj["EwbDtls"] = JObject.FromObject(new EwbDtls
+                    {
+                        TransId = trnsprtgstinno,
+                        TransName = trnsprtname,
+                        Distance = distance,
+                        TransDocNo = TransDocNo,
+                        TransDocDt = TransDocDt,
+                        VehNo = vhlno,
+                        VehType = VehType,
+                        TransMode = TransMode
+                    });
+                    stringjson = requestObj.ToString(Formatting.None);
+                }
+                else
+                {
+                    stringjson = JsonConvert.SerializeObject(response);
+                }
+            }
+
+            SmyConnection.Close();
+            myConnection.Close();
+
+            string portalResponseRaw = "";
+            int portalHttpStatus = 0;
+            string portalHttpReason = "";
+
+            using (var httpClient = new HttpClient())
+            {
+                var tokenFromConfig = (ConfigurationManager.AppSettings["GSTZEN_TOKEN"] ?? string.Empty).Trim();
+                var userIdFromConfig = (ConfigurationManager.AppSettings["GSTZEN_USERID"] ?? string.Empty).Trim();
+
+                var candidateUserIds = new[] { userIdFromConfig, "API_SSK_ERP", "dinesh@fusiontec.com" }
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (candidateUserIds.Count == 0)
+                {
+                    candidateUserIds.Add(string.Empty);
+                }
+
+                JObject data = null;
+
+                foreach (var currentUserId in candidateUserIds)
+                {
+                    using (var request = new HttpRequestMessage(new HttpMethod("POST"), "https://my.gstzen.in/~gstzen/a/post-einvoice-data/einvoice-json/"))
+                    {
+                        request.Headers.TryAddWithoutValidation("Token", tokenFromConfig);
+                        if (!string.IsNullOrWhiteSpace(currentUserId))
+                        {
+                            request.Headers.TryAddWithoutValidation("UserId", currentUserId);
+                            request.Headers.TryAddWithoutValidation("username", currentUserId);
+                        }
+
+                        request.Content = new StringContent(stringjson, System.Text.Encoding.UTF8, "application/json");
+
+                        var response = await httpClient.SendAsync(request);
+                        if (response == null)
+                        {
+                            continue;
+                        }
+
+                        portalHttpStatus = (int)response.StatusCode;
+                        portalHttpReason = response.ReasonPhrase;
+                        portalResponseRaw = await response.Content.ReadAsStringAsync();
+
+                        try
+                        {
+                            data = (JObject)JsonConvert.DeserializeObject(portalResponseRaw);
+                        }
+                        catch
+                        {
+                            data = null;
+                        }
+
+                        if (data == null)
+                        {
+                            break;
+                        }
+
+                        var shouldRetryWithAnotherUserId = false;
+                        try
+                        {
+                            var statusAlt = data["Status"] != null ? data["Status"].Value<int>() : -1;
+                            if (statusAlt == 0 && data["ErrorDetails"] != null && data["ErrorDetails"].Type == JTokenType.Array)
+                            {
+                                var firstErr = data["ErrorDetails"].First;
+                                var errCode = firstErr != null && firstErr["ErrorCode"] != null ? firstErr["ErrorCode"].Value<string>() : string.Empty;
+                                shouldRetryWithAnotherUserId = string.Equals(errCode, "1017", StringComparison.OrdinalIgnoreCase)
+                                    && !string.Equals(currentUserId, candidateUserIds.Last(), StringComparison.OrdinalIgnoreCase);
+                            }
+                        }
+                        catch
+                        {
+                            shouldRetryWithAnotherUserId = false;
+                        }
+
+                        if (!shouldRetryWithAnotherUserId)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var debugPayload = new
+            {
+                requestJson = stringjson,
+                responseJson = portalResponseRaw,
+                portalHttpStatus = portalHttpStatus,
+                portalHttpReason = portalHttpReason,
+                ewayDebug = new
+                {
+                    shouldIncludeEwayBillDetails = shouldIncludeEwayBillDetails,
+                    distance = distance,
+                    transporterGstin = trnsprtgstinno,
+                    transporterName = trnsprtname,
+                    transDocNo = TransDocNo,
+                    transDocDt = TransDocDt,
+                    vehicleNo = vhlno,
+                    vehicleType = VehType,
+                    transportMode = TransMode
+                }
+            };
+
+            return Content(JsonConvert.SerializeObject(debugPayload, Formatting.Indented), "application/json");
+        }
 
     }
 }

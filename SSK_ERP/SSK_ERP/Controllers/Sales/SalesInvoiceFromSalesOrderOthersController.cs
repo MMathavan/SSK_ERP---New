@@ -292,7 +292,17 @@ namespace SSK_ERP.Controllers
                     State = state != null ? state.STATEDESC : string.Empty,
                     StateType = state != null ? state.STATETYPE : inv.TRANSTATETYPE,
                     Country = "India",
-                    SalesOrderId = inv.TRANLMID
+                    SalesOrderId = inv.TRANLMID,
+                    TransporterId = inv.TRANSPORTERID,
+                    TransporterName = inv.TRANSPORTERNAME,
+                    VehicleNo = inv.VECHICLENO,
+                    DocumentNo = inv.DOCUMENTNO,
+                    DocumentDate = inv.DOCUMENTDATE.HasValue ? inv.DOCUMENTDATE.Value.ToString("yyyy-MM-dd") : "",
+                    Distance = inv.DISTANCE,
+                    CustomerTransporterId = customer != null ? customer.TRANSPORTERID : (int?)null,
+                    CustomerTransporterName = customer != null && customer.TRANSPORTERID > 0
+                        ? db.TransporterMasters.Where(t => t.CATEID == customer.TRANSPORTERID).Select(t => t.CATENAME).FirstOrDefault()
+                        : ""
                 };
 
                 string taxFactorsJson = null;
@@ -336,7 +346,11 @@ namespace SSK_ERP.Controllers
                     .Select(c => new
                     {
                         Id = c.CATEID,
-                        Name = c.CATENAME
+                        Name = c.CATENAME,
+                        TransporterId = c.TRANSPORTERID,
+                        TransporterName = c.TRANSPORTERID > 0 
+                            ? db.TransporterMasters.Where(t => t.CATEID == c.TRANSPORTERID).Select(t => t.CATENAME).FirstOrDefault()
+                            : ""
                     })
                     .OrderBy(x => x.Name)
                     .ToList();
@@ -794,6 +808,13 @@ namespace SSK_ERP.Controllers
                     return RedirectToAction("Index", "SalesOrder");
                 }
 
+                // Validate required E-Way Bill fields
+                if (string.IsNullOrWhiteSpace(master.TRANSPORTERNAME) || string.IsNullOrWhiteSpace(master.VECHICLENO) || !master.DISTANCE.HasValue || master.DISTANCE.Value <= 0)
+                {
+                    TempData["ErrorMessage"] = "Transporter Name, Vehicle No and Distance are required.";
+                    return RedirectToAction("Form");
+                }
+
                 var details = string.IsNullOrWhiteSpace(detailRowsJson)
                     ? new List<SalesInvoiceDetailRow>()
                     : JsonConvert.DeserializeObject<List<SalesInvoiceDetailRow>>(detailRowsJson) ?? new List<SalesInvoiceDetailRow>();
@@ -875,6 +896,12 @@ namespace SSK_ERP.Controllers
                     workingMaster.DISPSTATUS = master.DISPSTATUS;
                     workingMaster.TRANRMKS = master.TRANRMKS;
                     workingMaster.TRANTAXBILLNO = string.IsNullOrWhiteSpace(master.TRANTAXBILLNO) ? null : master.TRANTAXBILLNO;
+                    workingMaster.TRANSPORTERID = master.TRANSPORTERID;
+                    workingMaster.TRANSPORTERNAME = master.TRANSPORTERNAME;
+                    workingMaster.VECHICLENO = master.VECHICLENO;
+                    workingMaster.DOCUMENTNO = master.DOCUMENTNO;
+                    workingMaster.DOCUMENTDATE = master.DOCUMENTDATE;
+                    workingMaster.DISTANCE = master.DISTANCE;
 
                     if (so != null)
                     {
@@ -929,7 +956,13 @@ namespace SSK_ERP.Controllers
                         DISPSTATUS = master.DISPSTATUS,
                         TRANRMKS = master.TRANRMKS,
                         TRANPONUM = null,
-                        TRANTAXBILLNO = string.IsNullOrWhiteSpace(master.TRANTAXBILLNO) ? null : master.TRANTAXBILLNO
+                        TRANTAXBILLNO = string.IsNullOrWhiteSpace(master.TRANTAXBILLNO) ? null : master.TRANTAXBILLNO,
+                        TRANSPORTERID = master.TRANSPORTERID,
+                        TRANSPORTERNAME = master.TRANSPORTERNAME,
+                        VECHICLENO = master.VECHICLENO,
+                        DOCUMENTNO = master.DOCUMENTNO,
+                        DOCUMENTDATE = master.DOCUMENTDATE,
+                        DISTANCE = master.DISTANCE
                     };
 
                     db.TransactionMasters.Add(workingMaster);
