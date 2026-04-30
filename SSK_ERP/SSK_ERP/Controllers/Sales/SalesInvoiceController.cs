@@ -67,6 +67,7 @@ namespace SSK_ERP.Controllers
         public class SalesInvoiceFromPurchaseItemViewModel
         {
             public int PurchaseTranDetailId { get; set; }
+            public int TRANDID { get; set; }  // Transaction Detail ID for standalone invoices
             public int MaterialId { get; set; }
             public string MaterialName { get; set; }
             public string HsnCode { get; set; }
@@ -956,6 +957,7 @@ namespace SSK_ERP.Controllers
                     items.Add(new SalesInvoiceFromPurchaseItemViewModel
                     {
                         PurchaseTranDetailId = 0,
+                        TRANDID = s.TRANDID,  // Add transaction detail ID for standalone invoices
                         MaterialId = s.TRANDREFID,
                         MaterialName = s.TRANDREFNAME,
                         HsnCode = hsnCode,
@@ -1194,50 +1196,23 @@ namespace SSK_ERP.Controllers
                     .OrderBy(d => d.TRANDID)
                     .ToList();
 
+                decimal totalNet = 0m;
+
                 // If this Sales Invoice is linked to a Purchase Invoice, allow checkbox-based add/remove rows
-                // by rebuilding TransactionDetails from the selected items.
+                // by selectively deleting unselected rows and updating selected rows.
                 if (existing.TRANLMID > 0)
                 {
-                    var linkedPurchase = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == existing.TRANLMID && t.REGSTRID == PurchaseInvoiceRegisterId);
+                    var linkedPurchase = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == existing.TRANLMID);
                     if (linkedPurchase != null)
+                    {
+                        try
                     {
                         var allItems = model.Items ?? new List<SalesInvoiceFromPurchaseItemViewModel>();
 
-                        var selectedItems = allItems
-                            .Select((item, index) => new { Item = item, Index = index })
-                            .Where(x => x.Item != null && x.Item.Selected && x.Item.MaterialId > 0 && x.Item.Qty > 0)
-                            .ToList();
+                        // Create a map of existing details by TRANDAID (PurchaseTranDetailId)
+                        var detailsByTranDAid = details.Where(d => d.TRANDAID > 0).ToDictionary(d => d.TRANDAID, d => d);
 
-                        if (!selectedItems.Any())
-                        {
-                            TempData["ErrorMessage"] = "Please select at least one item for the Sales Invoice.";
-                            return RedirectToAction("Form", new { id = existing.TRANMID });
-                        }
-
-                        // Remove old batch + details
-                        try
-                        {
-                            var oldDetailIds = details.Select(d => d.TRANDID).ToList();
-                            if (oldDetailIds.Any())
-                            {
-                                var idList = string.Join(",", oldDetailIds);
-                                db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN (" + idList + ")");
-                            }
-                        }
-                        catch
-                        {
-                        }
-
-                        db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONDETAIL WHERE TRANMID = @p0", existing.TRANMID);
-                        db.SaveChanges();
-
-                        // Load purchase details for fallback linking
-                        var purchaseDetailsForLink = db.TransactionDetails
-                            .Where(d => d.TRANMID == linkedPurchase.TRANMID)
-                            .OrderBy(d => d.TRANDID)
-                            .ToList();
-
-                        var materialIds2 = selectedItems.Select(x => x.Item.MaterialId).Distinct().ToList();
+                        var materialIds2 = allItems.Select(x => x.MaterialId).Distinct().ToList();
                         var materialMap2 = db.MaterialMasters
                             .Where(m => materialIds2.Contains(m.MTRLID))
                             .ToDictionary(m => m.MTRLID, m => m);
@@ -1260,88 +1235,220 @@ namespace SSK_ERP.Controllers
                         decimal totalIgst2 = 0m;
                         decimal totalNet2 = 0m;
 
-                        var batchInsertPairs = new List<Tuple<SalesInvoiceFromPurchaseItemViewModel, TransactionDetail>>();
+                        var selectedPurchaseDetailIds = new HashSet<int>();
 
-                        foreach (var selected in selectedItems)
+                        // Process each item from the form
+                        foreach (var itm in allItems)
                         {
-                            var itm = selected.Item;
-                            int rowIndex = selected.Index;
+                            if (itm == null || itm.MaterialId <= 0)
+                                continue;
 
-                            decimal qty = itm.Qty;
-                            decimal rate = itm.Rate;
-                            decimal gross = Math.Round(qty * rate, 2);
+                            int purchaseDetailId = itm.PurchaseTranDetailId;
 
-                            materialMap2.TryGetValue(itm.MaterialId, out var material);
-                            int hsnId = material != null ? material.HSNID : 0;
-                            hsnMap2.TryGetValue(hsnId, out var hsn);
-
-                            string refNo2 = material != null ? material.MTRLCODE : string.Empty;
-                            string refName2 = material != null ? material.MTRLDESC : (itm.MaterialName ?? string.Empty);
-
-                            decimal profitPercent = material != null ? material.MTRLPRFT : 0m;
-                            decimal actualRate = rate;
-                            if (actualRate > 0 && profitPercent != 0m)
+                            if (itm.Selected && itm.Qty > 0)
                             {
-                                actualRate = Math.Round(actualRate + ((actualRate * profitPercent) / 100m), 2);
-                            }
+                                // Selected item - update existing or create new
+                                selectedPurchaseDetailIds.Add(purchaseDetailId);
 
-                            decimal cgstAmt = 0m;
-                            decimal sgstAmt = 0m;
-                            decimal igstAmt = 0m;
+                                decimal qty = itm.Qty;
+                                decimal rate = itm.Rate;
+                                decimal gross = Math.Round(qty * rate, 2);
 
-                            if (hsn != null)
-                            {
-                                if (tranStateType2 == 0)
+                                materialMap2.TryGetValue(itm.MaterialId, out var material);
+                                int hsnId = material != null ? material.HSNID : 0;
+                                hsnMap2.TryGetValue(hsnId, out var hsn);
+
+                                string refNo2 = material != null ? material.MTRLCODE : string.Empty;
+                                string refName2 = material != null ? material.MTRLDESC : (itm.MaterialName ?? string.Empty);
+
+                                decimal profitPercent = material != null ? material.MTRLPRFT : 0m;
+                                decimal actualRate = rate;
+                                if (actualRate > 0 && profitPercent != 0m)
                                 {
-                                    if (hsn.CGSTEXPRN > 0) cgstAmt = Math.Round((gross * hsn.CGSTEXPRN) / 100m, 2);
-                                    if (hsn.SGSTEXPRN > 0) sgstAmt = Math.Round((gross * hsn.SGSTEXPRN) / 100m, 2);
+                                    actualRate = Math.Round(actualRate + ((actualRate * profitPercent) / 100m), 2);
+                                }
+
+                                decimal cgstAmt = 0m;
+                                decimal sgstAmt = 0m;
+                                decimal igstAmt = 0m;
+
+                                if (hsn != null)
+                                {
+                                    if (tranStateType2 == 0)
+                                    {
+                                        if (hsn.CGSTEXPRN > 0) cgstAmt = Math.Round((gross * hsn.CGSTEXPRN) / 100m, 2);
+                                        if (hsn.SGSTEXPRN > 0) sgstAmt = Math.Round((gross * hsn.SGSTEXPRN) / 100m, 2);
+                                    }
+                                    else
+                                    {
+                                        if (hsn.IGSTEXPRN > 0) igstAmt = Math.Round((gross * hsn.IGSTEXPRN) / 100m, 2);
+                                    }
+                                }
+
+                                decimal net = gross + cgstAmt + sgstAmt + igstAmt;
+
+                                totalGross2 += gross;
+                                totalCgst2 += cgstAmt;
+                                totalSgst2 += sgstAmt;
+                                totalIgst2 += igstAmt;
+                                totalNet2 += net;
+
+                                int packMid = itm.PackingId ?? 0;
+
+                                TransactionDetail detail;
+                                if (purchaseDetailId > 0 && detailsByTranDAid.TryGetValue(purchaseDetailId, out detail))
+                                {
+                                    // Update existing detail
+                                    detail.TRANDQTY = qty;
+                                    detail.TRANDRATE = rate;
+                                    detail.TRANDARATE = actualRate;
+                                    detail.TRANDGAMT = gross;
+                                    detail.TRANDCGSTAMT = cgstAmt;
+                                    detail.TRANDSGSTAMT = sgstAmt;
+                                    detail.TRANDIGSTAMT = igstAmt;
+                                    detail.TRANDNAMT = net;
+                                    detail.HSNID = hsnId;
+                                    detail.PACKMID = packMid;
+                                    detail.TRANDAID = purchaseDetailId;
+
+                                    // Update or create batch detail
+                                    var batchDetail = db.TransactionBatchDetails.FirstOrDefault(b => b.TRANDID == detail.TRANDID);
+                                    if (batchDetail != null)
+                                    {
+                                        batchDetail.TRANBDNO = itm.BatchNo;
+                                        batchDetail.TRANBQTY = (int)itm.BoxQty;
+                                        batchDetail.TRANBEXPDATE = itm.ExpiryDate ?? DateTime.Now;
+                                        batchDetail.TRANBPTRRATE = itm.Ptr;
+                                        batchDetail.TRANBMRP = itm.Mrp;
+                                        batchDetail.PACKMID = itm.PackingId ?? 0;
+                                        batchDetail.TRANBRATE = rate;
+                                        batchDetail.TRANBGAMT = gross;
+                                        batchDetail.TRANBCGSTEXPRN = cgstAmt > 0 ? (cgstAmt / gross) * 100 : 0;
+                                        batchDetail.TRANBSGSTEXPRN = sgstAmt > 0 ? (sgstAmt / gross) * 100 : 0;
+                                        batchDetail.TRANBIGSTEXPRN = igstAmt > 0 ? (igstAmt / gross) * 100 : 0;
+                                        batchDetail.TRANBCGSTAMT = cgstAmt;
+                                        batchDetail.TRANBSGSTAMT = sgstAmt;
+                                        batchDetail.TRANBIGSTAMT = igstAmt;
+                                        batchDetail.TRANBNAMT = net;
+                                        batchDetail.TRANDPID = purchaseDetailId;
+                                        batchDetail.TRANPTQTY = (int)qty;
+                                    }
+                                    else
+                                    {
+                                        // Create batch detail if it doesn't exist
+                                        var newBatchDetail = new TransactionBatchDetail
+                                        {
+                                            TRANDID = detail.TRANDID,
+                                            AMTRLID = itm.MaterialId,
+                                            HSNID = hsnId,
+                                            STKBID = 0,
+                                            TRANBDNO = itm.BatchNo,
+                                            TRANBEXPDATE = itm.ExpiryDate ?? DateTime.Now,
+                                            PACKMID = itm.PackingId ?? 0,
+                                            TRANPQTY = 0,
+                                            TRANBQTY = (int)itm.BoxQty,
+                                            TRANBRATE = rate,
+                                            TRANBPTRRATE = itm.Ptr,
+                                            TRANBMRP = itm.Mrp,
+                                            TRANBGAMT = gross,
+                                            TRANBCGSTEXPRN = cgstAmt > 0 ? (cgstAmt / gross) * 100 : 0,
+                                            TRANBSGSTEXPRN = sgstAmt > 0 ? (sgstAmt / gross) * 100 : 0,
+                                            TRANBIGSTEXPRN = igstAmt > 0 ? (igstAmt / gross) * 100 : 0,
+                                            TRANBCGSTAMT = cgstAmt,
+                                            TRANBSGSTAMT = sgstAmt,
+                                            TRANBIGSTAMT = igstAmt,
+                                            TRANBNAMT = net,
+                                            TRANBPID = 0,
+                                            TRANDPID = purchaseDetailId,
+                                            TRANPTQTY = (int)qty,
+                                            TRANBLMID = 0
+                                        };
+                                        db.TransactionBatchDetails.Add(newBatchDetail);
+                                    }
                                 }
                                 else
                                 {
-                                    if (hsn.IGSTEXPRN > 0) igstAmt = Math.Round((gross * hsn.IGSTEXPRN) / 100m, 2);
+                                    // Create new detail
+                                    var newDetail = new TransactionDetail
+                                    {
+                                        TRANMID = existing.TRANMID,
+                                        TRANDREFID = itm.MaterialId,
+                                        TRANDREFNO = refNo2,
+                                        TRANDREFNAME = refName2,
+                                        TRANDMTRLPRFT = profitPercent,
+                                        HSNID = hsnId,
+                                        PACKMID = packMid,
+                                        TRANDQTY = qty,
+                                        TRANDRATE = rate,
+                                        TRANDARATE = actualRate,
+                                        TRANDGAMT = gross,
+                                        TRANDCGSTAMT = cgstAmt,
+                                        TRANDSGSTAMT = sgstAmt,
+                                        TRANDIGSTAMT = igstAmt,
+                                        TRANDNAMT = net,
+                                        TRANDAID = purchaseDetailId,
+                                        TRANDNARTN = null,
+                                        TRANDRMKS = null
+                                    };
+
+                                    db.TransactionDetails.Add(newDetail);
+                                    db.SaveChanges();
+
+                                    // Add batch detail
+                                    try
+                                    {
+                                        var batchDetail = new TransactionBatchDetail
+                                        {
+                                            TRANDID = newDetail.TRANDID,
+                                            AMTRLID = itm.MaterialId,
+                                            HSNID = hsnId,
+                                            STKBID = 0,
+                                            TRANBDNO = itm.BatchNo,
+                                            TRANBEXPDATE = itm.ExpiryDate ?? DateTime.Now,
+                                            PACKMID = itm.PackingId ?? 0,
+                                            TRANPQTY = 0,
+                                            TRANBQTY = (int)itm.BoxQty,
+                                            TRANBRATE = rate,
+                                            TRANBPTRRATE = itm.Ptr,
+                                            TRANBMRP = itm.Mrp,
+                                            TRANBGAMT = gross,
+                                            TRANBCGSTEXPRN = cgstAmt > 0 ? (cgstAmt / gross) * 100 : 0,
+                                            TRANBSGSTEXPRN = sgstAmt > 0 ? (sgstAmt / gross) * 100 : 0,
+                                            TRANBIGSTEXPRN = igstAmt > 0 ? (igstAmt / gross) * 100 : 0,
+                                            TRANBCGSTAMT = cgstAmt,
+                                            TRANBSGSTAMT = sgstAmt,
+                                            TRANBIGSTAMT = igstAmt,
+                                            TRANBNAMT = net,
+                                            TRANBPID = 0,
+                                            TRANDPID = purchaseDetailId,
+                                            TRANPTQTY = (int)qty,
+                                            TRANBLMID = 0
+                                        };
+                                        db.TransactionBatchDetails.Add(batchDetail);
+                                        System.Diagnostics.Debug.WriteLine($"DEBUG: Created batch detail for MaterialId={itm.MaterialId}, TRANDID={newDetail.TRANDID}, BoxQty={itm.BoxQty}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"DEBUG: Error creating batch detail for MaterialId={itm.MaterialId}: {ex.Message}");
+                                    }
                                 }
                             }
+                        }
 
-                            decimal net = gross + cgstAmt + sgstAmt + igstAmt;
-
-                            totalGross2 += gross;
-                            totalCgst2 += cgstAmt;
-                            totalSgst2 += sgstAmt;
-                            totalIgst2 += igstAmt;
-                            totalNet2 += net;
-
-                            int packMid = itm.PackingId ?? 0;
-
-                            int purchaseDetailId = itm.PurchaseTranDetailId;
-                            if (purchaseDetailId <= 0 && purchaseDetailsForLink != null && purchaseDetailsForLink.Count > rowIndex)
+                        // Delete details that are not selected (not in selectedPurchaseDetailIds)
+                        var detailsToDelete = details.Where(d => d.TRANDAID > 0 && !selectedPurchaseDetailIds.Contains(d.TRANDAID)).ToList();
+                        if (detailsToDelete.Any())
+                        {
+                            var detailIdsToDelete = detailsToDelete.Select(d => d.TRANDID).ToList();
+                            var idList = string.Join(",", detailIdsToDelete);
+                            try
                             {
-                                purchaseDetailId = purchaseDetailsForLink[rowIndex].TRANDID;
+                                db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN (" + idList + ")");
                             }
-
-                            var newDetail = new TransactionDetail
+                            catch
                             {
-                                TRANMID = existing.TRANMID,
-                                TRANDREFID = itm.MaterialId,
-                                TRANDREFNO = refNo2,
-                                TRANDREFNAME = refName2,
-                                TRANDMTRLPRFT = profitPercent,
-                                HSNID = hsnId,
-                                PACKMID = packMid,
-                                TRANDQTY = qty,
-                                TRANDRATE = rate,
-                                TRANDARATE = actualRate,
-                                TRANDGAMT = gross,
-                                TRANDCGSTAMT = cgstAmt,
-                                TRANDSGSTAMT = sgstAmt,
-                                TRANDIGSTAMT = igstAmt,
-                                TRANDNAMT = net,
-                                TRANDAID = purchaseDetailId,
-                                TRANDNARTN = null,
-                                TRANDRMKS = null
-                            };
-
-                            db.TransactionDetails.Add(newDetail);
-                            batchInsertPairs.Add(Tuple.Create(itm, newDetail));
+                            }
+                            db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONDETAIL WHERE TRANDID IN (" + idList + ")");
                         }
 
                         existing.TRANGAMT = totalGross2;
@@ -1355,204 +1462,169 @@ namespace SSK_ERP.Controllers
 
                         db.SaveChanges();
 
-                        // Reinsert batch details for the new invoice details
-                        try
-                        {
-                            if (batchInsertPairs.Any())
-                            {
-                                // Load purchase batch rows once
-                                var pDetailIds = batchInsertPairs
-                                    .Select(x => x.Item1.PurchaseTranDetailId)
-                                    .Where(x => x > 0)
-                                    .Distinct()
-                                    .ToList();
-
-                                var purchaseBatchInfos = new List<PurchaseBatchInfoLocal>();
-                                if (pDetailIds.Any())
-                                {
-                                    var idList = string.Join(",", pDetailIds);
-                                    var sql = @"SELECT TRANDID, TRANBDNO, TRANBEXPDATE, PACKMID, TRANBQTY, TRANBPTRRATE, TRANBMRP 
-                                                 FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN (" + idList + ")";
-                                    purchaseBatchInfos = db.Database.SqlQuery<PurchaseBatchInfoLocal>(sql).ToList();
-                                }
-
-                                var queryInsertBatch = @"INSERT INTO TRANSACTIONBATCHDETAIL (
-                                    TRANDID, AMTRLID, HSNID, STKBID, TRANBDNO, TRANBEXPDATE, PACKMID, 
-                                    TRANPQTY, TRANBQTY, TRANBRATE, TRANBPTRRATE, TRANBMRP, 
-                                    TRANBGAMT, TRANBCGSTEXPRN, TRANBSGSTEXPRN, TRANBIGSTEXPRN, 
-                                    TRANBCGSTAMT, TRANBSGSTAMT, TRANBIGSTAMT, TRANBNAMT, 
-                                    TRANBPID, TRANDPID, TRANPTQTY
-                                ) VALUES (
-                                    @p0, @p1, @p2, @p3, @p4, @p5, @p6,
-                                    @p7, @p8, @p9, @p10, @p11,
-                                    @p12, @p13, @p14, @p15,
-                                    @p16, @p17, @p18, @p19,
-                                    @p20, @p21, @p22
-                                )";
-
-                                foreach (var pair in batchInsertPairs)
-                                {
-                                    var itm = pair.Item1;
-                                    var d = pair.Item2;
-
-                                    if (d == null || d.TRANDID <= 0 || itm == null || itm.PurchaseTranDetailId <= 0)
-                                    {
-                                        continue;
-                                    }
-
-                                    var pb = purchaseBatchInfos.FirstOrDefault(b => b.TRANDID == itm.PurchaseTranDetailId);
-                                    if (pb == null)
-                                    {
-                                        continue;
-                                    }
-
-                                    decimal cgstExpr = 0m;
-                                    decimal sgstExpr = 0m;
-                                    decimal igstExpr = 0m;
-                                    if (d.HSNID > 0 && hsnMap2.TryGetValue(d.HSNID, out var hsnForBatch))
-                                    {
-                                        cgstExpr = hsnForBatch.CGSTEXPRN;
-                                        sgstExpr = hsnForBatch.SGSTEXPRN;
-                                        igstExpr = hsnForBatch.IGSTEXPRN;
-                                    }
-
-                                    db.Database.ExecuteSqlCommand(
-                                        queryInsertBatch,
-                                        d.TRANDID,
-                                        d.TRANDREFID,
-                                        d.HSNID,
-                                        0,
-                                        pb.TRANBDNO,
-                                        pb.TRANBEXPDATE,
-                                        pb.PACKMID ?? (int?)null,
-                                        0,
-                                        pb.TRANBQTY,
-                                        d.TRANDRATE,
-                                        pb.TRANBPTRRATE,
-                                        pb.TRANBMRP,
-                                        d.TRANDGAMT,
-                                        cgstExpr,
-                                        sgstExpr,
-                                        igstExpr,
-                                        d.TRANDCGSTAMT,
-                                        d.TRANDSGSTAMT,
-                                        d.TRANDIGSTAMT,
-                                        d.TRANDNAMT,
-                                        0,
-                                        0,
-                                        0
-                                    );
-                                }
-                            }
-                        }
-                        catch
-                        {
-                        }
+                        // Set totalNet for tax factor logic
+                        totalNet = totalNet2;
 
                         // Continue to manual tax factor logic below (uses model.TaxFactorsJson)
                         details = db.TransactionDetails
                             .Where(d => d.TRANMID == existing.TRANMID)
                             .OrderBy(d => d.TRANDID)
                             .ToList();
+                        }
+                        catch (Exception ex)
+                        {
+                            string errorMsg = "Error saving linked invoice: " + ex.Message;
+                            if (ex.InnerException != null)
+                            {
+                                errorMsg += " | Inner: " + ex.InnerException.Message;
+                                if (ex.InnerException.InnerException != null)
+                                {
+                                    errorMsg += " | Inner2: " + ex.InnerException.InnerException.Message;
+                                }
+                            }
+                            System.Diagnostics.Debug.WriteLine("DEBUG: " + errorMsg);
+                            TempData["ErrorMessage"] = errorMsg;
+                            return RedirectToAction("Form", new { id = existing.TRANMID });
+                        }
                     }
                 }
 
-                short tranStateType = existing.TRANSTATETYPE;
-
-                var materialIds = details.Select(d => d.TRANDREFID).Distinct().ToList();
-                var materialMap = db.MaterialMasters
-                    .Where(m => materialIds.Contains(m.MTRLID))
-                    .ToDictionary(m => m.MTRLID, m => m);
-
-                var hsnIds = materialMap.Values
-                    .Where(m => m.HSNID > 0)
-                    .Select(m => m.HSNID)
-                    .Distinct()
-                    .ToList();
-
-                var hsnMap = db.HSNCodeMasters
-                    .Where(h => hsnIds.Contains(h.HSNID))
-                    .ToDictionary(h => h.HSNID, h => h);
-
-                decimal totalGross = 0m;
-                decimal totalCgst = 0m;
-                decimal totalSgst = 0m;
-                decimal totalIgst = 0m;
-                decimal totalNet = 0m;
-
-                for (int i = 0; i < details.Count && i < (model.Items != null ? model.Items.Count : 0); i++)
+                // For standalone invoices (TRANLMID == 0), use the existing TRANDID-based update logic
+                if (existing.TRANLMID == 0)
                 {
-                    var d = details[i];
-                    var itm = model.Items[i];
+                    short tranStateType = existing.TRANSTATETYPE;
 
-                    decimal qty = itm.Qty;
-                    decimal rate = itm.Rate;
-                    decimal gross = Math.Round(qty * rate, 2);
+                    var materialIds = details.Select(d => d.TRANDREFID).Distinct().ToList();
+                    var materialMap = db.MaterialMasters
+                        .Where(m => materialIds.Contains(m.MTRLID))
+                        .ToDictionary(m => m.MTRLID, m => m);
 
-                    materialMap.TryGetValue(d.TRANDREFID, out var material);
-                    int hsnId = d.HSNID;
-                    if (material != null && material.HSNID > 0)
+                    var hsnIds = materialMap.Values
+                        .Where(m => m.HSNID > 0)
+                        .Select(m => m.HSNID)
+                        .Distinct()
+                        .ToList();
+
+                    var hsnMap = db.HSNCodeMasters
+                        .Where(h => hsnIds.Contains(h.HSNID))
+                        .ToDictionary(h => h.HSNID, h => h);
+
+                    decimal totalGross = 0m;
+                    decimal totalCgst = 0m;
+                    decimal totalSgst = 0m;
+                    decimal totalIgst = 0m;
+
+                    // Create a map of existing details by TRANDID for efficient lookup
+                    var detailsMap = details.ToDictionary(d => d.TRANDID, d => d);
+
+                    // Track which TRANDIDs are present in the form
+                    var formTranIds = new HashSet<int>();
+
+                    // Process each item from the form
+                    if (model.Items != null)
                     {
-                        hsnId = material.HSNID;
-                    }
-
-                    hsnMap.TryGetValue(hsnId, out var hsn);
-
-                    decimal cgstAmt = 0m;
-                    decimal sgstAmt = 0m;
-                    decimal igstAmt = 0m;
-
-                    if (hsn != null)
-                    {
-                        if (tranStateType == 0)
+                        foreach (var itm in model.Items)
                         {
-                            if (hsn.CGSTEXPRN > 0)
-                            {
-                                cgstAmt = Math.Round((gross * hsn.CGSTEXPRN) / 100m, 2);
-                            }
+                            // Skip if item doesn't have a valid TRANDID (new item)
+                            if (itm.TRANDID <= 0)
+                                continue;
 
-                            if (hsn.SGSTEXPRN > 0)
+                            formTranIds.Add(itm.TRANDID);
+
+                            // Find the corresponding detail by TRANDID
+                            if (detailsMap.TryGetValue(itm.TRANDID, out var d))
                             {
-                                sgstAmt = Math.Round((gross * hsn.SGSTEXPRN) / 100m, 2);
+                                decimal qty = itm.Qty;
+                                decimal rate = itm.Rate;
+                                decimal gross = Math.Round(qty * rate, 2);
+
+                                materialMap.TryGetValue(d.TRANDREFID, out var material);
+                                int hsnId = d.HSNID;
+                                if (material != null && material.HSNID > 0)
+                                {
+                                    hsnId = material.HSNID;
+                                }
+
+                                hsnMap.TryGetValue(hsnId, out var hsn);
+
+                                decimal cgstAmt = 0m;
+                                decimal sgstAmt = 0m;
+                                decimal igstAmt = 0m;
+
+                                if (hsn != null)
+                                {
+                                    if (tranStateType == 0)
+                                    {
+                                        if (hsn.CGSTEXPRN > 0)
+                                        {
+                                            cgstAmt = Math.Round((gross * hsn.CGSTEXPRN) / 100m, 2);
+                                        }
+
+                                        if (hsn.SGSTEXPRN > 0)
+                                        {
+                                            sgstAmt = Math.Round((gross * hsn.SGSTEXPRN) / 100m, 2);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (hsn.IGSTEXPRN > 0)
+                                        {
+                                            igstAmt = Math.Round((gross * hsn.IGSTEXPRN) / 100m, 2);
+                                        }
+                                    }
+                                }
+
+                                decimal net = gross + cgstAmt + sgstAmt + igstAmt;
+
+                                d.TRANDQTY = qty;
+                                d.TRANDRATE = rate;
+                                d.HSNID = hsnId;
+                                d.TRANDGAMT = gross;
+                                d.TRANDCGSTAMT = cgstAmt;
+                                d.TRANDSGSTAMT = sgstAmt;
+                                d.TRANDIGSTAMT = igstAmt;
+                                d.TRANDNAMT = net;
+
+                                totalGross += gross;
+                                totalCgst += cgstAmt;
+                                totalSgst += sgstAmt;
+                                totalIgst += igstAmt;
+                                totalNet += net;
                             }
                         }
-                        else
-                        {
-                            if (hsn.IGSTEXPRN > 0)
-                            {
-                                igstAmt = Math.Round((gross * hsn.IGSTEXPRN) / 100m, 2);
-                            }
-                        }
                     }
 
-                    decimal net = gross + cgstAmt + sgstAmt + igstAmt;
+                    // Delete details that are not in the form items
+                    var detailsToDelete = details.Where(d => !formTranIds.Contains(d.TRANDID)).ToList();
 
-                    d.TRANDQTY = qty;
-                    d.TRANDRATE = rate;
-                    d.HSNID = hsnId;
-                    d.TRANDGAMT = gross;
-                    d.TRANDCGSTAMT = cgstAmt;
-                    d.TRANDSGSTAMT = sgstAmt;
-                    d.TRANDIGSTAMT = igstAmt;
-                    d.TRANDNAMT = net;
+                    if (detailsToDelete.Any())
+                    {
+                        // Delete batch details first
+                        var detailIdsToDelete = detailsToDelete.Select(d => d.TRANDID).ToList();
+                        var idList = string.Join(",", detailIdsToDelete);
+                        try
+                        {
+                            db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONBATCHDETAIL WHERE TRANDID IN (" + idList + ")");
+                        }
+                        catch
+                        {
+                        }
 
-                    totalGross += gross;
-                    totalCgst += cgstAmt;
-                    totalSgst += sgstAmt;
-                    totalIgst += igstAmt;
-                    totalNet += net;
+                        // Delete transaction details
+                        db.Database.ExecuteSqlCommand("DELETE FROM TRANSACTIONDETAIL WHERE TRANDID IN (" + idList + ")");
+                    }
+
+                    existing.TRANGAMT = totalGross;
+                    existing.TRANCGSTAMT = totalCgst;
+                    existing.TRANSGSTAMT = totalSgst;
+                    existing.TRANIGSTAMT = totalIgst;
+                    var roundedNet = Math.Round(totalNet, 0, MidpointRounding.AwayFromZero);
+                    existing.TRANROAMT = Math.Round(roundedNet - totalNet, 3, MidpointRounding.AwayFromZero);
+                    existing.TRANNAMT = roundedNet;
+                    existing.TRANAMTWRDS = ConvertAmountToWords(existing.TRANNAMT);
+
+                    db.SaveChanges();
                 }
-
-                existing.TRANGAMT = totalGross;
-                existing.TRANCGSTAMT = totalCgst;
-                existing.TRANSGSTAMT = totalSgst;
-                existing.TRANIGSTAMT = totalIgst;
-                var roundedNet = Math.Round(totalNet, 0, MidpointRounding.AwayFromZero);
-                existing.TRANROAMT = Math.Round(roundedNet - totalNet, 3, MidpointRounding.AwayFromZero);
-                existing.TRANNAMT = roundedNet;
-                existing.TRANAMTWRDS = ConvertAmountToWords(existing.TRANNAMT);
-
-                db.SaveChanges();
 
                 try
                 {
