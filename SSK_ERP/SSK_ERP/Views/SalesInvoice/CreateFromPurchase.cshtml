@@ -314,6 +314,8 @@
                                 <th style="width:120px;">Packing</th>
                                 <th style="width:80px;" class="text-end">No of Boxes</th>
                                 <th style="width:80px;" class="text-end">Qty</th>
+                                <th style="width:100px;" class="text-end">Purchase Price/Unit</th>
+                                <th style="width:100px;" class="text-end">Profit %</th>
                                 <th style="width:100px;" class="text-end">Price Unit</th>
                                 <th style="width:100px;" class="text-end">PTR</th>
                                 <th style="width:100px;" class="text-end">MRP</th>
@@ -351,6 +353,12 @@
                                     </td>
                                     <td class="text-end">
                                         @Html.TextBoxFor(m => m.Items[i].Qty, new { @class = "form-control form-control-sm text-end qty-field" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].PurchasePriceUnit, new { @class = "form-control form-control-sm text-end", @readonly = "readonly" })
+                                    </td>
+                                    <td class="text-end">
+                                        @Html.TextBoxFor(m => m.Items[i].ProfitPercent, new { @class = "form-control form-control-sm text-end profit-percent-field" })
                                     </td>
                                     <td class="text-end">
                                         @Html.TextBoxFor(m => m.Items[i].Rate, new { @class = "form-control form-control-sm text-end rate-field" })
@@ -1022,6 +1030,51 @@
             $(document).on('input change', '.rate-field', function () {
                 var $tr = $(this).closest('tr');
                 var rate = parseDecimal($(this).val() || '0');
+                var qty = parseDecimal($tr.find('.qty-field').val() || '0');
+                var amt = qty * rate;
+                $tr.find('.amount-field').val(amt.toFixed(2));
+                recalcSelectedTotal();
+            });
+
+            // Handle Profit % changes to update Price Unit
+            $('#siFromPurchaseTable').on('input change', '.profit-percent-field', function () {
+                var $tr = $(this).closest('tr');
+                var profitPercent = parseDecimal($(this).val() || '0');
+                var $purchasePriceField = $tr.find('input').filter(function() {
+                    return this.name.indexOf('PurchasePriceUnit') > -1;
+                });
+                var purchasePrice = parseDecimal($purchasePriceField.val() || '0');
+                
+                console.log('Profit % changed:', profitPercent, 'Purchase Price:', purchasePrice);
+                
+                if (purchasePrice > 0) {
+                    var newRate = purchasePrice * (1 + (profitPercent / 100));
+                    $tr.find('.rate-field').val(newRate.toFixed(2));
+                    var qty = parseDecimal($tr.find('.qty-field').val() || '0');
+                    var amt = qty * newRate;
+                    $tr.find('.amount-field').val(amt.toFixed(2));
+                    recalcSelectedTotal();
+                    console.log('New rate calculated:', newRate.toFixed(2));
+                }
+            });
+
+            // Handle Rate field changes to update Profit %
+            $('#siFromPurchaseTable').on('input change', '.rate-field', function () {
+                var $tr = $(this).closest('tr');
+                var rate = parseDecimal($(this).val() || '0');
+                var $purchasePriceField = $tr.find('input').filter(function() {
+                    return this.name.indexOf('PurchasePriceUnit') > -1;
+                });
+                var purchasePrice = parseDecimal($purchasePriceField.val() || '0');
+                
+                console.log('Rate changed:', rate, 'Purchase Price:', purchasePrice);
+                
+                if (purchasePrice > 0) {
+                    var profitPercent = ((rate - purchasePrice) / purchasePrice) * 100;
+                    $tr.find('.profit-percent-field').val(profitPercent.toFixed(2));
+                    console.log('New profit % calculated:', profitPercent.toFixed(2));
+                }
+                
                 var qty = parseDecimal($tr.find('.qty-field').val() || '0');
                 var amt = qty * rate;
                 $tr.find('.amount-field').val(amt.toFixed(2));

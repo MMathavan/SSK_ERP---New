@@ -85,6 +85,8 @@ namespace SSK_ERP.Controllers
             public decimal SgstRate { get; set; }
             public decimal IgstRate { get; set; }
             public bool Selected { get; set; }
+            public decimal ProfitPercent { get; set; }
+            public decimal PurchasePriceUnit { get; set; }
         }
 
         public class SalesInvoiceFromPurchaseViewModel
@@ -895,6 +897,18 @@ namespace SSK_ERP.Controllers
                         ? (s.TRANDGAMT > 0 ? s.TRANDGAMT : Math.Round(qty * rate, 2))
                         : Math.Round(qty * rate, 2);
 
+                    // Calculate profit percent and purchase price unit
+                    decimal profitPercent = 0m;
+                    decimal purchasePriceUnit = p.TRANDRATE;
+                    if (selected && s != null && p.TRANDRATE > 0)
+                    {
+                        profitPercent = Math.Round(((s.TRANDRATE - p.TRANDRATE) / p.TRANDRATE) * 100, 2);
+                    }
+                    else if (!selected && p.TRANDRATE > 0)
+                    {
+                        profitPercent = 5m; // Default 5% markup for unselected items
+                    }
+
                     items.Add(new SalesInvoiceFromPurchaseItemViewModel
                     {
                         PurchaseTranDetailId = p.TRANDID,
@@ -914,7 +928,9 @@ namespace SSK_ERP.Controllers
                         CgstRate = cgstRate,
                         SgstRate = sgstRate,
                         IgstRate = igstRate,
-                        Selected = selected
+                        Selected = selected,
+                        ProfitPercent = profitPercent,
+                        PurchasePriceUnit = purchasePriceUnit
                     });
                 }
             }
@@ -954,6 +970,13 @@ namespace SSK_ERP.Controllers
                         ? s.TRANDGAMT
                         : (s.TRANDNAMT > 0 ? s.TRANDNAMT : s.TRANDQTY * s.TRANDRATE);
 
+                    // For standalone invoices, calculate profit percent based on material master profit
+                    decimal profitPercent = 0m;
+                    if (material != null && s.TRANDRATE > 0 && material.RATE > 0)
+                    {
+                        profitPercent = Math.Round(((s.TRANDRATE - material.RATE) / material.RATE) * 100, 2);
+                    }
+
                     items.Add(new SalesInvoiceFromPurchaseItemViewModel
                     {
                         PurchaseTranDetailId = 0,
@@ -967,7 +990,9 @@ namespace SSK_ERP.Controllers
                         CgstRate = cgstRate,
                         SgstRate = sgstRate,
                         IgstRate = igstRate,
-                        Selected = true
+                        Selected = true,
+                        ProfitPercent = profitPercent,
+                        PurchasePriceUnit = material != null ? material.RATE : 0m
                     });
                 }
             }
@@ -1311,6 +1336,7 @@ namespace SSK_ERP.Controllers
                                     detail.PACKMID = packMid;
                                     detail.TRANDAID = purchaseDetailId;
 
+                                    
                                     // Update or create batch detail
                                     var batchDetail = db.TransactionBatchDetails.FirstOrDefault(b => b.TRANDID == detail.TRANDID);
                                     if (batchDetail != null)
@@ -1393,6 +1419,17 @@ namespace SSK_ERP.Controllers
 
                                     db.TransactionDetails.Add(newDetail);
                                     db.SaveChanges();
+
+                                    // Update Material Master with profit
+                                    if (profitPercent > 0)
+                                    {
+                                        var materialMaster = db.MaterialMasters.FirstOrDefault(m => m.MTRLID == itm.MaterialId);
+                                        if (materialMaster != null)
+                                        {
+                                            materialMaster.MTRLPRFT = profitPercent;
+                                            db.SaveChanges();
+                                        }
+                                    }
 
                                     // Add batch detail
                                     try
