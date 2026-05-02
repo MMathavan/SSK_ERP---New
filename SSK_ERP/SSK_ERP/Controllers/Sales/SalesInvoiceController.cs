@@ -1133,12 +1133,7 @@ namespace SSK_ERP.Controllers
                     return RedirectToAction("Index");
                 }
 
-                if (string.IsNullOrWhiteSpace(model.TransporterName) || string.IsNullOrWhiteSpace(model.VehicleNo) || !model.Distance.HasValue || model.Distance.Value <= 0)
-                {
-                    TempData["ErrorMessage"] = "Transporter Name, Vehicle No and Distance are required.";
-                    return View("CreateFromPurchase", model);
-                }
-
+                
                 var existing = db.TransactionMasters.FirstOrDefault(t => t.TRANMID == model.SalesTranMid && t.REGSTRID == SalesInvoiceRegisterId);
                 if (existing == null)
                 {
@@ -2617,12 +2612,7 @@ namespace SSK_ERP.Controllers
                 return RedirectToAction("Index", "PurchaseInvoice", new { area = "" });
             }
 
-            if (string.IsNullOrWhiteSpace(model.TransporterName) || string.IsNullOrWhiteSpace(model.VehicleNo) || !model.Distance.HasValue || model.Distance.Value <= 0)
-            {
-                TempData["ErrorMessage"] = "Transporter Name, Vehicle No and Distance are required.";
-                return View("CreateFromPurchase", model);
-            }
-
+            
             var allItems = model.Items ?? new List<SalesInvoiceFromPurchaseItemViewModel>();
 
             // Keep original row index so we can reliably map back to purchase detail rows
